@@ -34,6 +34,7 @@ export default function CandidateProfilePage() {
     // Pendidikan
     latestEducation: "",
     educationInstitution: "",
+    trainingCenter: "",
     
     // Dokumen
     fileCv: null as any,
@@ -366,6 +367,17 @@ export default function CandidateProfilePage() {
                   className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                   placeholder="Contoh: Universitas Indonesia / SMKN 1 Jakarta"
                   required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Training Center (BLK/LPK)</label>
+                <input
+                  type="text"
+                  value={formData.trainingCenter}
+                  onChange={(e) => handleInputChange("trainingCenter", e.target.value)}
+                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  placeholder="Isi nama BLK/LPK jika ada"
                 />
               </div>
             </div>

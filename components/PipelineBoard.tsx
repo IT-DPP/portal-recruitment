@@ -251,7 +251,14 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
                         <div className="flex-1 min-w-0">
                           <h5 className="font-bold text-sm text-black truncate">{profile.fullName || "Unknown"}</h5>
                           <p className="text-xs text-on-surface-variant font-mono truncate">{profile.nik || "No NIK"}</p>
-                          <p className="text-[10px] text-on-surface-variant mt-1">Applied: {new Date(app.applicationDate).toLocaleDateString("id-ID")}</p>
+                          <p className="text-[10px] text-on-surface-variant mt-1 mb-2">Applied: {new Date(app.applicationDate).toLocaleDateString("id-ID")}</p>
+                          
+                          <a 
+                            href={`/dashboard/job-openings/${jobId}/verify/${app.candidateId}`}
+                            className="inline-block w-full text-center px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded hover:bg-primary/20 transition-colors"
+                          >
+                            Detail Verification
+                          </a>
                         </div>
                       </div>
 
