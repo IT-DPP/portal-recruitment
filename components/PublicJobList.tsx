@@ -34,6 +34,8 @@ export default function PublicJobList() {
     if (savedSites) setSites(JSON.parse(savedSites));
   }, []);
 
+  const [selectedJob, setSelectedJob] = useState<any | null>(null);
+
   const getProvinceName = (id: string) => provinces.find((p) => p.id === id)?.name || "-";
   const getCityName = (id: string) => cities.find((c) => c.id === id)?.name || "-";
   const getSiteName = (id: string) => sites.find((s) => s.id === id)?.siteName || id || "-";
@@ -50,12 +52,60 @@ export default function PublicJobList() {
   });
 
   const handleApplyClick = (jobId: string) => {
-    const session = localStorage.getItem("nexus_candidate_session");
-    if (!session) {
+    const job = jobs.find((j) => j.id === jobId);
+    setSelectedJob(job);
+  };
+
+  const confirmApply = () => {
+    if (!selectedJob) return;
+    const jobId = selectedJob.id;
+    
+    const sessionStr = localStorage.getItem("nexus_candidate_session");
+    if (!sessionStr) {
       router.push("/candidate/login");
-    } else {
-      router.push(`/candidate/jobs/${jobId}`);
+      return;
     }
+    
+    const session = JSON.parse(sessionStr);
+
+    // 1. Check if profile is complete (needs NIK)
+    const allProfiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
+    const myProfile = allProfiles[session.id];
+    
+    if (!myProfile || !myProfile.nik) {
+      window.alert("Harap lengkapi Profile Anda (terutama NIK) sebelum melamar lowongan.");
+      router.push("/candidate/profile");
+      return;
+    }
+
+    const candidateNik = myProfile.nik;
+
+    // 2. Check if candidate already applied (1 NIK = 1 Job Application)
+    const applications = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
+    const existingApp = applications.find((app: any) => app.candidateNik === candidateNik);
+    
+    if (existingApp) {
+      window.alert("Anda sudah melamar pada suatu lowongan. Satu kandidat hanya diperbolehkan memiliki 1 lamaran aktif berdasarkan NIK.");
+      return;
+    }
+
+    // 3. Create application
+    const newApp = {
+      id: `APP-${Date.now()}`,
+      jobId,
+      candidateId: session.id,
+      candidateNik: candidateNik,
+      currentStage: "stage_1", // Default first stage
+      applicationDate: new Date().toISOString(),
+      stageNotes: {}, // For overdue notes
+    };
+
+    applications.push(newApp);
+    localStorage.setItem("ugz_applications", JSON.stringify(applications));
+
+    window.alert("Berhasil melamar lowongan ini! Anda dapat mengecek status di halaman My Applications.");
+    setSelectedJob(null);
+    router.push("/candidate/history");
   };
 
   return (
@@ -171,6 +221,75 @@ export default function PublicJobList() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Job Details Modal */}
+      {selectedJob && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-table-border bg-surface-container-lowest flex justify-between items-start">
+              <div>
+                <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-full border border-emerald-100 uppercase tracking-wider mb-3 inline-block">
+                  {selectedJob.statusPermintaan || "Hiring"}
+                </span>
+                <h3 className="text-2xl font-bold text-on-surface">{selectedJob.posisi}</h3>
+                <div className="flex items-center text-sm text-on-surface-variant mt-2 gap-4">
+                  <div className="flex items-center">
+                    <MapPin className="w-4 h-4 mr-1 shrink-0 text-primary/60" />
+                    <span className="font-semibold text-black">{getSiteName(selectedJob.siteId || selectedJob.areaKerja)} • {getCityName(selectedJob.cityId)}, {getProvinceName(selectedJob.provinceId)}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Briefcase className="w-4 h-4 mr-1 shrink-0 text-primary/60" />
+                    <span className="font-semibold text-black">{selectedJob.jumlahPermintaan} Openings</span>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedJob(null)}
+                className="p-2 hover:bg-surface-container-low rounded-full transition-colors text-on-surface-variant hover:text-status-error"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+              <div>
+                <h4 className="font-bold text-lg text-primary mb-2 flex items-center gap-2">
+                  <span className="w-6 h-6 bg-primary/10 rounded flex items-center justify-center text-primary text-sm">1</span> 
+                  Kualifikasi / Requirements
+                </h4>
+                <p className="text-sm text-black whitespace-pre-wrap leading-relaxed pl-8">
+                  {selectedJob.kualifikasi || "Belum ada kualifikasi spesifik."}
+                </p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-lg text-primary mb-2 flex items-center gap-2">
+                  <span className="w-6 h-6 bg-primary/10 rounded flex items-center justify-center text-primary text-sm">2</span> 
+                  Benefit
+                </h4>
+                <p className="text-sm text-black whitespace-pre-wrap leading-relaxed pl-8">
+                  {selectedJob.benefit || "Belum ada informasi benefit."}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 bg-surface-container-lowest border-t border-table-border flex justify-end gap-3 shrink-0">
+              <button
+                onClick={() => setSelectedJob(null)}
+                className="px-5 py-2.5 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmApply}
+                className="px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl shadow-sm hover:bg-primary-container hover:shadow-md transition-all active:scale-[0.98]"
+              >
+                Konfirmasi Pelamaran (Apply)
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

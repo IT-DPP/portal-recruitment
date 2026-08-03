@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useModal } from "@/components/providers/ModalProvider";
+import PipelineBoard from "@/components/PipelineBoard";
 
 const STAGES = [
   { id: "stage_1", title: "Administration" },
@@ -47,6 +48,7 @@ export default function JobDetailPage({
     null,
   );
   const [feedbackText, setFeedbackText] = useState("");
+  const [activeTab, setActiveTab] = useState<"details" | "pipeline">("details");
 
   useEffect(() => {
     const jobs = JSON.parse(localStorage.getItem("ugz_jobs") || "[]");
@@ -331,6 +333,31 @@ export default function JobDetailPage({
         </div>
       </div>
 
+      {/* Tabs Navigation */}
+      <div className="flex overflow-x-auto border-b border-table-border scrollbar-hide -mx-2 px-2">
+        <button
+          onClick={() => setActiveTab("details")}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-bold border-b-2 transition-colors shrink-0 ${
+            activeTab === "details"
+              ? "border-primary text-primary"
+              : "border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low"
+          }`}
+        >
+          Job Details & SLA
+        </button>
+        <button
+          onClick={() => setActiveTab("pipeline")}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-bold border-b-2 transition-colors shrink-0 ${
+            activeTab === "pipeline"
+              ? "border-primary text-primary"
+              : "border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low"
+          }`}
+        >
+          Candidate Pipeline
+        </button>
+      </div>
+
+      {activeTab === "details" ? (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Details */}
         <div className="lg:col-span-1 space-y-6">
@@ -558,6 +585,9 @@ export default function JobDetailPage({
           </div>
         </div>
       </div>
+      ) : (
+        <PipelineBoard jobId={job.id} timeline={job.timeline} />
+      )}
 
       {/* Feedback Modal */}
       {showFeedbackModal && (
