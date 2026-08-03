@@ -1,34 +1,45 @@
-import Link from 'next/link';
-import { UserPlus, Briefcase } from 'lucide-react';
+import Link from "next/link";
+import { UserPlus, Briefcase } from "lucide-react";
+import PublicJobList from "@/components/PublicJobList";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-surface-bright p-8 font-sans">
-      <header className="flex justify-between items-center mb-12">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary flex items-center justify-center rounded">
-            <Briefcase className="text-white w-6 h-6" />
+    <div className="min-h-screen bg-surface-bright font-sans">
+      <div className="max-w-6xl mx-auto p-6 md:p-10">
+        <header className="flex justify-between items-center mb-16">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-primary flex items-center justify-center rounded-2xl shadow-lg shadow-primary/20">
+              <Briefcase className="text-white w-7 h-7" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-primary leading-tight">DPP Portal Career</h1>
+              <p className="text-xs text-on-surface-variant font-medium">Discover Your Next Journey</p>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-primary">UGZ Portal Career</h1>
-        </div>
-        <Link 
-          href="/login" 
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded font-medium hover:bg-primary-container transition-colors"
-        >
-          <UserPlus className="w-4 h-4" />
-          Recruiter Login
-        </Link>
-      </header>
+          <Link
+            href="/login"
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary/10 text-primary rounded-xl font-bold hover:bg-primary hover:text-white transition-all duration-300"
+          >
+            <UserPlus className="w-4 h-4" />
+            Recruiter Login
+          </Link>
+        </header>
 
-      <main className="max-w-4xl mx-auto bg-surface-container-lowest border border-table-border rounded-lg shadow-sm p-8 text-center">
-        <h2 className="text-2xl font-bold text-on-surface mb-4">Welcome to UGZ Portal Career</h2>
-        <p className="text-on-surface-variant mb-8">
-          This is the public-facing job portal where candidates can view job openings and apply.
-        </p>
-        <div className="p-8 border-2 border-dashed border-outline-variant rounded-lg bg-surface-container-low text-on-surface-variant">
-          Job Openings will be displayed here...
-        </div>
-      </main>
+        <main className="flex flex-col items-center">
+          <div className="text-center mb-12 max-w-2xl">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-on-surface mb-6 tracking-tight">
+              Find the perfect job for <span className="text-primary">you</span>
+            </h2>
+            <p className="text-lg text-on-surface-variant leading-relaxed">
+              Explore open opportunities, find your next career move, and join our team of passionate professionals building the future.
+            </p>
+          </div>
+          
+          <div className="w-full">
+            <PublicJobList />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
