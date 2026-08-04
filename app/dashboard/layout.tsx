@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import { Menu } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -12,6 +13,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     const loggedUser = localStorage.getItem('nexus_logged_user');
@@ -25,9 +27,10 @@ export default function DashboardLayout({
   if (!isAuthenticated) return null; // Or a loading spinner
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-bright font-sans text-on-surface">
-      <Sidebar />
-      <div className="flex flex-col flex-1 w-full ml-64">
+    <div className="flex h-screen overflow-hidden bg-surface-bright font-sans text-on-surface relative">
+      {/* Mobile Toggle inside header or absolute */}
+      <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      <div className={`flex flex-col flex-1 w-full transition-all duration-300 ${isCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
         <Header />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-surface-bright p-6">
           {children}

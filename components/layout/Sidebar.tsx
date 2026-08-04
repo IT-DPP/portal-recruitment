@@ -12,10 +12,16 @@ import {
   ChevronRight,
   LogOut,
   Clock,
+  ChevronLeft
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export default function Sidebar() {
+interface SidebarProps {
+  isCollapsed: boolean;
+  setIsCollapsed: (val: boolean) => void;
+}
+
+export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -33,15 +39,23 @@ export default function Sidebar() {
   const isMasterDataActive = pathname.includes("/settings/master-data");
 
   return (
-    <aside className="h-screen w-64 fixed left-0 top-0 bg-surface-container-lowest border-r border-table-border flex flex-col py-6 z-50">
+    <aside className={`h-screen fixed left-0 top-0 bg-surface-container-lowest border-r border-table-border flex flex-col py-6 z-50 transition-all duration-300 ${isCollapsed ? 'w-[80px]' : 'w-[260px]'}`}>
       {/* Brand Header */}
-      <div className="px-6 mb-8">
-        <h1 className="font-sans text-lg font-bold text-primary">
-          DPP Console
-        </h1>
-        <p className="font-mono text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-          Admin Console
-        </p>
+      <div className={`px-6 mb-8 flex items-center ${isCollapsed ? 'justify-center px-0' : ''}`}>
+        {!isCollapsed ? (
+          <div>
+            <h1 className="font-sans text-lg font-bold text-primary">
+              DPP Console
+            </h1>
+            <p className="font-mono text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
+              Admin Console
+            </p>
+          </div>
+        ) : (
+          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center font-bold text-primary text-sm">
+            DPP
+          </div>
+        )}
       </div>
 
       {/* Navigation Links */}
@@ -52,10 +66,11 @@ export default function Sidebar() {
             pathname === "/dashboard"
               ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
               : "text-on-surface-variant hover:bg-surface-container-low"
-          }`}
+          } ${isCollapsed ? 'justify-center px-0' : ''}`}
+          title={isCollapsed ? "Dashboard" : undefined}
         >
-          <LayoutDashboard className="mr-3 w-5 h-5 shrink-0" />
-          <span className="font-sans text-xs font-semibold">Dashboard</span>
+          <LayoutDashboard className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
+          {!isCollapsed && <span className="font-sans text-xs font-semibold">Dashboard</span>}
         </Link>
 
         <Link
@@ -64,10 +79,11 @@ export default function Sidebar() {
             pathname.includes("/dashboard/job-openings")
               ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
               : "text-on-surface-variant hover:bg-surface-container-low"
-          }`}
+          } ${isCollapsed ? 'justify-center px-0' : ''}`}
+          title={isCollapsed ? "Job Openings" : undefined}
         >
-          <Briefcase className="mr-3 w-5 h-5 shrink-0" />
-          <span className="font-sans text-xs font-semibold">Job Openings</span>
+          <Briefcase className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
+          {!isCollapsed && <span className="font-sans text-xs font-semibold">Job Openings</span>}
         </Link>
 
         {/* Expandable Settings Menu */}
@@ -78,20 +94,21 @@ export default function Sidebar() {
               pathname.includes("/settings")
                 ? "text-primary font-bold"
                 : "text-on-surface-variant hover:bg-surface-container-low"
-            }`}
+            } ${isCollapsed ? 'justify-center px-0' : ''}`}
+            title={isCollapsed ? "Settings" : undefined}
           >
-            <div className="flex items-center">
-              <Settings className="mr-3 w-5 h-5 shrink-0" />
-              <span className="font-sans text-xs font-semibold">Settings</span>
+            <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : ''}`}>
+              <Settings className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
+              {!isCollapsed && <span className="font-sans text-xs font-semibold">Settings</span>}
             </div>
-            {isSettingsOpen ? (
+            {!isCollapsed && (isSettingsOpen ? (
               <ChevronDown className="w-4 h-4" />
             ) : (
               <ChevronRight className="w-4 h-4" />
-            )}
+            ))}
           </button>
 
-          {isSettingsOpen && (
+          {isSettingsOpen && !isCollapsed && (
             <div className="bg-surface-container-low/30 py-1">
               <Link
                 href="/dashboard/settings/master-data"
@@ -125,13 +142,21 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer Settings & Support */}
-      <div className="border-t border-table-border pt-4 space-y-1">
+      <div className="border-t border-table-border pt-4 px-3 space-y-2">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center px-6 py-2 text-status-error hover:bg-red-50/50 transition-colors duration-200 text-left focus:outline-none cursor-pointer"
+          className={`w-full flex items-center px-3 py-2.5 rounded-lg text-status-error hover:bg-red-50/50 transition-colors duration-200 focus:outline-none cursor-pointer ${isCollapsed ? 'justify-center' : ''}`}
+          title={isCollapsed ? "Sign Out" : undefined}
         >
-          <LogOut className="mr-3 w-5 h-5 shrink-0" />
-          <span className="font-sans text-xs font-semibold">Sign Out</span>
+          <LogOut className={`w-5 h-5 shrink-0 ${isCollapsed ? '' : 'mr-3'}`} />
+          {!isCollapsed && <span className="font-sans text-xs font-semibold">Sign Out</span>}
+        </button>
+
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="hidden md:flex w-full items-center justify-center py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
+        >
+          {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
         </button>
       </div>
     </aside>

@@ -157,6 +157,20 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
            profile.nik?.includes(searchQuery);
   });
 
+  if (!timeline || timeline.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[400px] bg-white rounded-xl border-2 border-dashed border-outline-variant text-center p-8 mt-6">
+        <div className="w-16 h-16 bg-surface-container-low rounded-full flex items-center justify-center mb-4">
+          <Clock className="w-8 h-8 text-on-surface-variant" />
+        </div>
+        <h3 className="text-xl font-bold text-on-surface mb-2">Pipeline Belum Tersedia</h3>
+        <p className="text-sm text-on-surface-variant max-w-md">
+          Lowongan ini masih dalam status <strong>Draft</strong> atau belum memiliki tahapan (timeline) seleksi yang dikonfigurasi. Harap lengkapi timeline lowongan terlebih dahulu sebelum mengelola kandidat.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-250px)]">
       {/* Header & Search */}
@@ -251,7 +265,12 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
                         <div className="flex-1 min-w-0">
                           <h5 className="font-bold text-sm text-black truncate">{profile.fullName || "Unknown"}</h5>
                           <p className="text-xs text-on-surface-variant font-mono truncate">{profile.nik || "No NIK"}</p>
-                          <p className="text-[10px] text-on-surface-variant mt-1 mb-2">Applied: {new Date(app.applicationDate).toLocaleDateString("id-ID")}</p>
+                          <div className="flex items-center gap-2 mt-1 mb-2">
+                            <p className="text-[10px] text-on-surface-variant">Applied: {new Date(app.applicationDate).toLocaleDateString("id-ID")}</p>
+                            {app.isDraft && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded-sm uppercase">Draft</span>
+                            )}
+                          </div>
                           
                           <a 
                             href={`/dashboard/job-openings/${jobId}/verify/${app.candidateId}`}

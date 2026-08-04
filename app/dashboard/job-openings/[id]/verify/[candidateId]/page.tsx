@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle } from "lucide-react";
+import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft } from "lucide-react";
+import { MASTER_SKEMA_SERTIFIKASI, MASTER_REJECTION_MESSAGE } from "@/lib/masterData";
 
 export default function AdvancedDocumentVerificationPage({
   params,
@@ -21,9 +22,13 @@ export default function AdvancedDocumentVerificationPage({
   const [issueDate, setIssueDate] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [certNumber, setCertNumber] = useState("");
+  const [isApproved, setIsApproved] = useState(false);
+  const [masterSkema, setMasterSkema] = useState<any[]>([]);
 
   const [activeDocTab, setActiveDocTab] = useState("KTP");
   const [failureReason, setFailureReason] = useState("");
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [masterRejection, setMasterRejection] = useState<any[]>([]);
 
   useEffect(() => {
     // Load Job
@@ -49,7 +54,24 @@ export default function AdvancedDocumentVerificationPage({
         setIssueDate(foundApp.bnspValidation.issueDate || "");
         setExpiryDate(foundApp.bnspValidation.expiryDate || "");
         setCertNumber(foundApp.bnspValidation.certNumber || "");
+        setIsApproved(foundApp.bnspValidation.isApproved || false);
       }
+    }
+
+    // Load Master Skema
+    const savedSkema = localStorage.getItem('ugz_master_skema_sertifikasi');
+    if (savedSkema) {
+      setMasterSkema(JSON.parse(savedSkema));
+    } else {
+      setMasterSkema(MASTER_SKEMA_SERTIFIKASI);
+    }
+
+    // Load Master Rejection
+    const savedRejection = localStorage.getItem('ugz_master_rejection_message');
+    if (savedRejection) {
+      setMasterRejection(JSON.parse(savedRejection));
+    } else {
+      setMasterRejection(MASTER_REJECTION_MESSAGE);
     }
   }, [unwrappedParams.id, unwrappedParams.candidateId]);
 
@@ -57,33 +79,84 @@ export default function AdvancedDocumentVerificationPage({
     return <div className="p-8 text-center">Loading verification data...</div>;
   }
 
-  const handleSaveDraft = () => {
+  const handleSaveDraftSilent = () => {
     const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
     const appIndex = allApps.findIndex((a: any) => a.id === application.id);
-    
     if (appIndex !== -1) {
-      allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber };
+      allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved };
       localStorage.setItem("ugz_applications", JSON.stringify(allApps));
-      window.alert("Draft saved successfully.");
     }
   };
 
-  const handleFailed = () => {
-    if (!failureReason) {
-      window.alert("Silakan pilih alasan kegagalan (Reason for Failure) terlebih dahulu.");
-      return;
+  const handleToggleApprove = () => {
+    const newIsApproved = !isApproved;
+    setIsApproved(newIsApproved);
+
+    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
+    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
+    
+    if (appIndex !== -1) {
+      allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved: newIsApproved };
+      localStorage.setItem("ugz_applications", JSON.stringify(allApps));
     }
+  };
+
+  const handleDraftMark = () => {
+    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
+    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
+    if (appIndex !== -1) {
+      allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved };
+      allApps[appIndex].isDraft = true;
+      localStorage.setItem("ugz_applications", JSON.stringify(allApps));
+      window.alert("Saved as Draft successfully.");
+      router.push(`/dashboard/job-openings/${job.id}`);
+    }
+  };
+
+  const handleApproveNextStage = () => {
+    handleSaveDraftSilent();
+    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
+    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
+    if (appIndex !== -1) {
+      const app = allApps[appIndex];
+      const currentIndex = job.timeline.findIndex((t: any) => t.id === app.currentStage);
+      
+      if (currentIndex !== -1 && currentIndex + 1 < job.timeline.length) {
+        const nextStage = job.timeline[currentIndex + 1];
+        app.currentStage = nextStage.id;
+        app.isDraft = false; // Remove draft if approved
+        if (!app.history) app.history = [];
+        app.history.push({
+          stageId: nextStage.id,
+          stageName: nextStage.title,
+          date: new Date().toISOString(),
+          note: "Approved to next stage"
+        });
+        localStorage.setItem("ugz_applications", JSON.stringify(allApps));
+        window.alert(`Candidate approved and moved to ${nextStage.title}.`);
+        router.push(`/dashboard/job-openings/${job.id}`);
+      } else {
+        window.alert("Candidate is already at the last stage.");
+      }
+    }
+  };
+
+  const handleRejectCandidate = () => {
+    if (!failureReason) return;
     
     const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
     const appIndex = allApps.findIndex((a: any) => a.id === application.id);
     
     if (appIndex !== -1) {
-      // Archive candidate and mark as rejected
-      allApps[appIndex].currentStage = "Rejected";
-      if (!allApps[appIndex].history) allApps[appIndex].history = [];
-      allApps[appIndex].history.push({
+      const app = allApps[appIndex];
+      const stageName = job.timeline.find((t: any) => t.id === app.currentStage)?.title || app.currentStage;
+      
+      app.currentStage = "Rejected";
+      app.isDraft = false;
+      if (!app.history) app.history = [];
+      app.history.push({
         stageId: "Rejected",
-        stageName: "Rejected (Failed Verification)",
+        stageName: `Rejected at ${stageName}`,
         date: new Date().toISOString(),
         note: `Reason: ${failureReason}`
       });
@@ -95,7 +168,7 @@ export default function AdvancedDocumentVerificationPage({
   };
 
   const handleApproveAll = () => {
-    handleSaveDraft();
+    handleSaveDraftSilent();
     window.alert("All verification approved. Returning to Pipeline.");
     router.push(`/dashboard/job-openings/${job.id}`);
   };
@@ -148,33 +221,34 @@ export default function AdvancedDocumentVerificationPage({
     <div className="min-h-screen bg-[#F8F9FA] -m-8 p-8 font-sans text-black">
       {/* Top Navigation Bar */}
       <div className="flex justify-between items-center mb-8 border-b border-table-border pb-4">
-        <div>
-          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Reviewing Candidate</p>
-          <h2 className="text-xl font-bold text-black flex items-center gap-2">
-            {profile.fullName} <span className="text-on-surface-variant font-normal">—</span> {job.posisi}
-          </h2>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => router.push(`/dashboard/job-openings/${job.id}`)}
+            className="p-2 bg-white border border-table-border rounded-lg hover:bg-surface-container-low transition-colors"
+            title="Back to Pipeline"
+          >
+            <ArrowLeft className="w-5 h-5 text-on-surface-variant" />
+          </button>
+          <div>
+            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Reviewing Candidate</p>
+            <h2 className="text-xl font-bold text-black flex items-center gap-2">
+              {profile.fullName} <span className="text-on-surface-variant font-normal">—</span> {job.posisi}
+            </h2>
+          </div>
         </div>
         
         <div className="flex gap-3 items-center">
-          <select 
-            className="border border-outline-variant rounded-lg px-4 py-2 text-sm bg-white focus:ring-1 focus:ring-primary outline-none"
-            value={failureReason}
-            onChange={(e) => setFailureReason(e.target.value)}
-          >
-            <option value="">Reason for Failure</option>
-            <option value="Incomplete Documents">Incomplete Documents</option>
-            <option value="Fake Documents Detected">Fake Documents Detected</option>
-            <option value="Does Not Meet Requirements">Does Not Meet Requirements</option>
-          </select>
-          
-          <button onClick={handleFailed} className="px-5 py-2 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-semibold rounded-lg text-sm transition-colors">
-            Failed
+          <button onClick={() => setShowRejectModal(true)} className="px-5 py-2 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5">
+            <Ban className="w-4 h-4" /> Reject
           </button>
-          <button onClick={handleSaveDraft} className="px-5 py-2 border border-outline-variant text-black bg-white hover:bg-surface-container-low font-semibold rounded-lg text-sm transition-colors">
-            Save Draft
+          <button onClick={handleApproveNextStage} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5">
+            Approve <ArrowRight className="w-4 h-4" />
           </button>
-          <button onClick={handleApproveAll} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center gap-2">
-            Approve All <ChevronRight className="w-4 h-4" />
+          <button onClick={handleDraftMark} className="px-5 py-2 border border-outline-variant text-black bg-white hover:bg-surface-container-low font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5">
+            <Save className="w-4 h-4" /> Save as Draft
+          </button>
+          <button onClick={handleApproveAll} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5">
+            Approve All <CheckCircle className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -220,13 +294,16 @@ export default function AdvancedDocumentVerificationPage({
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Skema Sertifikasi (Certification Scheme)</label>
-                  <input 
-                    type="text" 
+                  <select 
                     value={skema}
                     onChange={(e) => setSkema(e.target.value)}
-                    placeholder="e.g. Senior Mechanical Engineer..."
-                    className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none"
-                  />
+                    className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none bg-white"
+                  >
+                    <option value="">Pilih Skema Sertifikasi...</option>
+                    {masterSkema.map((s) => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
@@ -267,6 +344,19 @@ export default function AdvancedDocumentVerificationPage({
                   </div>
                   {skema && issueDate && expiryDate && certNumber ? '100% Verified' : 'Pending Verification'}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleToggleApprove}
+                  className={`w-full mt-2 py-3 rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-colors border ${
+                    isApproved 
+                      ? 'bg-green-50 text-green-700 border-green-200' 
+                      : 'bg-surface-container-low text-on-surface-variant border-outline-variant hover:bg-surface-container'
+                  }`}
+                >
+                  {isApproved && <CheckCircle className="w-5 h-5" />}
+                  {isApproved ? 'BNSP Valid (Approved)' : 'Mark as Approved'}
+                </button>
               </div>
             </div>
           </div>
@@ -362,6 +452,58 @@ export default function AdvancedDocumentVerificationPage({
         </div>
 
       </div>
+
+      {/* Reject Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+            <div className="p-4 border-b border-table-border bg-surface-container-lowest flex items-center justify-between">
+              <h3 className="font-bold text-status-error flex items-center gap-2">
+                <Ban className="w-5 h-5" /> Reject Candidate
+              </h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-black mb-4">
+                Pilih alasan penolakan (Rejection Reason) untuk kandidat ini.
+              </p>
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Rejection Reason</label>
+              <select
+                value={failureReason}
+                onChange={(e) => setFailureReason(e.target.value)}
+                className="w-full px-3 py-2 border border-outline-variant rounded focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 text-sm text-black bg-white"
+              >
+                <option value="">-- Pilih Alasan Penolakan --</option>
+                {masterRejection
+                  .filter((r) => r.stageId === application.currentStage)
+                  .map((r) => (
+                    <option key={r.id} value={r.message}>
+                      {r.message}
+                    </option>
+                  ))}
+                <option value="Lainnya">Lainnya...</option>
+              </select>
+            </div>
+            <div className="p-4 bg-surface-container-lowest border-t border-table-border flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setFailureReason("");
+                }}
+                className="px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low rounded transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleRejectCandidate}
+                disabled={!failureReason}
+                className="px-4 py-2 bg-status-error text-white text-sm font-semibold rounded hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                Reject Candidate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

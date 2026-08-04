@@ -15,6 +15,7 @@ export default function PublicJobList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
+  const [errorModalMessage, setErrorModalMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const savedJobs = localStorage.getItem("ugz_jobs");
@@ -73,23 +74,39 @@ export default function PublicJobList() {
     const myProfile = allProfiles[session.id];
     
     if (!myProfile || !myProfile.nik) {
-      window.alert("Harap lengkapi Profile Anda (terutama NIK) sebelum melamar lowongan.");
-      router.push("/candidate/profile");
+      setErrorModalMessage("Harap lengkapi Profile Anda (terutama NIK) sebelum melamar lowongan.");
       return;
     }
 
     const candidateNik = myProfile.nik;
-
-    // 2. Check if candidate already applied (1 NIK = 1 Job Application)
     const applications = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const existingApp = applications.find((app: any) => app.candidateNik === candidateNik);
-    
-    if (existingApp) {
-      window.alert("Anda sudah melamar pada suatu lowongan. Satu kandidat hanya diperbolehkan memiliki 1 lamaran aktif berdasarkan NIK.");
+    const candidateApps = applications.filter((app: any) => app.candidateNik === candidateNik);
+
+    // 2. Check if candidate has an ACTIVE application (not rejected)
+    const activeApp = candidateApps.find((app: any) => app.currentStage !== "Rejected");
+    if (activeApp) {
+      setErrorModalMessage("Anda masih memiliki lamaran aktif yang sedang diproses pada suatu lowongan. Anda hanya dapat melamar ke lowongan baru jika tidak ada proses rekrutmen yang sedang berjalan (atau jika Anda sudah dinyatakan tidak lolos).");
       return;
     }
 
-    // 3. Create application
+    // 3. Check if they have EVER applied to this specific job
+    const appliedToThisJob = candidateApps.find((app: any) => app.jobId === jobId);
+    if (appliedToThisJob) {
+      setErrorModalMessage("Anda sudah pernah melamar ke lowongan ini sebelumnya. Kandidat tidak diperkenankan melamar kembali ke lowongan yang sama meskipun lamaran sebelumnya tidak lolos seleksi.");
+      return;
+    }
+
+    // 4. Check if Job has passed Administration stage
+    const adminStage = selectedJob.timeline?.find((t: any) => t.id === "stage_1" || t.title.toLowerCase().includes("administration"));
+    if (adminStage) {
+      const isPastDeadline = new Date() > new Date(adminStage.deadlineDate);
+      if (adminStage.status === "Completed" || isPastDeadline) {
+        setErrorModalMessage("Batas waktu pendaftaran (Administration) untuk lowongan ini telah ditutup karena proses rekrutmen sudah berjalan. Anda tidak dapat melamar ke lowongan ini lagi.");
+        return;
+      }
+    }
+
+    // 5. Create application
     const newApp = {
       id: `APP-${Date.now()}`,
       jobId,
@@ -98,6 +115,14 @@ export default function PublicJobList() {
       currentStage: "stage_1", // Default first stage
       applicationDate: new Date().toISOString(),
       stageNotes: {}, // For overdue notes
+      history: [
+        {
+          stageId: "stage_1",
+          stageName: "Administration",
+          date: new Date().toISOString(),
+          note: "Application Submitted"
+        }
+      ]
     };
 
     applications.push(newApp);
@@ -287,6 +312,36 @@ export default function PublicJobList() {
                 className="px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl shadow-sm hover:bg-primary-container hover:shadow-md transition-all active:scale-[0.98]"
               >
                 Konfirmasi Pelamaran (Apply)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {errorModalMessage && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Pendaftaran Ditolak</h3>
+              <p className="text-sm text-gray-600 leading-relaxed mb-6">
+                {errorModalMessage}
+              </p>
+              <button
+                onClick={() => {
+                  setErrorModalMessage(null);
+                  if (errorModalMessage.includes("Harap lengkapi Profile Anda")) {
+                    router.push("/candidate/profile");
+                  }
+                }}
+                className="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors shadow-sm"
+              >
+                Mengerti
               </button>
             </div>
           </div>

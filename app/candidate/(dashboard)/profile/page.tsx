@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { User, Mail, BookOpen, FileCheck, Save, Loader2, CheckCircle2 } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
+import { MASTER_BLK_LPK } from "@/lib/masterData";
 
 type TabValue = "pribadi" | "kontak" | "pendidikan" | "dokumen";
 
@@ -10,6 +11,8 @@ export default function CandidateProfilePage() {
   const [activeTab, setActiveTab] = useState<TabValue>("pribadi");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [selectedBlk, setSelectedBlk] = useState("");
+  const [masterBlkLpk, setMasterBlkLpk] = useState<any[]>([]);
   
   const [formData, setFormData] = useState({
     // Data Pribadi
@@ -46,6 +49,14 @@ export default function CandidateProfilePage() {
   });
 
   useEffect(() => {
+    // Load Master Data
+    let currentMasterBlk = MASTER_BLK_LPK;
+    const savedBlk = localStorage.getItem('ugz_master_blk_lpk');
+    if (savedBlk) {
+      currentMasterBlk = JSON.parse(savedBlk);
+    }
+    setMasterBlkLpk(currentMasterBlk);
+
     // Load existing profile and email on mount
     const sessionStr = localStorage.getItem("nexus_candidate_session");
     if (sessionStr) {
@@ -58,6 +69,14 @@ export default function CandidateProfilePage() {
         const myProfile = allProfiles[session.id];
         if (myProfile) {
           setFormData((prev) => ({ ...prev, ...myProfile }));
+          if (myProfile.trainingCenter) {
+            const isMaster = currentMasterBlk.some((b: any) => b.name === myProfile.trainingCenter);
+            if (isMaster) {
+              setSelectedBlk(myProfile.trainingCenter);
+            } else {
+              setSelectedBlk("Other");
+            }
+          }
         }
       }
     }
@@ -372,13 +391,35 @@ export default function CandidateProfilePage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Training Center (BLK/LPK)</label>
-                <input
-                  type="text"
-                  value={formData.trainingCenter}
-                  onChange={(e) => handleInputChange("trainingCenter", e.target.value)}
+                <select
+                  value={selectedBlk}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedBlk(val);
+                    if (val !== "Other") {
+                      handleInputChange("trainingCenter", val);
+                    } else {
+                      handleInputChange("trainingCenter", "");
+                    }
+                  }}
                   className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                  placeholder="Isi nama BLK/LPK jika ada"
-                />
+                >
+                  <option value="">Pilih Training Center (Opsional)</option>
+                  {masterBlkLpk.map((b) => (
+                    <option key={b.id} value={b.name}>{b.name}</option>
+                  ))}
+                  <option value="Other">Lainnya (Ketik Manual)</option>
+                </select>
+                
+                {selectedBlk === "Other" && (
+                  <input
+                    type="text"
+                    value={formData.trainingCenter}
+                    onChange={(e) => handleInputChange("trainingCenter", e.target.value)}
+                    className="w-full px-4 py-2.5 mt-2 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    placeholder="Isi nama BLK/LPK..."
+                  />
+                )}
               </div>
             </div>
           )}

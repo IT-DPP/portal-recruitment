@@ -39,6 +39,7 @@ export default function CandidateSidebar() {
     { name: "My Profile", href: "/candidate/profile", icon: User },
     { name: "Job Openings", href: "/candidate/jobs", icon: Briefcase },
     { name: "My Applications", href: "/candidate/history", icon: Clock },
+    { name: "History Application", href: "/candidate/past-applications", icon: Clock },
   ];
 
   return (

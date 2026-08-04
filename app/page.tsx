@@ -16,13 +16,22 @@ export default function Home() {
               <p className="text-xs text-on-surface-variant font-medium">Discover Your Next Journey</p>
             </div>
           </div>
-          <Link
-            href="/login"
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary/10 text-primary rounded-xl font-bold hover:bg-primary hover:text-white transition-all duration-300"
-          >
-            <UserPlus className="w-4 h-4" />
-            Recruiter Login
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/candidate/login"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-outline-variant text-primary rounded-xl font-bold hover:bg-surface-container-low transition-all duration-300 shadow-sm"
+            >
+              <UserPlus className="w-4 h-4" />
+              Candidate Login
+            </Link>
+            <Link
+              href="/login"
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary/10 text-primary rounded-xl font-bold hover:bg-primary hover:text-white transition-all duration-300"
+            >
+              <UserPlus className="w-4 h-4" />
+              Recruiter Login
+            </Link>
+          </div>
         </header>
 
         <main className="flex flex-col items-center">
