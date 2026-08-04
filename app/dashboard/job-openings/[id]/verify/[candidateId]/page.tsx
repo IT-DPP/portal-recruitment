@@ -25,6 +25,12 @@ export default function AdvancedDocumentVerificationPage({
   const [isApproved, setIsApproved] = useState(false);
   const [masterSkema, setMasterSkema] = useState<any[]>([]);
 
+  // HR Interview Form State
+  const [interviewResult, setInterviewResult] = useState("");
+  const [interviewDate, setInterviewDate] = useState("");
+  const [interviewFeedback, setInterviewFeedback] = useState("");
+  const [interviewFile, setInterviewFile] = useState<{name: string, base64: string, type: string} | null>(null);
+
   const [activeDocTab, setActiveDocTab] = useState("KTP");
   const [failureReason, setFailureReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -56,6 +62,12 @@ export default function AdvancedDocumentVerificationPage({
         setCertNumber(foundApp.bnspValidation.certNumber || "");
         setIsApproved(foundApp.bnspValidation.isApproved || false);
       }
+      if (foundApp.hrInterview) {
+        setInterviewResult(foundApp.hrInterview.result || "");
+        setInterviewDate(foundApp.hrInterview.date || "");
+        setInterviewFeedback(foundApp.hrInterview.feedback || "");
+        setInterviewFile(foundApp.hrInterview.file || null);
+      }
     }
 
     // Load Master Skema
@@ -79,11 +91,19 @@ export default function AdvancedDocumentVerificationPage({
     return <div className="p-8 text-center">Loading verification data...</div>;
   }
 
+  const currentStageName = job.timeline?.find((t: any) => t.id === application.currentStage)?.title || application.currentStage;
+  const isAdministration = application.currentStage === "stage_1" || currentStageName.toLowerCase().includes("administration");
+  const isHrInterview = application.currentStage === "stage_2" || currentStageName.toLowerCase().includes("hr interview");
+
   const handleSaveDraftSilent = () => {
     const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
     const appIndex = allApps.findIndex((a: any) => a.id === application.id);
     if (appIndex !== -1) {
-      allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved };
+      if (isAdministration) {
+        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved };
+      } else if (isHrInterview) {
+        allApps[appIndex].hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile };
+      }
       localStorage.setItem("ugz_applications", JSON.stringify(allApps));
     }
   };
@@ -96,7 +116,9 @@ export default function AdvancedDocumentVerificationPage({
     const appIndex = allApps.findIndex((a: any) => a.id === application.id);
     
     if (appIndex !== -1) {
-      allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved: newIsApproved };
+      if (isAdministration) {
+        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved: newIsApproved };
+      }
       localStorage.setItem("ugz_applications", JSON.stringify(allApps));
     }
   };
@@ -105,7 +127,11 @@ export default function AdvancedDocumentVerificationPage({
     const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
     const appIndex = allApps.findIndex((a: any) => a.id === application.id);
     if (appIndex !== -1) {
-      allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved };
+      if (isAdministration) {
+        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved };
+      } else if (isHrInterview) {
+        allApps[appIndex].hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile };
+      }
       allApps[appIndex].isDraft = true;
       localStorage.setItem("ugz_applications", JSON.stringify(allApps));
       window.alert("Saved as Draft successfully.");
@@ -173,6 +199,27 @@ export default function AdvancedDocumentVerificationPage({
     router.push(`/dashboard/job-openings/${job.id}`);
   };
 
+  const handleInterviewFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
+    if (!validTypes.includes(file.type)) {
+      window.alert("Format file tidak didukung. Harap unggah PDF, PNG, atau JPG.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setInterviewFile({
+        name: file.name,
+        base64: event.target?.result as string,
+        type: file.type
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const renderDocumentPreview = () => {
     let fileData = null;
     let fileName = "";
@@ -196,6 +243,7 @@ export default function AdvancedDocumentVerificationPage({
     }
 
     const isPdf = fileData.base64.startsWith("data:application/pdf");
+    const isImage = fileData.base64.startsWith("data:image/");
 
     return (
       <div className="mt-4 border border-table-border rounded-xl bg-surface-container-lowest overflow-hidden h-[500px] flex flex-col relative">
@@ -207,10 +255,14 @@ export default function AdvancedDocumentVerificationPage({
         
         {isPdf ? (
           <iframe src={fileData.base64} className="w-full h-full border-none bg-white" title={fileName} />
-        ) : (
+        ) : isImage ? (
           <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={fileData.base64} alt={fileName} className="max-w-full max-h-full object-contain shadow-sm border border-outline-variant/30 rounded" />
+          </div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-4">
+             <p className="text-sm text-on-surface-variant font-medium">Format file tidak didukung untuk preview langsung.</p>
           </div>
         )}
       </div>
@@ -258,9 +310,11 @@ export default function AdvancedDocumentVerificationPage({
         <div className="flex items-center text-sm text-on-surface-variant mb-2">
           <button onClick={() => router.push(`/dashboard/job-openings/${job.id}`)} className="hover:text-primary transition-colors">Verification</button>
           <ChevronRight className="w-4 h-4 mx-1" />
-          <span className="text-black font-semibold">Document Validation Workflow</span>
+          <span className="text-black font-semibold">{currentStageName} Workflow</span>
         </div>
-        <h1 className="text-3xl font-extrabold text-black tracking-tight">Advanced Document Verification</h1>
+        <h1 className="text-3xl font-extrabold text-black tracking-tight">
+          {isAdministration ? "Advanced Document Verification" : `${currentStageName} Verification`}
+        </h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -268,98 +322,185 @@ export default function AdvancedDocumentVerificationPage({
         {/* Left Column */}
         <div className="space-y-6 flex flex-col">
           
-          {/* Section 1: Sertifikat BNSP Validation */}
-          <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
-            <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
-              <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Sertifikat BNSP Validation
-            </h3>
-            
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              {/* Certificate Preview Thumbnail */}
-              <div className="bg-surface-container-lowest border-2 border-dashed border-outline-variant/60 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] relative group overflow-hidden">
-                {profile.fileSertifikat?.base64 ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={profile.fileSertifikat.base64} alt="Sertifikat" className="w-full h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                      <span className="text-white font-semibold text-sm bg-black/50 px-4 py-2 rounded-lg">View Full Size</span>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-on-surface-variant">No Certificate Uploaded</p>
-                )}
-              </div>
+          {/* Section 1: Dynamic based on Stage */}
+          {isAdministration ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
+                <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Sertifikat BNSP Validation
+              </h3>
               
-              {/* BNSP Form */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Skema Sertifikasi (Certification Scheme)</label>
-                  <select 
-                    value={skema}
-                    onChange={(e) => setSkema(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none bg-white"
-                  >
-                    <option value="">Pilih Skema Sertifikasi...</option>
-                    {masterSkema.map((s) => (
-                      <option key={s.id} value={s.name}>{s.name}</option>
-                    ))}
-                  </select>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                {/* Certificate Preview Thumbnail */}
+                <div className="bg-surface-container-lowest border-2 border-dashed border-outline-variant/60 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] relative group overflow-hidden">
+                  {profile.fileSertifikat?.base64 ? (
+                    <>
+                      {profile.fileSertifikat.base64.startsWith("data:application/pdf") ? (
+                        <iframe src={profile.fileSertifikat.base64} className="w-full h-full border-none opacity-80 group-hover:opacity-100 transition-opacity pointer-events-none" title="Sertifikat PDF" />
+                      ) : profile.fileSertifikat.base64.startsWith("data:image/") ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={profile.fileSertifikat.base64} alt="Sertifikat" className="w-full h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
+                      ) : (
+                         <p className="text-sm text-on-surface-variant text-center">Format tidak didukung<br/><span className="text-xs">Hanya PDF/Image</span></p>
+                      )}
+                      <div 
+                        className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        onClick={() => setActiveDocTab("Sertifikat BNSP")}
+                      >
+                        <span className="text-white font-semibold text-sm bg-black/50 px-4 py-2 rounded-lg">View in Main Viewer</span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-on-surface-variant">No Certificate Uploaded</p>
+                  )}
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                {/* BNSP Form */}
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Issue Date (Tanggal Keluar)</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Skema Sertifikasi (Certification Scheme)</label>
+                    <select 
+                      value={skema}
+                      onChange={(e) => setSkema(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none bg-white"
+                    >
+                      <option value="">Pilih Skema Sertifikasi...</option>
+                      {masterSkema.map((s) => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Issue Date (Tanggal Keluar)</label>
+                      <input 
+                        type="date" 
+                        value={issueDate}
+                        onChange={(e) => setIssueDate(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Expiry Date (Tanggal Habis)</label>
+                      <input 
+                        type="date" 
+                        value={expiryDate}
+                        onChange={(e) => setExpiryDate(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Certificate Number</label>
                     <input 
-                      type="date" 
-                      value={issueDate}
-                      onChange={(e) => setIssueDate(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                      type="text" 
+                      value={certNumber}
+                      onChange={(e) => setCertNumber(e.target.value)}
+                      placeholder="e.g. CERT-BNSP-88291-ME"
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm font-mono focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Expiry Date (Tanggal Habis)</label>
-                    <input 
-                      type="date" 
-                      value={expiryDate}
-                      onChange={(e) => setExpiryDate(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
-                    />
+                  
+                  <div className="pt-2 flex items-center justify-between text-xs font-bold text-blue-600">
+                    <div className="flex-1 h-1.5 bg-surface-container rounded-full overflow-hidden mr-4">
+                      <div className="h-full bg-blue-600 rounded-full" style={{ width: skema && issueDate && expiryDate && certNumber ? '100%' : skema || certNumber ? '50%' : '0%' }}></div>
+                    </div>
+                    {skema && issueDate && expiryDate && certNumber ? '100% Verified' : 'Pending Verification'}
                   </div>
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Certificate Number</label>
-                  <input 
-                    type="text" 
-                    value={certNumber}
-                    onChange={(e) => setCertNumber(e.target.value)}
-                    placeholder="e.g. CERT-BNSP-88291-ME"
-                    className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm font-mono focus:ring-1 focus:ring-primary focus:border-primary outline-none"
-                  />
-                </div>
-                
-                <div className="pt-2 flex items-center justify-between text-xs font-bold text-blue-600">
-                  <div className="flex-1 h-1.5 bg-surface-container rounded-full overflow-hidden mr-4">
-                    <div className="h-full bg-blue-600 rounded-full" style={{ width: skema && issueDate && expiryDate && certNumber ? '100%' : skema || certNumber ? '50%' : '0%' }}></div>
-                  </div>
-                  {skema && issueDate && expiryDate && certNumber ? '100% Verified' : 'Pending Verification'}
-                </div>
 
-                <button
-                  type="button"
-                  onClick={handleToggleApprove}
-                  className={`w-full mt-2 py-3 rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-colors border ${
-                    isApproved 
-                      ? 'bg-green-50 text-green-700 border-green-200' 
-                      : 'bg-surface-container-low text-on-surface-variant border-outline-variant hover:bg-surface-container'
-                  }`}
-                >
-                  {isApproved && <CheckCircle className="w-5 h-5" />}
-                  {isApproved ? 'BNSP Valid (Approved)' : 'Mark as Approved'}
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleToggleApprove}
+                    className={`w-full mt-2 py-3 rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-colors border ${
+                      isApproved 
+                        ? 'bg-green-50 text-green-700 border-green-200' 
+                        : 'bg-surface-container-low text-on-surface-variant border-outline-variant hover:bg-surface-container'
+                    }`}
+                  >
+                    {isApproved && <CheckCircle className="w-5 h-5" />}
+                    {isApproved ? 'BNSP Valid (Approved)' : 'Mark as Approved'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          ) : isHrInterview ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
+                <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Interview Assessment (HR)
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Result Status</label>
+                    <select 
+                      value={interviewResult}
+                      onChange={(e) => setInterviewResult(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none bg-white"
+                    >
+                      <option value="">Pilih Status...</option>
+                      <option value="Competent">Competent</option>
+                      <option value="Not Interest">Not Interest</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Interview</label>
+                    <input 
+                      type="date" 
+                      value={interviewDate}
+                      onChange={(e) => setInterviewDate(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Interviewer Feedback</label>
+                  <textarea 
+                    value={interviewFeedback}
+                    onChange={(e) => setInterviewFeedback(e.target.value)}
+                    rows={4}
+                    placeholder="Tuliskan catatan atau feedback dari proses interview..."
+                    className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Upload Bukti Interview HR</label>
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer px-4 py-2 bg-surface-container-lowest border border-outline-variant hover:bg-surface-container-low rounded-lg text-sm font-semibold text-black transition-colors">
+                      Pilih File
+                      <input type="file" className="hidden" accept=".pdf, .png, .jpg, .jpeg" onChange={handleInterviewFileUpload} />
+                    </label>
+                    {interviewFile ? (
+                      <span className="text-sm font-medium text-blue-600 truncate max-w-[200px]">{interviewFile.name}</span>
+                    ) : (
+                      <span className="text-sm text-on-surface-variant">Belum ada file dipilih</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-1">Format: PDF, PNG, JPG, JPEG (Max 5MB)</p>
+                  
+                  {interviewFile && (
+                    <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[300px]">
+                      {interviewFile.type === "application/pdf" ? (
+                        <iframe src={interviewFile.base64} className="w-full h-full border-none" title="Bukti Interview" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={interviewFile.base64} alt="Bukti" className="max-w-full max-h-full object-contain" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1 flex items-center justify-center">
+               <p className="text-on-surface-variant text-sm">Widget penilaian untuk tahap <strong>{currentStageName}</strong> belum tersedia.</p>
+            </div>
+          )}
 
           {/* Section 2: Candidate Personal Data */}
           <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
