@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft } from "lucide-react";
+import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud } from "lucide-react";
 import { MASTER_SKEMA_SERTIFIKASI, MASTER_REJECTION_MESSAGE } from "@/lib/masterData";
 
 export default function AdvancedDocumentVerificationPage({
@@ -30,6 +30,38 @@ export default function AdvancedDocumentVerificationPage({
   const [interviewDate, setInterviewDate] = useState("");
   const [interviewFeedback, setInterviewFeedback] = useState("");
   const [interviewFile, setInterviewFile] = useState<{name: string, base64: string, type: string} | null>(null);
+
+  // Psikotes Form State
+  const [psikotesResult, setPsikotesResult] = useState("");
+  const [psikotesDate, setPsikotesDate] = useState("");
+  const [psikotesFile, setPsikotesFile] = useState<{name: string, base64: string, type: string} | null>(null);
+
+  // Test Skill Form State
+  const [testSkillDate, setTestSkillDate] = useState("");
+  const [testSkillProofs, setTestSkillProofs] = useState<{title: string, file: {name: string, base64: string, type: string} | null}[]>([{ title: "", file: null }]);
+  const [testSkillResultFile, setTestSkillResultFile] = useState<{name: string, base64: string, type: string} | null>(null);
+
+  // User Interview Form State
+  const [userInterviewResult, setUserInterviewResult] = useState("");
+  const [userInterviewDate, setUserInterviewDate] = useState("");
+  const [userInterviewFeedback, setUserInterviewFeedback] = useState("");
+  const [userInterviewFile, setUserInterviewFile] = useState<{name: string, base64: string, type: string} | null>(null);
+
+  // Offering Letter Form State
+  const [offeringDate, setOfferingDate] = useState("");
+  const [offeringFile, setOfferingFile] = useState<{name: string, base64: string, type: string} | null>(null);
+
+  // MCU Form State
+  const [mcuDate, setMcuDate] = useState("");
+  const [mcuPengantarFile, setMcuPengantarFile] = useState<{name: string, base64: string, type: string} | null>(null);
+  const [mcuHasilFile, setMcuHasilFile] = useState<{name: string, base64: string, type: string} | null>(null);
+  const [mcuFollowUpFile, setMcuFollowUpFile] = useState<{name: string, base64: string, type: string} | null>(null);
+
+  // Training User Form State
+  const [trainingDate, setTrainingDate] = useState("");
+  const [trainingFile, setTrainingFile] = useState<{name: string, base64: string, type: string} | null>(null);
+  const [trainingHistory, setTrainingHistory] = useState<{originalDate: string, revisedDate: string, status: string, reason: string}[]>([]);
+  const [trainingReason, setTrainingReason] = useState("");
 
   const [activeDocTab, setActiveDocTab] = useState("KTP");
   const [failureReason, setFailureReason] = useState("");
@@ -68,6 +100,37 @@ export default function AdvancedDocumentVerificationPage({
         setInterviewFeedback(foundApp.hrInterview.feedback || "");
         setInterviewFile(foundApp.hrInterview.file || null);
       }
+      if (foundApp.psikotes) {
+        setPsikotesResult(foundApp.psikotes.result || "");
+        setPsikotesDate(foundApp.psikotes.date || "");
+        setPsikotesFile(foundApp.psikotes.file || null);
+      }
+      if (foundApp.testSkill) {
+        setTestSkillDate(foundApp.testSkill.date || "");
+        setTestSkillProofs(foundApp.testSkill.proofs || [{ title: "", file: null }]);
+        setTestSkillResultFile(foundApp.testSkill.resultFile || null);
+      }
+      if (foundApp.userInterview) {
+        setUserInterviewResult(foundApp.userInterview.result || "");
+        setUserInterviewDate(foundApp.userInterview.date || "");
+        setUserInterviewFeedback(foundApp.userInterview.feedback || "");
+        setUserInterviewFile(foundApp.userInterview.file || null);
+      }
+      if (foundApp.offeringLetter) {
+        setOfferingDate(foundApp.offeringLetter.date || "");
+        setOfferingFile(foundApp.offeringLetter.file || null);
+      }
+      if (foundApp.mcu) {
+        setMcuDate(foundApp.mcu.date || "");
+        setMcuPengantarFile(foundApp.mcu.pengantarFile || null);
+        setMcuHasilFile(foundApp.mcu.hasilFile || null);
+        setMcuFollowUpFile(foundApp.mcu.followUpFile || null);
+      }
+      if (foundApp.trainingUser) {
+        setTrainingDate(foundApp.trainingUser.date || "");
+        setTrainingFile(foundApp.trainingUser.file || null);
+        setTrainingHistory(foundApp.trainingUser.history || []);
+      }
     }
 
     // Load Master Skema
@@ -94,6 +157,25 @@ export default function AdvancedDocumentVerificationPage({
   const currentStageName = job.timeline?.find((t: any) => t.id === application.currentStage)?.title || application.currentStage;
   const isAdministration = application.currentStage === "stage_1" || currentStageName.toLowerCase().includes("administration");
   const isHrInterview = application.currentStage === "stage_2" || currentStageName.toLowerCase().includes("hr interview");
+  const isPsikotes = currentStageName.toLowerCase().includes("psikotes") || currentStageName.toLowerCase().includes("psychotest") || currentStageName.toLowerCase().includes("psychological");
+  const isTestSkill = currentStageName.toLowerCase().includes("test skill") || currentStageName.toLowerCase().includes("technical assessment");
+  const isUserInterview = currentStageName.toLowerCase().includes("user interview");
+  const isOfferingLetter = currentStageName.toLowerCase().includes("offering");
+  const isMcu = currentStageName.toLowerCase().includes("mcu") || currentStageName.toLowerCase().includes("medical");
+  const isTrainingUser = currentStageName.toLowerCase().includes("training") || application.currentStage === "stage_8";
+
+  const safeSaveApplications = (allApps: any[], silent = false) => {
+    try {
+      localStorage.setItem("ugz_applications", JSON.stringify(allApps));
+      return true;
+    } catch (e: any) {
+      console.error("Storage quota exceeded", e);
+      if (!silent) {
+        window.alert("Gagal menyimpan: Kapasitas penyimpanan browser penuh. Harap unggah file dengan ukuran lebih kecil (maks. 1-2MB).");
+      }
+      return false;
+    }
+  };
 
   const handleSaveDraftSilent = () => {
     const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
@@ -103,8 +185,20 @@ export default function AdvancedDocumentVerificationPage({
         allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved };
       } else if (isHrInterview) {
         allApps[appIndex].hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile };
+      } else if (isPsikotes) {
+        allApps[appIndex].psikotes = { result: psikotesResult, date: psikotesDate, file: psikotesFile };
+      } else if (isTestSkill) {
+        allApps[appIndex].testSkill = { date: testSkillDate, proofs: testSkillProofs, resultFile: testSkillResultFile };
+      } else if (isUserInterview) {
+        allApps[appIndex].userInterview = { result: userInterviewResult, date: userInterviewDate, feedback: userInterviewFeedback, file: userInterviewFile };
+      } else if (isOfferingLetter) {
+        allApps[appIndex].offeringLetter = { date: offeringDate, file: offeringFile };
+      } else if (isMcu) {
+        allApps[appIndex].mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
+      } else if (isTrainingUser) {
+        allApps[appIndex].trainingUser = { date: trainingDate, file: trainingFile, history: trainingHistory };
       }
-      localStorage.setItem("ugz_applications", JSON.stringify(allApps));
+      safeSaveApplications(allApps, true);
     }
   };
 
@@ -119,7 +213,7 @@ export default function AdvancedDocumentVerificationPage({
       if (isAdministration) {
         allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved: newIsApproved };
       }
-      localStorage.setItem("ugz_applications", JSON.stringify(allApps));
+      safeSaveApplications(allApps);
     }
   };
 
@@ -131,11 +225,24 @@ export default function AdvancedDocumentVerificationPage({
         allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved };
       } else if (isHrInterview) {
         allApps[appIndex].hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile };
+      } else if (isPsikotes) {
+        allApps[appIndex].psikotes = { result: psikotesResult, date: psikotesDate, file: psikotesFile };
+      } else if (isTestSkill) {
+        allApps[appIndex].testSkill = { date: testSkillDate, proofs: testSkillProofs, resultFile: testSkillResultFile };
+      } else if (isUserInterview) {
+        allApps[appIndex].userInterview = { result: userInterviewResult, date: userInterviewDate, feedback: userInterviewFeedback, file: userInterviewFile };
+      } else if (isOfferingLetter) {
+        allApps[appIndex].offeringLetter = { date: offeringDate, file: offeringFile };
+      } else if (isMcu) {
+        allApps[appIndex].mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
+      } else if (isTrainingUser) {
+        allApps[appIndex].trainingUser = { date: trainingDate, file: trainingFile, history: trainingHistory };
       }
       allApps[appIndex].isDraft = true;
-      localStorage.setItem("ugz_applications", JSON.stringify(allApps));
-      window.alert("Saved as Draft successfully.");
-      router.push(`/dashboard/job-openings/${job.id}`);
+      if (safeSaveApplications(allApps)) {
+        window.alert("Saved as Draft successfully.");
+        router.push(`/dashboard/job-openings/${job.id}`);
+      }
     }
   };
 
@@ -158,9 +265,10 @@ export default function AdvancedDocumentVerificationPage({
           date: new Date().toISOString(),
           note: "Approved to next stage"
         });
-        localStorage.setItem("ugz_applications", JSON.stringify(allApps));
-        window.alert(`Candidate approved and moved to ${nextStage.title}.`);
-        router.push(`/dashboard/job-openings/${job.id}`);
+        if (safeSaveApplications(allApps)) {
+          window.alert(`Candidate approved and moved to ${nextStage.title}.`);
+          router.push(`/dashboard/job-openings/${job.id}`);
+        }
       } else {
         window.alert("Candidate is already at the last stage.");
       }
@@ -187,9 +295,10 @@ export default function AdvancedDocumentVerificationPage({
         note: `Reason: ${failureReason}`
       });
       
-      localStorage.setItem("ugz_applications", JSON.stringify(allApps));
-      window.alert("Kandidat berhasil ditolak (Rejected) dan diarsipkan.");
-      router.push(`/dashboard/job-openings/${job.id}`);
+      if (safeSaveApplications(allApps)) {
+        window.alert("Kandidat berhasil ditolak (Rejected) dan diarsipkan.");
+        router.push(`/dashboard/job-openings/${job.id}`);
+      }
     }
   };
 
@@ -201,23 +310,223 @@ export default function AdvancedDocumentVerificationPage({
 
   const handleInterviewFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (file) {
+      processUploadedFile(file, (data) => setInterviewFile(data));
+    }
+  };
 
+  const handleInterviewFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setInterviewFile(data));
+    }
+  };
+
+  const handlePsikotesFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setPsikotesFile(data));
+    }
+  };
+
+  const handlePsikotesFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setPsikotesFile(data));
+    }
+  };
+
+  const processUploadedFile = (file: File, callback: (data: {name: string, base64: string, type: string}) => void) => {
     const validTypes = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
     if (!validTypes.includes(file.type)) {
       window.alert("Format file tidak didukung. Harap unggah PDF, PNG, atau JPG.");
       return;
     }
-
     const reader = new FileReader();
     reader.onload = (event) => {
-      setInterviewFile({
+      callback({
         name: file.name,
         base64: event.target?.result as string,
         type: file.type
       });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleTestSkillResultFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setTestSkillResultFile(data));
+    }
+  };
+
+  const handleTestSkillResultFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setTestSkillResultFile(data));
+    }
+  };
+
+  const handleTestSkillProofUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => {
+        const newProofs = [...testSkillProofs];
+        newProofs[index].file = data;
+        setTestSkillProofs(newProofs);
+      });
+    }
+  };
+
+  const handleTestSkillProofDrop = (index: number, e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => {
+        const newProofs = [...testSkillProofs];
+        newProofs[index].file = data;
+        setTestSkillProofs(newProofs);
+      });
+    }
+  };
+
+  const handleUserInterviewFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setUserInterviewFile(data));
+    }
+  };
+
+  const handleUserInterviewFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setUserInterviewFile(data));
+    }
+  };
+
+  const handleOfferingFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setOfferingFile(data));
+    }
+  };
+
+  const handleOfferingFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setOfferingFile(data));
+    }
+  };
+
+  const handleMcuPengantarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setMcuPengantarFile(data));
+    }
+  };
+
+  const handleMcuPengantarFileDrop = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setMcuPengantarFile(data));
+    }
+  };
+
+  const handleMcuHasilFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setMcuHasilFile(data));
+    }
+  };
+
+  const handleMcuHasilFileDrop = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setMcuHasilFile(data));
+    }
+  };
+
+  const handleMcuFollowUpFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setMcuFollowUpFile(data));
+    }
+  };
+
+  const handleMcuFollowUpFileDrop = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setMcuFollowUpFile(data));
+    }
+  };
+
+  const handleTrainingFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setTrainingFile(data));
+    }
+  };
+
+  const handleTrainingFileDrop = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setTrainingFile(data));
+    }
+  };
+
+  const handleUpdateTrainingSchedule = () => {
+    if (!trainingDate) {
+      window.alert("Silakan pilih tanggal training terlebih dahulu.");
+      return;
+    }
+    if (trainingHistory.length === 0) {
+      setTrainingHistory([{ originalDate: trainingDate, revisedDate: "-", status: "Scheduled", reason: "-" }]);
+    } else {
+      if (!trainingReason) {
+        window.alert("Please provide a reason for changing the schedule.");
+        return;
+      }
+      const newHistory = [...trainingHistory];
+      const lastHistory = newHistory[newHistory.length - 1];
+      newHistory[newHistory.length - 1] = { ...lastHistory, revisedDate: trainingDate, status: "Rescheduled" };
+      newHistory.push({ originalDate: trainingDate, revisedDate: "-", status: "Scheduled", reason: trainingReason });
+      setTrainingHistory(newHistory);
+      setTrainingReason("");
+    }
+  };
+
+  const handleTestSkillTitleChange = (index: number, title: string) => {
+    const newProofs = [...testSkillProofs];
+    newProofs[index].title = title;
+    setTestSkillProofs(newProofs);
+  };
+
+  const addTestSkillProof = () => {
+    setTestSkillProofs([...testSkillProofs, { title: "", file: null }]);
+  };
+
+  const removeTestSkillProof = (index: number) => {
+    const newProofs = [...testSkillProofs];
+    newProofs.splice(index, 1);
+    if (newProofs.length === 0) {
+      newProofs.push({ title: "", file: null });
+    }
+    setTestSkillProofs(newProofs);
   };
 
   const renderDocumentPreview = () => {
@@ -466,31 +775,537 @@ export default function AdvancedDocumentVerificationPage({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Upload Bukti Interview HR</label>
-                  <div className="flex items-center gap-4">
-                    <label className="cursor-pointer px-4 py-2 bg-surface-container-lowest border border-outline-variant hover:bg-surface-container-low rounded-lg text-sm font-semibold text-black transition-colors">
-                      Pilih File
-                      <input type="file" className="hidden" accept=".pdf, .png, .jpg, .jpeg" onChange={handleInterviewFileUpload} />
-                    </label>
-                    {interviewFile ? (
-                      <span className="text-sm font-medium text-blue-600 truncate max-w-[200px]">{interviewFile.name}</span>
-                    ) : (
-                      <span className="text-sm text-on-surface-variant">Belum ada file dipilih</span>
-                    )}
+                <div className="border-t border-table-border pt-4 mt-4">
+                  <label className="block text-sm font-bold text-black mb-3">Upload Bukti Interview HR</label>
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={handleInterviewFileDrop}
+                    className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-8 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                  >
+                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handleInterviewFileUpload} />
+                    <UploadCloud className="w-10 h-10 text-on-surface-variant mb-3" />
+                    <p className="text-base font-semibold text-black mb-1">Drag & Drop file bukti interview</p>
+                    <p className="text-sm text-on-surface-variant">atau klik area ini untuk menelusuri komputer Anda</p>
+                    <p className="text-xs text-on-surface-variant mt-2 font-mono">PDF, PNG, JPG, JPEG (Max 5MB)</p>
                   </div>
-                  <p className="text-xs text-on-surface-variant mt-1">Format: PDF, PNG, JPG, JPEG (Max 5MB)</p>
                   
                   {interviewFile && (
-                    <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[300px]">
+                    <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[300px] relative group">
                       {interviewFile.type === "application/pdf" ? (
-                        <iframe src={interviewFile.base64} className="w-full h-full border-none" title="Bukti Interview" />
+                        <iframe src={interviewFile.base64} className="w-full h-full border-none bg-white" title="Bukti Interview" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-2">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={interviewFile.base64} alt="Bukti" className="max-w-full max-h-full object-contain" />
                         </div>
                       )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-3 py-2 truncate backdrop-blur-sm">
+                        {interviewFile.name}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isPsikotes ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
+                <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Psikotes Detail
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Hasil Psikotes</label>
+                    <select 
+                      value={psikotesResult}
+                      onChange={(e) => setPsikotesResult(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none bg-white"
+                    >
+                      <option value="">Pilih Hasil...</option>
+                      <option value="Approve">Approve</option>
+                      <option value="Not Interest">Not Interest</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Psikotes</label>
+                    <input 
+                      type="date" 
+                      value={psikotesDate}
+                      onChange={(e) => setPsikotesDate(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-table-border pt-4 mt-4">
+                  <label className="block text-sm font-bold text-black mb-3">Upload Bukti Hasil Psikotes</label>
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={handlePsikotesFileDrop}
+                    className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-8 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                  >
+                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handlePsikotesFileUpload} />
+                    <UploadCloud className="w-10 h-10 text-on-surface-variant mb-3" />
+                    <p className="text-base font-semibold text-black mb-1">Drag & Drop dokumen hasil psikotes</p>
+                    <p className="text-sm text-on-surface-variant">atau klik area ini untuk menelusuri komputer Anda</p>
+                    <p className="text-xs text-on-surface-variant mt-2 font-mono">PDF, PNG, JPG, JPEG (Max 5MB)</p>
+                  </div>
+                  
+                  {psikotesFile && (
+                    <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[300px] relative group">
+                      {psikotesFile.type === "application/pdf" ? (
+                        <iframe src={psikotesFile.base64} className="w-full h-full border-none bg-white" title="Bukti Psikotes" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={psikotesFile.base64} alt="Bukti" className="max-w-full max-h-full object-contain" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-3 py-2 truncate backdrop-blur-sm">
+                        {psikotesFile.name}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isTestSkill ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
+                <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Technical Assessment Data
+              </h3>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Test Skill</label>
+                  <input 
+                    type="date" 
+                    value={testSkillDate}
+                    onChange={(e) => setTestSkillDate(e.target.value)}
+                    className="w-full md:w-1/2 px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                  />
+                </div>
+
+                <div className="border-t border-table-border pt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <label className="block text-sm font-bold text-black">Bukti Test Skill</label>
+                    <button onClick={addTestSkillProof} className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
+                      + Tambah Bukti
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {testSkillProofs.map((proof, index) => (
+                      <div key={index} className="flex flex-col gap-3 p-4 bg-surface-container-lowest border border-outline-variant rounded-xl relative">
+                        {testSkillProofs.length > 1 && (
+                          <button onClick={() => removeTestSkillProof(index)} className="absolute top-3 right-3 text-red-500 hover:text-red-700 transition-colors">
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                        <div>
+                          <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Title (Nama Bukti)</label>
+                          <input 
+                            type="text" 
+                            value={proof.title}
+                            onChange={(e) => handleTestSkillTitleChange(index, e.target.value)}
+                            placeholder="e.g., Hasil Koding, Screenshot Desain..."
+                            className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">File Bukti</label>
+                          <div 
+                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            onDrop={(e) => handleTestSkillProofDrop(index, e)}
+                            className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-6 flex flex-col items-center justify-center text-center bg-white"
+                          >
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={(e) => handleTestSkillProofUpload(index, e)} />
+                            <UploadCloud className="w-8 h-8 text-on-surface-variant mb-2" />
+                            <p className="text-sm font-semibold text-black mb-1">Drag & Drop file di sini</p>
+                            <p className="text-xs text-on-surface-variant">atau klik untuk memilih file (PDF, PNG, JPG)</p>
+                          </div>
+                          
+                          {proof.file && (
+                            <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[250px] relative group">
+                              {proof.file.type === "application/pdf" ? (
+                                <iframe src={proof.file.base64} className="w-full h-full border-none bg-white" title={proof.title || "Bukti"} />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-2">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={proof.file.base64} alt={proof.title || "Bukti"} className="max-w-full max-h-full object-contain" />
+                                </div>
+                              )}
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-3 py-2 truncate backdrop-blur-sm">
+                                {proof.file.name}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t border-table-border pt-6">
+                  <label className="block text-sm font-bold text-black mb-3">Upload File Hasil Penilaian Test Skill</label>
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={handleTestSkillResultFileDrop}
+                    className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-8 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                  >
+                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handleTestSkillResultFileUpload} />
+                    <UploadCloud className="w-10 h-10 text-on-surface-variant mb-3" />
+                    <p className="text-base font-semibold text-black mb-1">Drag & Drop dokumen hasil penilaian</p>
+                    <p className="text-sm text-on-surface-variant">atau klik area ini untuk menelusuri komputer Anda</p>
+                    <p className="text-xs text-on-surface-variant mt-2 font-mono">PDF, PNG, JPG (Max 5MB)</p>
+                  </div>
+                  
+                  {testSkillResultFile && (
+                    <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[300px]">
+                      {testSkillResultFile.type === "application/pdf" ? (
+                        <iframe src={testSkillResultFile.base64} className="w-full h-full border-none" title="Bukti Hasil Penilaian" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={testSkillResultFile.base64} alt="Bukti Hasil Penilaian" className="max-w-full max-h-full object-contain" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isUserInterview ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
+                <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Interview Assessment (User)
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Result Status</label>
+                    <select 
+                      value={userInterviewResult}
+                      onChange={(e) => setUserInterviewResult(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none bg-white"
+                    >
+                      <option value="">Pilih Status...</option>
+                      <option value="Approve">Approve</option>
+                      <option value="Not Interest">Not Interest</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Interview</label>
+                    <input 
+                      type="date" 
+                      value={userInterviewDate}
+                      onChange={(e) => setUserInterviewDate(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Interviewer Notes</label>
+                  <textarea 
+                    value={userInterviewFeedback}
+                    onChange={(e) => setUserInterviewFeedback(e.target.value)}
+                    rows={4}
+                    placeholder="Tuliskan catatan atau feedback dari proses interview user..."
+                    className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                  />
+                </div>
+
+                <div className="border-t border-table-border pt-4 mt-4">
+                  <label className="block text-sm font-bold text-black mb-3">Upload File Hasil Penilaian Interview</label>
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={handleUserInterviewFileDrop}
+                    className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-8 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                  >
+                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handleUserInterviewFileUpload} />
+                    <UploadCloud className="w-10 h-10 text-on-surface-variant mb-3" />
+                    <p className="text-base font-semibold text-black mb-1">Drag & Drop file penilaian user</p>
+                    <p className="text-sm text-on-surface-variant">atau klik area ini untuk menelusuri komputer Anda</p>
+                    <p className="text-xs text-on-surface-variant mt-2 font-mono">PDF, PNG, JPG, JPEG (Max 5MB)</p>
+                  </div>
+                  
+                  {userInterviewFile && (
+                    <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[300px] relative group">
+                      {userInterviewFile.type === "application/pdf" ? (
+                        <iframe src={userInterviewFile.base64} className="w-full h-full border-none bg-white" title="Bukti Interview User" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={userInterviewFile.base64} alt="Bukti" className="max-w-full max-h-full object-contain" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-3 py-2 truncate backdrop-blur-sm">
+                        {userInterviewFile.name}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isOfferingLetter ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
+                <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Offering Letter Assessment
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Offering Letter</label>
+                  <input 
+                    type="date" 
+                    value={offeringDate}
+                    onChange={(e) => setOfferingDate(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                  />
+                </div>
+
+                <div className="border-t border-table-border pt-4 mt-4">
+                  <label className="block text-sm font-bold text-black mb-3">Upload Dokumen Offering Letter</label>
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={handleOfferingFileDrop}
+                    className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-8 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                  >
+                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handleOfferingFileUpload} />
+                    <UploadCloud className="w-10 h-10 text-on-surface-variant mb-3" />
+                    <p className="text-base font-semibold text-black mb-1">Drag & Drop file offering letter</p>
+                    <p className="text-sm text-on-surface-variant">atau klik area ini untuk menelusuri komputer Anda</p>
+                    <p className="text-xs text-on-surface-variant mt-2 font-mono">PDF, PNG, JPG, JPEG (Max 2MB)</p>
+                  </div>
+                  
+                  {offeringFile && (
+                    <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[300px] relative group">
+                      {offeringFile.type === "application/pdf" ? (
+                        <iframe src={offeringFile.base64} className="w-full h-full border-none bg-white" title="Dokumen Offering Letter" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={offeringFile.base64} alt="Offering Letter" className="max-w-full max-h-full object-contain" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-3 py-2 truncate backdrop-blur-sm">
+                        {offeringFile.name}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isMcu ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
+                <CheckCircle className="w-5 h-5 text-blue-600" /> 1. MCU Verification Details
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Pelaksanaan MCU</label>
+                  <input 
+                    type="date" 
+                    value={mcuDate}
+                    onChange={(e) => setMcuDate(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                  />
+                </div>
+
+                <div className="border-t border-table-border pt-4 mt-4 flex flex-col gap-6">
+                  {/* Pengantar MCU */}
+                  <div>
+                    <label className="block text-xs font-bold text-black mb-3">Surat Pengantar MCU</label>
+                    <div 
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onDrop={handleMcuPengantarFileDrop}
+                      className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-4 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                    >
+                      <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handleMcuPengantarFileUpload} />
+                      <UploadCloud className="w-6 h-6 text-on-surface-variant mb-2" />
+                      <p className="text-xs font-semibold text-black">Upload / Drop File</p>
+                      <p className="text-[10px] text-on-surface-variant mt-1 font-mono">Max 2MB</p>
+                    </div>
+                    
+                    {mcuPengantarFile && (
+                      <div className="mt-2 border border-outline-variant rounded-xl overflow-hidden h-[250px] relative group">
+                        {mcuPengantarFile.type === "application/pdf" ? (
+                          <iframe src={mcuPengantarFile.base64} className="w-full h-full border-none bg-white" title="Surat Pengantar MCU" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-1">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={mcuPengantarFile.base64} alt="Pengantar MCU" className="max-w-full max-h-full object-contain" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 truncate backdrop-blur-sm">
+                          {mcuPengantarFile.name}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Hasil MCU */}
+                  <div>
+                    <label className="block text-xs font-bold text-black mb-3">Hasil MCU</label>
+                    <div 
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onDrop={handleMcuHasilFileDrop}
+                      className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-4 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                    >
+                      <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handleMcuHasilFileUpload} />
+                      <UploadCloud className="w-6 h-6 text-on-surface-variant mb-2" />
+                      <p className="text-xs font-semibold text-black">Upload / Drop File</p>
+                      <p className="text-[10px] text-on-surface-variant mt-1 font-mono">Max 2MB</p>
+                    </div>
+                    
+                    {mcuHasilFile && (
+                      <div className="mt-2 border border-outline-variant rounded-xl overflow-hidden h-[250px] relative group">
+                        {mcuHasilFile.type === "application/pdf" ? (
+                          <iframe src={mcuHasilFile.base64} className="w-full h-full border-none bg-white" title="Hasil MCU" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-1">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={mcuHasilFile.base64} alt="Hasil MCU" className="max-w-full max-h-full object-contain" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 truncate backdrop-blur-sm">
+                          {mcuHasilFile.name}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Hasil Follow Up MCU */}
+                  <div>
+                    <label className="block text-xs font-bold text-black mb-3">Hasil Follow-Up MCU</label>
+                    <div 
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onDrop={handleMcuFollowUpFileDrop}
+                      className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-4 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                    >
+                      <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handleMcuFollowUpFileUpload} />
+                      <UploadCloud className="w-6 h-6 text-on-surface-variant mb-2" />
+                      <p className="text-xs font-semibold text-black">Upload / Drop File</p>
+                      <p className="text-[10px] text-on-surface-variant mt-1 font-mono">Max 2MB</p>
+                    </div>
+                    
+                    {mcuFollowUpFile && (
+                      <div className="mt-2 border border-outline-variant rounded-xl overflow-hidden h-[250px] relative group">
+                        {mcuFollowUpFile.type === "application/pdf" ? (
+                          <iframe src={mcuFollowUpFile.base64} className="w-full h-full border-none bg-white" title="Hasil Follow-Up MCU" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-1">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={mcuFollowUpFile.base64} alt="Follow-Up MCU" className="max-w-full max-h-full object-contain" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 truncate backdrop-blur-sm">
+                          {mcuFollowUpFile.name}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : isTrainingUser ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
+                <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Training Verification & Schedule
+              </h3>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Pelaksanaan Training</label>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <input 
+                        type="date" 
+                        value={trainingDate}
+                        onChange={(e) => setTrainingDate(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                      />
+                    </div>
+                    {trainingHistory.length > 0 && (
+                      <div className="flex-1">
+                        <input 
+                          type="text" 
+                          value={trainingReason}
+                          onChange={(e) => setTrainingReason(e.target.value)}
+                          placeholder="Reason for change..."
+                          className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                        />
+                      </div>
+                    )}
+                    <button 
+                      onClick={handleUpdateTrainingSchedule}
+                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors whitespace-nowrap"
+                    >
+                      {trainingHistory.length > 0 ? "Update Schedule" : "Save Schedule"}
+                    </button>
+                  </div>
+                </div>
+
+                {trainingHistory.length > 0 && (
+                  <div className="border border-table-border rounded-xl overflow-hidden mt-4">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-surface-container-lowest text-xs uppercase font-bold text-on-surface-variant">
+                        <tr>
+                          <th className="px-4 py-3">Original Date</th>
+                          <th className="px-4 py-3">Revised Date</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Reason for Change</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-table-border">
+                        {trainingHistory.map((item, idx) => (
+                          <tr key={idx} className="bg-white">
+                            <td className="px-4 py-3">{item.originalDate}</td>
+                            <td className="px-4 py-3">{item.revisedDate}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${item.status === 'Scheduled' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
+                                {item.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-on-surface-variant">{item.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="border-t border-table-border pt-6 mt-4">
+                  <label className="block text-sm font-bold text-black mb-3">Upload Bukti Pengajuan Training User</label>
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={handleTrainingFileDrop}
+                    className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-8 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                  >
+                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handleTrainingFileUpload} />
+                    <UploadCloud className="w-10 h-10 text-on-surface-variant mb-3" />
+                    <p className="text-base font-semibold text-black mb-1">Drag & Drop bukti pengajuan</p>
+                    <p className="text-sm text-on-surface-variant">atau klik area ini untuk menelusuri komputer Anda</p>
+                    <p className="text-xs text-on-surface-variant mt-2 font-mono">PDF, PNG, JPG, JPEG (Max 2MB)</p>
+                  </div>
+                  
+                  {trainingFile && (
+                    <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[300px] relative group">
+                      {trainingFile.type === "application/pdf" ? (
+                        <iframe src={trainingFile.base64} className="w-full h-full border-none bg-white" title="Bukti Pengajuan Training User" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={trainingFile.base64} alt="Bukti Training" className="max-w-full max-h-full object-contain" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-3 py-2 truncate backdrop-blur-sm">
+                        {trainingFile.name}
+                      </div>
                     </div>
                   )}
                 </div>

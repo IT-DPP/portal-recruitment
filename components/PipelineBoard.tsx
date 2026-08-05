@@ -76,6 +76,7 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
 
       // Allow move
       app.currentStage = targetStageId;
+      app.isDraft = false; // Remove draft status when moved to another stage
       
       // Update history milestone
       if (!app.history) app.history = [];
