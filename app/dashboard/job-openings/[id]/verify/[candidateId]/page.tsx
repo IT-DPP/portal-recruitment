@@ -63,6 +63,20 @@ export default function AdvancedDocumentVerificationPage({
   const [trainingHistory, setTrainingHistory] = useState<{originalDate: string, revisedDate: string, status: string, reason: string}[]>([]);
   const [trainingReason, setTrainingReason] = useState("");
 
+  // Induction Form State
+  const [inductionDate, setInductionDate] = useState("");
+  const [inductionFile, setInductionFile] = useState<{name: string, base64: string, type: string} | null>(null);
+  const [inductionHistory, setInductionHistory] = useState<{originalDate: string, revisedDate: string, status: string, reason: string}[]>([]);
+  const [inductionReason, setInductionReason] = useState("");
+
+  // PKWT Form State
+  const [pkwtStartDate, setPkwtStartDate] = useState("");
+  const [pkwtEndDate, setPkwtEndDate] = useState("");
+  const [pkwtFile, setPkwtFile] = useState<{name: string, base64: string, type: string} | null>(null);
+  const [pkwtSafetyFile, setPkwtSafetyFile] = useState<{name: string, base64: string, type: string} | null>(null);
+  const [pkwtNeopFile, setPkwtNeopFile] = useState<{name: string, base64: string, type: string} | null>(null);
+  const [pkwtMcuFile, setPkwtMcuFile] = useState<{name: string, base64: string, type: string} | null>(null);
+
   const [activeDocTab, setActiveDocTab] = useState("KTP");
   const [failureReason, setFailureReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -131,6 +145,19 @@ export default function AdvancedDocumentVerificationPage({
         setTrainingFile(foundApp.trainingUser.file || null);
         setTrainingHistory(foundApp.trainingUser.history || []);
       }
+      if (foundApp.induction) {
+        setInductionDate(foundApp.induction.date || "");
+        setInductionFile(foundApp.induction.file || null);
+        setInductionHistory(foundApp.induction.history || []);
+      }
+      if (foundApp.pkwt) {
+        setPkwtStartDate(foundApp.pkwt.startDate || "");
+        setPkwtEndDate(foundApp.pkwt.endDate || "");
+        setPkwtFile(foundApp.pkwt.file || null);
+        setPkwtSafetyFile(foundApp.pkwt.safetyFile || null);
+        setPkwtNeopFile(foundApp.pkwt.neopFile || null);
+        setPkwtMcuFile(foundApp.pkwt.mcuFile || null);
+      }
     }
 
     // Load Master Skema
@@ -163,6 +190,8 @@ export default function AdvancedDocumentVerificationPage({
   const isOfferingLetter = currentStageName.toLowerCase().includes("offering");
   const isMcu = currentStageName.toLowerCase().includes("mcu") || currentStageName.toLowerCase().includes("medical");
   const isTrainingUser = currentStageName.toLowerCase().includes("training") || application.currentStage === "stage_8";
+  const isInduction = currentStageName.toLowerCase().includes("induction") || application.currentStage === "stage_9";
+  const isPkwt = currentStageName.toLowerCase().includes("pkwt") || application.currentStage === "stage_10" || application.currentStage === "Hired";
 
   const safeSaveApplications = (allApps: any[], silent = false) => {
     try {
@@ -197,6 +226,10 @@ export default function AdvancedDocumentVerificationPage({
         allApps[appIndex].mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
       } else if (isTrainingUser) {
         allApps[appIndex].trainingUser = { date: trainingDate, file: trainingFile, history: trainingHistory };
+      } else if (isInduction) {
+        allApps[appIndex].induction = { date: inductionDate, file: inductionFile, history: inductionHistory };
+      } else if (isPkwt) {
+        allApps[appIndex].pkwt = { startDate: pkwtStartDate, endDate: pkwtEndDate, file: pkwtFile, safetyFile: pkwtSafetyFile, neopFile: pkwtNeopFile, mcuFile: pkwtMcuFile };
       }
       safeSaveApplications(allApps, true);
     }
@@ -237,6 +270,10 @@ export default function AdvancedDocumentVerificationPage({
         allApps[appIndex].mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
       } else if (isTrainingUser) {
         allApps[appIndex].trainingUser = { date: trainingDate, file: trainingFile, history: trainingHistory };
+      } else if (isInduction) {
+        allApps[appIndex].induction = { date: inductionDate, file: inductionFile, history: inductionHistory };
+      } else if (isPkwt) {
+        allApps[appIndex].pkwt = { startDate: pkwtStartDate, endDate: pkwtEndDate, file: pkwtFile, safetyFile: pkwtSafetyFile, neopFile: pkwtNeopFile, mcuFile: pkwtMcuFile };
       }
       allApps[appIndex].isDraft = true;
       if (safeSaveApplications(allApps)) {
@@ -270,7 +307,23 @@ export default function AdvancedDocumentVerificationPage({
           router.push(`/dashboard/job-openings/${job.id}`);
         }
       } else {
-        window.alert("Candidate is already at the last stage.");
+        if (isPkwt) {
+          app.currentStage = "Hired";
+          app.isDraft = false;
+          if (!app.history) app.history = [];
+          app.history.push({
+            stageId: "Hired",
+            stageName: "Hired / Employee",
+            date: new Date().toISOString(),
+            note: "Candidate successfully hired."
+          });
+          if (safeSaveApplications(allApps)) {
+            window.alert(`Candidate successfully hired and marked as Employee!`);
+            router.push(`/dashboard/job-openings/${job.id}`);
+          }
+        } else {
+          window.alert("Candidate is already at the last stage.");
+        }
       }
     }
   };
@@ -510,6 +563,82 @@ export default function AdvancedDocumentVerificationPage({
     }
   };
 
+  const handleInductionFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setInductionFile(data));
+    }
+  };
+
+  const handleInductionFileDrop = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setInductionFile(data));
+    }
+  };
+
+  const handleUpdateInductionSchedule = () => {
+    if (!inductionDate) {
+      window.alert("Silakan pilih tanggal induksi terlebih dahulu.");
+      return;
+    }
+    if (inductionHistory.length === 0) {
+      setInductionHistory([{ originalDate: inductionDate, revisedDate: "-", status: "Scheduled", reason: "-" }]);
+    } else {
+      if (!inductionReason) {
+        window.alert("Please provide a reason for changing the schedule.");
+        return;
+      }
+      const newHistory = [...inductionHistory];
+      const lastHistory = newHistory[newHistory.length - 1];
+      newHistory[newHistory.length - 1] = { ...lastHistory, revisedDate: inductionDate, status: "Rescheduled" };
+      newHistory.push({ originalDate: inductionDate, revisedDate: "-", status: "Scheduled", reason: inductionReason });
+      setInductionHistory(newHistory);
+      setInductionReason("");
+    }
+  };
+
+  const handlePkwtFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processUploadedFile(file, (data) => setPkwtFile(data));
+  };
+  const handlePkwtFileDrop = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) processUploadedFile(file, (data) => setPkwtFile(data));
+  };
+
+  const handlePkwtSafetyFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processUploadedFile(file, (data) => setPkwtSafetyFile(data));
+  };
+  const handlePkwtSafetyFileDrop = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) processUploadedFile(file, (data) => setPkwtSafetyFile(data));
+  };
+
+  const handlePkwtNeopFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processUploadedFile(file, (data) => setPkwtNeopFile(data));
+  };
+  const handlePkwtNeopFileDrop = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) processUploadedFile(file, (data) => setPkwtNeopFile(data));
+  };
+
+  const handlePkwtMcuFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processUploadedFile(file, (data) => setPkwtMcuFile(data));
+  };
+  const handlePkwtMcuFileDrop = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) processUploadedFile(file, (data) => setPkwtMcuFile(data));
+  };
+
   const handleTestSkillTitleChange = (index: number, title: string) => {
     const newProofs = [...testSkillProofs];
     newProofs[index].title = title;
@@ -594,6 +723,9 @@ export default function AdvancedDocumentVerificationPage({
             <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Reviewing Candidate</p>
             <h2 className="text-xl font-bold text-black flex items-center gap-2">
               {profile.fullName} <span className="text-on-surface-variant font-normal">—</span> {job.posisi}
+              {application.currentStage === "Hired" && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 uppercase tracking-wide">Employee</span>
+              )}
             </h2>
           </div>
         </div>
@@ -1308,6 +1440,239 @@ export default function AdvancedDocumentVerificationPage({
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          ) : isInduction ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
+                <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Verification Submission
+              </h3>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Pelaksanaan Induksi</label>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <input 
+                        type="date" 
+                        value={inductionDate}
+                        onChange={(e) => setInductionDate(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                      />
+                    </div>
+                    {inductionHistory.length > 0 && (
+                      <div className="flex-1">
+                        <input 
+                          type="text" 
+                          value={inductionReason}
+                          onChange={(e) => setInductionReason(e.target.value)}
+                          placeholder="Reason for change..."
+                          className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                        />
+                      </div>
+                    )}
+                    <button 
+                      onClick={handleUpdateInductionSchedule}
+                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors whitespace-nowrap"
+                    >
+                      {inductionHistory.length > 0 ? "Update Schedule" : "Save Schedule"}
+                    </button>
+                  </div>
+                </div>
+
+                {inductionHistory.length > 0 && (
+                  <div className="border border-table-border rounded-xl overflow-hidden mt-4">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-surface-container-lowest text-xs uppercase font-bold text-on-surface-variant">
+                        <tr>
+                          <th className="px-4 py-3">Original Date</th>
+                          <th className="px-4 py-3">Revised Date</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Reason for Change</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-table-border">
+                        {inductionHistory.map((item, idx) => (
+                          <tr key={idx} className="bg-white">
+                            <td className="px-4 py-3">{item.originalDate}</td>
+                            <td className="px-4 py-3">{item.revisedDate}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${item.status === 'Scheduled' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
+                                {item.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-on-surface-variant">{item.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="border-t border-table-border pt-6 mt-4">
+                  <label className="block text-sm font-bold text-black mb-3">Upload Bukti Pengajuan Induksi</label>
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={handleInductionFileDrop}
+                    className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-8 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                  >
+                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handleInductionFileUpload} />
+                    <UploadCloud className="w-10 h-10 text-on-surface-variant mb-3" />
+                    <p className="text-base font-semibold text-black mb-1">Drag & Drop bukti pengajuan</p>
+                    <p className="text-sm text-on-surface-variant">atau klik area ini untuk menelusuri komputer Anda</p>
+                    <p className="text-xs text-on-surface-variant mt-2 font-mono">PDF, PNG, JPG, JPEG (Max 2MB)</p>
+                  </div>
+                  
+                  {inductionFile && (
+                    <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[300px] relative group">
+                      {inductionFile.type === "application/pdf" ? (
+                        <iframe src={inductionFile.base64} className="w-full h-full border-none bg-white" title="Bukti Pengajuan Induksi" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={inductionFile.base64} alt="Bukti Induksi" className="max-w-full max-h-full object-contain" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-3 py-2 truncate backdrop-blur-sm">
+                        {inductionFile.name}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isPkwt ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
+                <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Contract Duration
+              </h3>
+              
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Awal Kontrak</label>
+                    <input 
+                      type="date" 
+                      value={pkwtStartDate}
+                      onChange={(e) => setPkwtStartDate(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Akhir Kontrak</label>
+                    <input 
+                      type="date" 
+                      value={pkwtEndDate}
+                      onChange={(e) => setPkwtEndDate(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-table-border pt-6 mt-4">
+                  <h3 className="text-sm font-bold text-black flex items-center gap-2 mb-4">
+                     Mandatory Onboarding Documents
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-6">
+                    {/* Berkas PKWT */}
+                    <div>
+                      <label className="block text-xs font-bold text-black mb-2">Berkas PKWT (Signed)</label>
+                      <div 
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={handlePkwtFileDrop}
+                        className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-4 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                      >
+                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handlePkwtFileUpload} />
+                        <UploadCloud className="w-6 h-6 text-on-surface-variant mb-1" />
+                        <p className="text-[10px] text-on-surface-variant mt-1 font-mono">Max 2MB</p>
+                      </div>
+                      {pkwtFile && (
+                        <div className="mt-2 border border-outline-variant rounded-lg overflow-hidden h-32 relative group">
+                          {pkwtFile.type === "application/pdf" ? (
+                            <iframe src={pkwtFile.base64} className="w-full h-full border-none bg-white" title="PKWT Signed" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-1"><img src={pkwtFile.base64} alt="PKWT Signed" className="max-w-full max-h-full object-contain" /></div>
+                          )}
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] px-1.5 py-1 truncate">{pkwtFile.name}</div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Safety Induction */}
+                    <div>
+                      <label className="block text-xs font-bold text-black mb-2">Hasil Safety Induction</label>
+                      <div 
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={handlePkwtSafetyFileDrop}
+                        className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-4 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                      >
+                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handlePkwtSafetyFileUpload} />
+                        <UploadCloud className="w-6 h-6 text-on-surface-variant mb-1" />
+                        <p className="text-[10px] text-on-surface-variant mt-1 font-mono">Max 2MB</p>
+                      </div>
+                      {pkwtSafetyFile && (
+                        <div className="mt-2 border border-outline-variant rounded-lg overflow-hidden h-32 relative group">
+                          {pkwtSafetyFile.type === "application/pdf" ? (
+                            <iframe src={pkwtSafetyFile.base64} className="w-full h-full border-none bg-white" title="Safety Induction" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-1"><img src={pkwtSafetyFile.base64} alt="Safety Induction" className="max-w-full max-h-full object-contain" /></div>
+                          )}
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] px-1.5 py-1 truncate">{pkwtSafetyFile.name}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* NEOP */}
+                    <div>
+                      <label className="block text-xs font-bold text-black mb-2">Berkas NEOP</label>
+                      <div 
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={handlePkwtNeopFileDrop}
+                        className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-4 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                      >
+                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handlePkwtNeopFileUpload} />
+                        <UploadCloud className="w-6 h-6 text-on-surface-variant mb-1" />
+                        <p className="text-[10px] text-on-surface-variant mt-1 font-mono">Max 2MB</p>
+                      </div>
+                      {pkwtNeopFile && (
+                        <div className="mt-2 border border-outline-variant rounded-lg overflow-hidden h-32 relative group">
+                          {pkwtNeopFile.type === "application/pdf" ? (
+                            <iframe src={pkwtNeopFile.base64} className="w-full h-full border-none bg-white" title="NEOP" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-1"><img src={pkwtNeopFile.base64} alt="NEOP" className="max-w-full max-h-full object-contain" /></div>
+                          )}
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] px-1.5 py-1 truncate">{pkwtNeopFile.name}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* MCU */}
+                    <div>
+                      <label className="block text-xs font-bold text-black mb-2">Berkas MCU Akhir</label>
+                      <div 
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={handlePkwtMcuFileDrop}
+                        className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-4 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                      >
+                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handlePkwtMcuFileUpload} />
+                        <UploadCloud className="w-6 h-6 text-on-surface-variant mb-1" />
+                        <p className="text-[10px] text-on-surface-variant mt-1 font-mono">Max 2MB</p>
+                      </div>
+                      {pkwtMcuFile && (
+                        <div className="mt-2 border border-outline-variant rounded-lg overflow-hidden h-32 relative group">
+                          {pkwtMcuFile.type === "application/pdf" ? (
+                            <iframe src={pkwtMcuFile.base64} className="w-full h-full border-none bg-white" title="MCU Akhir" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-1"><img src={pkwtMcuFile.base64} alt="MCU Akhir" className="max-w-full max-h-full object-contain" /></div>
+                          )}
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] px-1.5 py-1 truncate">{pkwtMcuFile.name}</div>
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
                 </div>
               </div>
             </div>

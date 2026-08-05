@@ -48,7 +48,8 @@ export default function JobDetailPage({
     null,
   );
   const [feedbackText, setFeedbackText] = useState("");
-  const [activeTab, setActiveTab] = useState<"details" | "pipeline">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "pipeline" | "hired">("details");
+  const [hiredCandidates, setHiredCandidates] = useState<any[]>([]);
 
   useEffect(() => {
     const jobs = JSON.parse(localStorage.getItem("ugz_jobs") || "[]");
@@ -72,6 +73,15 @@ export default function JobDetailPage({
       JSON.parse(localStorage.getItem("ugz_master_province") || "[]"),
     );
     setCities(JSON.parse(localStorage.getItem("ugz_master_city") || "[]"));
+
+    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
+    const hired = allApps.filter((a: any) => a.jobId === id && a.currentStage === "Hired");
+    const profiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
+    const hiredWithProfiles = hired.map((app: any) => ({
+      ...app,
+      profile: profiles[app.candidateId] || {}
+    }));
+    setHiredCandidates(hiredWithProfiles);
   }, [id]);
 
   const getSiteName = (siteId: string) =>
@@ -355,6 +365,16 @@ export default function JobDetailPage({
         >
           Candidate Pipeline
         </button>
+        <button
+          onClick={() => setActiveTab("hired")}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-bold border-b-2 transition-colors shrink-0 ${
+            activeTab === "hired"
+              ? "border-primary text-primary"
+              : "border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low"
+          }`}
+        >
+          Hired Candidates
+        </button>
       </div>
 
       {activeTab === "details" ? (
@@ -585,8 +605,61 @@ export default function JobDetailPage({
           </div>
         </div>
       </div>
-      ) : (
+      ) : activeTab === "pipeline" ? (
         <PipelineBoard jobId={job.id} timeline={job.timeline} />
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-table-border overflow-hidden">
+          <div className="p-6 border-b border-table-border">
+            <h3 className="font-bold text-on-surface">Kandidat Terpilih (Employees)</h3>
+            <p className="text-sm text-on-surface-variant">Daftar kandidat yang telah berhasil melewati semua tahapan dan resmi menjadi karyawan.</p>
+          </div>
+          {hiredCandidates.length === 0 ? (
+            <div className="p-8 text-center text-on-surface-variant">
+              Belum ada kandidat yang terpilih.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-surface-container-lowest text-xs uppercase font-bold text-on-surface-variant border-b border-table-border">
+                  <tr>
+                    <th className="px-6 py-4">Kandidat</th>
+                    <th className="px-6 py-4">Kontak</th>
+                    <th className="px-6 py-4">Tanggal Hired</th>
+                    <th className="px-6 py-4">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-table-border">
+                  {hiredCandidates.map((hc, idx) => {
+                    const hiredHistory = hc.history?.find((h: any) => h.stageId === "Hired");
+                    const hiredDate = hiredHistory ? new Date(hiredHistory.date).toLocaleDateString("id-ID") : "-";
+                    return (
+                      <tr key={idx} className="bg-white hover:bg-surface-container-lowest transition-colors">
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-black">{hc.profile.fullName || "Unknown"}</p>
+                          <p className="text-xs text-on-surface-variant">{hc.profile.latestEducation || "-"} • {hc.profile.domicileAddress || "-"}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="font-medium">{hc.profile.email || "-"}</p>
+                          <p className="text-xs text-on-surface-variant">{hc.profile.whatsapp || "-"}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase tracking-wide">
+                            {hiredDate}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Link href={`/dashboard/job-openings/${job.id}/verify/${hc.candidateId}`} className="text-primary font-bold hover:underline">
+                            Lihat Detail
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Feedback Modal */}
