@@ -37,13 +37,28 @@ export default function SLAConfigurationPage() {
   }, []);
 
   const handleUpdate = (stageId: string, field: 'totalDays' | 'reminderDays', value: number) => {
-    setSlaData(prev => ({
-      ...prev,
-      [stageId]: {
-        ...prev[stageId],
-        [field]: value < 0 ? 0 : value
+    setSlaData(prev => {
+      const currentData = prev[stageId] || { totalDays: 0, reminderDays: 0 };
+      let newTotalDays = field === 'totalDays' ? Math.max(0, value) : currentData.totalDays;
+      let newReminderDays = field === 'reminderDays' ? Math.max(0, value) : currentData.reminderDays;
+      
+      // Enforce reminder <= totalDays
+      if (newReminderDays > newTotalDays) {
+        if (field === 'totalDays') {
+          newReminderDays = newTotalDays;
+        } else {
+          newReminderDays = newTotalDays;
+        }
       }
-    }));
+
+      return {
+        ...prev,
+        [stageId]: {
+          totalDays: newTotalDays,
+          reminderDays: newReminderDays
+        }
+      };
+    });
     setErrorMsg('');
     setSuccessMsg(false);
   };
@@ -102,29 +117,46 @@ export default function SLAConfigurationPage() {
             <tbody className="divide-y divide-table-border">
               {STAGES.map((stage, idx) => {
                 const data = slaData[stage.id] || { totalDays: 0, reminderDays: 0 };
+                const isUnlimitedStage = ['stage_8', 'stage_9', 'stage_10'].includes(stage.id);
                 return (
                   <tr key={stage.id} className="hover:bg-surface-container-lowest transition-colors">
                     <td className="px-6 py-4 font-mono font-bold text-on-surface-variant text-center">{idx + 1}</td>
                     <td className="px-6 py-4 font-semibold text-black">{stage.title}</td>
                     <td className="px-6 py-4 text-center">
-                      <input 
-                        type="number" 
-                        min="0"
-                        value={data.totalDays === 0 ? '' : data.totalDays}
-                        onChange={e => handleUpdate(stage.id, 'totalDays', parseInt(e.target.value) || 0)}
-                        className="w-20 px-2 py-1.5 border border-outline-variant rounded text-center text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-black"
-                        placeholder="0"
-                      />
+                      {isUnlimitedStage && data.totalDays === 0 ? (
+                        <button 
+                          onClick={() => handleUpdate(stage.id, 'totalDays', 1)}
+                          title="Klik untuk mengubah hari"
+                          className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-[10px] font-bold uppercase tracking-wider border border-blue-200 hover:bg-blue-100 transition-colors"
+                        >
+                          Unlimited
+                        </button>
+                      ) : (
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={data.totalDays === 0 ? '' : data.totalDays}
+                          onChange={e => handleUpdate(stage.id, 'totalDays', parseInt(e.target.value) || 0)}
+                          className="w-20 px-2 py-1.5 border border-outline-variant rounded text-center text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-black"
+                          placeholder="0"
+                        />
+                      )}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <input 
-                        type="number" 
-                        min="0"
-                        value={data.reminderDays === 0 ? '' : data.reminderDays}
-                        onChange={e => handleUpdate(stage.id, 'reminderDays', parseInt(e.target.value) || 0)}
-                        className="w-20 px-2 py-1.5 border border-outline-variant rounded text-center text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-black"
-                        placeholder="0"
-                      />
+                      {isUnlimitedStage && data.totalDays === 0 ? (
+                        <span className="px-3 py-1 bg-gray-50 text-gray-500 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200">
+                          N/A
+                        </span>
+                      ) : (
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={data.reminderDays === 0 ? '' : data.reminderDays}
+                          onChange={e => handleUpdate(stage.id, 'reminderDays', parseInt(e.target.value) || 0)}
+                          className="w-20 px-2 py-1.5 border border-outline-variant rounded text-center text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-black"
+                          placeholder="0"
+                        />
+                      )}
                     </td>
                   </tr>
                 );

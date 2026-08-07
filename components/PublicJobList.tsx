@@ -96,14 +96,10 @@ export default function PublicJobList() {
       return;
     }
 
-    // 4. Check if Job has passed Administration stage
-    const adminStage = selectedJob.timeline?.find((t: any) => t.id === "stage_1" || t.title.toLowerCase().includes("administration"));
-    if (adminStage) {
-      const isPastDeadline = new Date() > new Date(adminStage.deadlineDate);
-      if (adminStage.status === "Completed" || isPastDeadline) {
-        setErrorModalMessage("Batas waktu pendaftaran (Administration) untuk lowongan ini telah ditutup karena proses rekrutmen sudah berjalan. Anda tidak dapat melamar ke lowongan ini lagi.");
-        return;
-      }
+    // 4. Check if Job is closed
+    if (selectedJob.globalStatus === "Closed") {
+      setErrorModalMessage("Lowongan ini sudah ditutup. Anda tidak dapat melamar ke lowongan ini lagi.");
+      return;
     }
 
     // 5. Create application
@@ -255,9 +251,16 @@ export default function PublicJobList() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-table-border bg-surface-container-lowest flex justify-between items-start">
               <div>
-                <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-full border border-emerald-100 uppercase tracking-wider mb-3 inline-block">
-                  {selectedJob.statusPermintaan || "Hiring"}
-                </span>
+                <div className="flex gap-2 mb-3 flex-wrap">
+                  <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-full border border-emerald-100 uppercase tracking-wider inline-block">
+                    {selectedJob.statusPermintaan || "Hiring"}
+                  </span>
+                  {selectedJob.needBnsp && (
+                    <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-200 uppercase tracking-wider inline-block">
+                      BNSP Certificate Required
+                    </span>
+                  )}
+                </div>
                 <h3 className="text-2xl font-bold text-on-surface">{selectedJob.posisi}</h3>
                 <div className="flex items-center text-sm text-on-surface-variant mt-2 gap-4">
                   <div className="flex items-center">

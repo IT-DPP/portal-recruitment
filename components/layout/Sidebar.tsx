@@ -12,7 +12,8 @@ import {
   ChevronRight,
   LogOut,
   Clock,
-  ChevronLeft
+  ChevronLeft,
+  Users
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -84,6 +85,19 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         >
           <Briefcase className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
           {!isCollapsed && <span className="font-sans text-xs font-semibold">Job Openings</span>}
+        </Link>
+
+        <Link
+          href="/dashboard/interviews"
+          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
+            pathname.includes("/dashboard/interviews")
+              ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
+              : "text-on-surface-variant hover:bg-surface-container-low"
+          } ${isCollapsed ? 'justify-center px-0' : ''}`}
+          title={isCollapsed ? "Interviews" : undefined}
+        >
+          <Users className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
+          {!isCollapsed && <span className="font-sans text-xs font-semibold">Interviews</span>}
         </Link>
 
         {/* Expandable Settings Menu */}

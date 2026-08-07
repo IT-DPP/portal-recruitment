@@ -22,6 +22,7 @@ const STAGES = [
 export default function RejectionMessageMaster() {
   const modal = useModal();
   const [data, setData] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [formData, setFormData] = useState({ stageId: '', message: '' });
 
@@ -55,6 +56,7 @@ export default function RejectionMessageMaster() {
     
     setIsEditing(null);
     setFormData({ stageId: '', message: '' });
+    setIsModalOpen(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -66,11 +68,7 @@ export default function RejectionMessageMaster() {
   const startEdit = (item: any) => {
     setIsEditing(item.id);
     setFormData({ stageId: item.stageId, message: item.message });
-  };
-
-  const cancelEdit = () => {
-    setIsEditing(null);
-    setFormData({ stageId: '', message: '' });
+    setIsModalOpen(true);
   };
 
   const getStageTitle = (stageId: string) => {
@@ -89,46 +87,71 @@ export default function RejectionMessageMaster() {
             <h2 className="text-lg font-bold text-primary">Rejection Message Master</h2>
             <p className="text-xs text-on-surface-variant">Kelola master data pesan penolakan per stage</p>
           </div>
+          <button 
+            onClick={() => { setIsEditing(null); setFormData({ stageId: "", message: "" }); setIsModalOpen(true); }}
+            className="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-container transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add New
+          </button>
         </div>
 
-        <div className="p-6 bg-surface-container-low border-b border-table-border">
-          <div className="flex gap-4 items-end flex-wrap">
-            <div className="w-64 shrink-0">
-              <label className="block text-xs font-semibold text-on-surface mb-1">Stage</label>
-              <select
-                value={formData.stageId}
-                onChange={(e) => setFormData({ ...formData, stageId: e.target.value })}
-                className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black bg-white"
-              >
-                <option value="">-- Pilih Stage --</option>
-                {STAGES.map(s => (
-                  <option key={s.id} value={s.id}>{s.title}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1 min-w-[250px]">
-              <label className="block text-xs font-semibold text-on-surface mb-1">Rejection Message</label>
-              <input 
-                type="text" 
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black"
-                placeholder="Contoh: Dokumen Tidak Lengkap"
-              />
-            </div>
-            <div className="flex gap-2">
-              {isEditing && (
-                <button onClick={cancelEdit} className="px-4 py-2 bg-surface-container-high text-on-surface-variant rounded text-sm hover:bg-outline-variant transition-colors flex items-center gap-2">
-                  <X className="w-4 h-4" /> Cancel
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="px-6 py-4 border-b border-table-border flex justify-between items-center bg-surface-container-lowest">
+                <h3 className="font-bold text-lg text-primary">
+                  {isEditing ? "Edit Rejection Message" : "Add New Rejection Message"}
+                </h3>
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-on-surface-variant hover:text-status-error transition-colors"
+                >
+                  <X className="w-5 h-5" />
                 </button>
-              )}
-              <button onClick={handleSave} className="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-container transition-colors flex items-center gap-2">
-                {isEditing ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                {isEditing ? 'Update' : 'Add New'}
-              </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1">Stage <span className="text-status-error">*</span></label>
+                  <select
+                    value={formData.stageId}
+                    onChange={(e) => setFormData({ ...formData, stageId: e.target.value })}
+                    className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black bg-white"
+                  >
+                    <option value="">-- Pilih Stage --</option>
+                    {STAGES.map(s => (
+                      <option key={s.id} value={s.id}>{s.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1">Rejection Message <span className="text-status-error">*</span></label>
+                  <input 
+                    type="text" 
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black"
+                    placeholder="Contoh: Dokumen Tidak Lengkap"
+                  />
+                </div>
+              </div>
+              <div className="px-6 py-4 bg-surface-container-lowest border-t border-table-border flex justify-end gap-2">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 bg-surface-container-high text-on-surface-variant rounded text-sm hover:bg-outline-variant transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-container transition-colors flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  {isEditing ? "Update" : "Save"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">

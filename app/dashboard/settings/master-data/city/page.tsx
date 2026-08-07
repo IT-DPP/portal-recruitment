@@ -9,6 +9,7 @@ export default function CityMaster() {
   const modal = useModal();
   const [data, setData] = useState<any[]>([]);
   const [provinces, setProvinces] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: "", provinceId: "" });
 
@@ -44,6 +45,7 @@ export default function CityMaster() {
 
     setIsEditing(null);
     setFormData({ name: "", provinceId: "" });
+    setIsModalOpen(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -61,11 +63,7 @@ export default function CityMaster() {
   const startEdit = (item: any) => {
     setIsEditing(item.id);
     setFormData({ name: item.name, provinceId: item.provinceId });
-  };
-
-  const cancelEdit = () => {
-    setIsEditing(null);
-    setFormData({ name: "", provinceId: "" });
+    setIsModalOpen(true);
   };
 
   const getProvinceName = (provinceId: string) => {
@@ -92,73 +90,88 @@ export default function CityMaster() {
               Kelola master data kota/kabupaten dengan relasi ke provinsi
             </p>
           </div>
+          <button 
+            onClick={() => { setIsEditing(null); setFormData({ name: "", provinceId: "" }); setIsModalOpen(true); }}
+            className="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-container transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add New
+          </button>
         </div>
 
-        <div className="p-6 bg-surface-container-low border-b border-table-border">
-          <div className="flex gap-4 items-end max-w-4xl">
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-on-surface mb-1">
-                Province
-              </label>
-              <select
-                value={formData.provinceId}
-                onChange={(e) =>
-                  setFormData({ ...formData, provinceId: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black bg-white"
-              >
-                <option value="">-- Pilih Provinsi --</option>
-                {provinces.map((prov) => (
-                  <option key={prov.id} value={prov.id}>
-                    {prov.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-on-surface mb-1">
-                City / Regency Name
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black"
-                placeholder="e.g. Bandung, Jakarta Selatan"
-              />
-            </div>
-            <div className="flex gap-2">
-              {isEditing && (
-                <button
-                  onClick={cancelEdit}
-                  className="px-4 py-2 bg-surface-container-high text-on-surface-variant rounded text-sm hover:bg-outline-variant transition-colors flex items-center gap-2"
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="px-6 py-4 border-b border-table-border flex justify-between items-center bg-surface-container-lowest">
+                <h3 className="font-bold text-lg text-primary">
+                  {isEditing ? "Edit City / Regency" : "Add New City / Regency"}
+                </h3>
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-on-surface-variant hover:text-status-error transition-colors"
                 >
-                  <X className="w-4 h-4" /> Cancel
+                  <X className="w-5 h-5" />
                 </button>
-              )}
-              <button
-                onClick={handleSave}
-                disabled={provinces.length === 0}
-                className="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-container transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isEditing ? (
-                  <Save className="w-4 h-4" />
-                ) : (
-                  <Plus className="w-4 h-4" />
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1">
+                    Province <span className="text-status-error">*</span>
+                  </label>
+                  <select
+                    value={formData.provinceId}
+                    onChange={(e) =>
+                      setFormData({ ...formData, provinceId: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black bg-white"
+                  >
+                    <option value="">-- Pilih Provinsi --</option>
+                    {provinces.map((prov) => (
+                      <option key={prov.id} value={prov.id}>
+                        {prov.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1">
+                    City / Regency Name <span className="text-status-error">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black"
+                    placeholder="e.g. Bandung, Jakarta Selatan"
+                  />
+                </div>
+                {provinces.length === 0 && (
+                  <p className="text-xs text-status-warning">
+                    Peringatan: Anda belum menambahkan data Provinsi. Harap tambahkan
+                    Provinsi terlebih dahulu.
+                  </p>
                 )}
-                {isEditing ? "Update" : "Add New"}
-              </button>
+              </div>
+              <div className="px-6 py-4 bg-surface-container-lowest border-t border-table-border flex justify-end gap-2">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 bg-surface-container-high text-on-surface-variant rounded text-sm hover:bg-outline-variant transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={provinces.length === 0}
+                  className="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-container transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4" />
+                  {isEditing ? "Update" : "Save"}
+                </button>
+              </div>
             </div>
           </div>
-          {provinces.length === 0 && (
-            <p className="text-xs text-status-warning mt-2">
-              Peringatan: Anda belum menambahkan data Provinsi. Harap tambahkan
-              Provinsi terlebih dahulu.
-            </p>
-          )}
-        </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">

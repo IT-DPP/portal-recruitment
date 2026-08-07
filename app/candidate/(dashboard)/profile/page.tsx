@@ -14,6 +14,7 @@ export default function CandidateProfilePage() {
   const [selectedBlk, setSelectedBlk] = useState("");
   const [masterBlkLpk, setMasterBlkLpk] = useState<any[]>([]);
   
+
   const [formData, setFormData] = useState({
     // Data Pribadi
     fullName: "",
@@ -47,6 +48,9 @@ export default function CandidateProfilePage() {
     fileSertifikat: null as any,
     filePhoto: null as any,
   });
+
+
+
 
   useEffect(() => {
     // Load Master Data
@@ -86,8 +90,13 @@ export default function CandidateProfilePage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSaveDraft = (e: React.MouseEvent) => {
     e.preventDefault();
+    handleSave(e as unknown as React.FormEvent);
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    if (e && e.preventDefault) e.preventDefault();
     setIsSaving(true);
     setSaveSuccess(false);
     
@@ -155,7 +164,7 @@ export default function CandidateProfilePage() {
           {activeTab === "pribadi" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="space-y-2 md:col-span-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Nama Lengkap (Sesuai KTP)</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Nama Lengkap (Sesuai KTP) <span className="text-status-error">*</span></label>
                 <input
                   type="text"
                   value={formData.fullName}
@@ -167,7 +176,7 @@ export default function CandidateProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Tempat Lahir</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Tempat Lahir <span className="text-status-error">*</span></label>
                 <input
                   type="text"
                   value={formData.birthPlace}
@@ -178,7 +187,7 @@ export default function CandidateProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Tanggal Lahir</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Tanggal Lahir <span className="text-status-error">*</span></label>
                 <input
                   type="date"
                   value={formData.birthDate}
@@ -189,7 +198,7 @@ export default function CandidateProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Gender</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Gender <span className="text-status-error">*</span></label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="gender" value="Pria" checked={formData.gender === "Pria"} onChange={(e) => handleInputChange("gender", e.target.value)} className="w-4 h-4 text-primary" required />
@@ -203,7 +212,7 @@ export default function CandidateProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Agama</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Agama <span className="text-status-error">*</span></label>
                 <select
                   value={formData.religion}
                   onChange={(e) => handleInputChange("religion", e.target.value)}
@@ -221,7 +230,7 @@ export default function CandidateProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Status Pernikahan</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Status Pernikahan <span className="text-status-error">*</span></label>
                 <div className="flex flex-wrap gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="maritalStatus" value="Single" checked={formData.maritalStatus === "Single"} onChange={(e) => handleInputChange("maritalStatus", e.target.value)} className="w-4 h-4 text-primary" required />
@@ -246,7 +255,7 @@ export default function CandidateProfilePage() {
 
               <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-on-surface uppercase tracking-wider">No NIK</label>
+                  <label className="text-xs font-bold text-on-surface uppercase tracking-wider">No NIK <span className="text-status-error">*</span></label>
                   <input
                     type="number"
                     value={formData.nik}
@@ -257,7 +266,7 @@ export default function CandidateProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-on-surface uppercase tracking-wider">No KK</label>
+                  <label className="text-xs font-bold text-on-surface uppercase tracking-wider">No KK <span className="text-status-error">*</span></label>
                   <input
                     type="number"
                     value={formData.kk}
@@ -275,7 +284,7 @@ export default function CandidateProfilePage() {
           {activeTab === "kontak" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="space-y-2 md:col-span-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Email (Read-only)</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Email (Read-only) <span className="text-status-error">*</span></label>
                 <input
                   type="email"
                   value={formData.email}
@@ -285,7 +294,7 @@ export default function CandidateProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">No Telepon (WhatsApp)</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">No Telepon (WhatsApp) <span className="text-status-error">*</span></label>
                 <input
                   type="tel"
                   value={formData.whatsapp}
@@ -296,7 +305,7 @@ export default function CandidateProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">No Telepon Darurat</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">No Telepon Darurat <span className="text-status-error">*</span></label>
                 <input
                   type="tel"
                   value={formData.emergencyContact}
@@ -308,7 +317,7 @@ export default function CandidateProfilePage() {
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Alamat Domisili (Sesuai KTP)</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Alamat Domisili (Sesuai KTP) <span className="text-status-error">*</span></label>
                 <textarea
                   value={formData.domicileAddress}
                   onChange={(e) => handleInputChange("domicileAddress", e.target.value)}
@@ -320,7 +329,7 @@ export default function CandidateProfilePage() {
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Alamat Saat Ini</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Alamat Saat Ini <span className="text-status-error">*</span></label>
                 <textarea
                   value={formData.currentAddress}
                   onChange={(e) => handleInputChange("currentAddress", e.target.value)}
@@ -332,7 +341,7 @@ export default function CandidateProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Provinsi</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Provinsi <span className="text-status-error">*</span></label>
                 <input
                   type="text"
                   value={formData.province}
@@ -343,7 +352,7 @@ export default function CandidateProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Kota / Kabupaten</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Kota / Kabupaten <span className="text-status-error">*</span></label>
                 <input
                   type="text"
                   value={formData.city}
@@ -360,7 +369,7 @@ export default function CandidateProfilePage() {
           {activeTab === "pendidikan" && (
             <div className="grid grid-cols-1 gap-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Pendidikan Terakhir</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Pendidikan Terakhir <span className="text-status-error">*</span></label>
                 <select
                   value={formData.latestEducation}
                   onChange={(e) => handleInputChange("latestEducation", e.target.value)}
@@ -378,7 +387,7 @@ export default function CandidateProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Nama Institusi Pendidikan</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Nama Institusi Pendidikan <span className="text-status-error">*</span></label>
                 <input
                   type="text"
                   value={formData.educationInstitution}
@@ -390,7 +399,7 @@ export default function CandidateProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Training Center (BLK/LPK)</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Training Center (BLK/LPK) <span className="text-status-error">*</span></label>
                 <select
                   value={selectedBlk}
                   onChange={(e) => {
@@ -488,6 +497,19 @@ export default function CandidateProfilePage() {
               </span>
             )}
             
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={isSaving}
+              className="px-6 py-2.5 bg-surface-container-high text-on-surface border border-outline-variant rounded-xl text-sm font-bold shadow-sm hover:bg-surface-container-highest transition-all active:scale-[0.98] disabled:opacity-70 flex items-center gap-2"
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Save as Draft
+            </button>
             <button
               type="submit"
               disabled={isSaving}

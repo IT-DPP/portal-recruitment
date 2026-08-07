@@ -35,6 +35,7 @@ export default function CreateJobPage() {
     kualifikasi: "",
     benefit: "",
     needTestSkill: false,
+    needBnsp: false,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -254,8 +255,8 @@ export default function CreateJobPage() {
                 />
               </div>
 
-              <div className="flex items-center mt-6">
-                <label className="flex items-center cursor-pointer group">
+              <div className="flex flex-col justify-center gap-4 mt-6">
+                <label className="flex items-center cursor-pointer group w-fit">
                   <input
                     type="checkbox"
                     checked={formData.needTestSkill}
@@ -269,6 +270,23 @@ export default function CreateJobPage() {
                   />
                   <span className="ml-2 text-sm font-semibold text-on-surface group-hover:text-primary transition-colors">
                     Membutuhkan Test Skill
+                  </span>
+                </label>
+
+                <label className="flex items-center cursor-pointer group w-fit">
+                  <input
+                    type="checkbox"
+                    checked={formData.needBnsp}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        needBnsp: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary bg-white"
+                  />
+                  <span className="ml-2 text-sm font-semibold text-on-surface group-hover:text-primary transition-colors">
+                    Mewajibkan Sertifikat BNSP
                   </span>
                 </label>
               </div>
