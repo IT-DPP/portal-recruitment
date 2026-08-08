@@ -13,7 +13,9 @@ import {
   LogOut,
   Clock,
   ChevronLeft,
-  Users
+  Users,
+  Archive,
+  Contact
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -98,6 +100,32 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         >
           <Database className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
           {!isCollapsed && <span className="font-sans text-xs font-semibold">Pipeline</span>}
+        </Link>
+
+        <Link
+          href="/dashboard/archived-candidates"
+          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
+            pathname.includes("/dashboard/archived-candidates")
+              ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
+              : "text-on-surface-variant hover:bg-surface-container-low"
+          } ${isCollapsed ? 'justify-center px-0' : ''}`}
+          title={isCollapsed ? "Archived Candidates" : undefined}
+        >
+          <Archive className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
+          {!isCollapsed && <span className="font-sans text-xs font-semibold">Archived Candidates</span>}
+        </Link>
+
+        <Link
+          href="/dashboard/talent-pool"
+          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
+            pathname.includes("/dashboard/talent-pool")
+              ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
+              : "text-on-surface-variant hover:bg-surface-container-low"
+          } ${isCollapsed ? 'justify-center px-0' : ''}`}
+          title={isCollapsed ? "Talent Pool" : undefined}
+        >
+          <Contact className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
+          {!isCollapsed && <span className="font-sans text-xs font-semibold">Talent Pool</span>}
         </Link>
 
         <Link
