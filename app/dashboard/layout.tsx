@@ -30,7 +30,7 @@ export default function DashboardLayout({
     <div className="flex h-screen overflow-hidden bg-surface-bright font-sans text-on-surface relative">
       {/* Mobile Toggle inside header or absolute */}
       <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-      <div className={`flex flex-col flex-1 w-full transition-all duration-300 ${isCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
+      <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300 ${isCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
         <Header />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-surface-bright p-6">
           {children}
