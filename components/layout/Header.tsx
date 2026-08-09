@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Grid, User } from 'lucide-react';
+import { Search, Bell, Grid, User, DatabaseZap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { generateDummyData } from '@/lib/seeder';
 
 export default function Header() {
   const router = useRouter();
@@ -48,6 +49,20 @@ export default function Header() {
       {/* Right Actions & Profile */}
       <div className="flex items-center gap-4">
         
+        {/* Generate Dummy Data Button */}
+        <button
+          onClick={() => {
+            generateDummyData();
+            alert("10 Dummy Data berhasil di-generate! Halaman akan dimuat ulang.");
+            window.location.reload();
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+          title="Generate 10 Dummy Data"
+        >
+          <DatabaseZap className="w-4 h-4" />
+          <span className="hidden sm:inline">Seed Data</span>
+        </button>
+
         {/* Notifications Button & Dropdown */}
         <div className="relative">
           <button

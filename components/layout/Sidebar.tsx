@@ -33,6 +33,11 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
     pathname.includes("/settings"),
   );
 
+  // Track if Dashboard menu is expanded
+  const [isDashboardOpen, setIsDashboardOpen] = useState(
+    pathname === "/dashboard" || pathname.includes("/dashboard/executive") || pathname.includes("/dashboard/geosource"),
+  );
+
   const handleLogout = () => {
     localStorage.removeItem("nexus_logged_user");
     localStorage.removeItem("nexus_remember_login");
@@ -63,18 +68,57 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
 
       {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto min-h-0 py-2 space-y-1">
-        <Link
-          href="/dashboard"
-          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-            pathname === "/dashboard"
-              ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
-              : "text-on-surface-variant hover:bg-surface-container-low"
-          } ${isCollapsed ? 'justify-center px-0' : ''}`}
-          title={isCollapsed ? "Dashboard" : undefined}
-        >
-          <LayoutDashboard className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
-          {!isCollapsed && <span className="font-sans text-xs font-semibold">Dashboard</span>}
-        </Link>
+        {/* Expandable Dashboard Menu */}
+        <div className="pb-1">
+          <button
+            onClick={() => setIsDashboardOpen(!isDashboardOpen)}
+            className={`w-full flex items-center justify-between px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
+              pathname === "/dashboard" || pathname.includes("/dashboard/executive") || pathname.includes("/dashboard/geosource")
+                ? "text-primary font-bold"
+                : "text-on-surface-variant hover:bg-surface-container-low"
+            } ${isCollapsed ? 'justify-center px-0' : ''}`}
+            title={isCollapsed ? "Dashboard" : undefined}
+          >
+            <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : ''}`}>
+              <LayoutDashboard className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
+              {!isCollapsed && <span className="font-sans text-xs font-semibold">Dashboard</span>}
+            </div>
+            {!isCollapsed && (isDashboardOpen ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            ))}
+          </button>
+
+          {isDashboardOpen && !isCollapsed && (
+            <div className="bg-surface-container-low/30 py-1">
+              <Link
+                href="/dashboard/executive"
+                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
+                  pathname.includes("/dashboard/executive") || pathname === "/dashboard"
+                    ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
+                    : "text-on-surface-variant hover:bg-surface-container-low"
+                }`}
+              >
+                <span className="font-sans text-[11px] font-semibold">
+                  Executive Dashboard
+                </span>
+              </Link>
+              <Link
+                href="/dashboard/geosource"
+                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
+                  pathname.includes("/dashboard/geosource")
+                    ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
+                    : "text-on-surface-variant hover:bg-surface-container-low"
+                }`}
+              >
+                <span className="font-sans text-[11px] font-semibold">
+                  GeoSource Dashboard
+                </span>
+              </Link>
+            </div>
+          )}
+        </div>
 
         <Link
           href="/dashboard/job-openings"
