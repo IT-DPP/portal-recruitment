@@ -36,6 +36,7 @@ export default function CreateJobPage() {
     benefit: "",
     needTestSkill: false,
     needBnsp: false,
+    priority: false,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -287,6 +288,23 @@ export default function CreateJobPage() {
                   />
                   <span className="ml-2 text-sm font-semibold text-on-surface group-hover:text-primary transition-colors">
                     Mewajibkan Sertifikat BNSP
+                  </span>
+                </label>
+
+                <label className="flex items-center cursor-pointer group w-fit">
+                  <input
+                    type="checkbox"
+                    checked={formData.priority}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        priority: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary bg-white"
+                  />
+                  <span className="ml-2 text-sm font-semibold text-on-surface group-hover:text-primary transition-colors">
+                    Dibutuhkan Segera (Priority)
                   </span>
                 </label>
               </div>

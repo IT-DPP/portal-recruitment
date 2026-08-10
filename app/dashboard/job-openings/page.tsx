@@ -292,7 +292,12 @@ export default function JobOpeningsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 font-semibold text-black">
-                        {job.posisi}
+                        <div className="flex items-center gap-2">
+                          {job.posisi}
+                          {job.priority && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-100 text-red-700 border border-red-200">Priority</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <span
@@ -362,8 +367,11 @@ export default function JobOpeningsPage() {
                         <p className="text-[10px] font-mono text-on-surface-variant font-semibold mb-1">
                           {job.noRegistrasi}
                         </p>
-                        <h3 className="text-lg font-bold text-primary leading-tight">
+                        <h3 className="text-lg font-bold text-primary leading-tight flex items-center gap-2">
                           {job.posisi}
+                          {job.priority && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-100 text-red-700 border border-red-200">Priority</span>
+                          )}
                         </h3>
                       </div>
 

@@ -204,9 +204,41 @@ export const generateDummyData = () => {
       tanggalMasuk: randomDate(new Date(2025, 0, 1), new Date()),
       globalStatus: jobStatuses[i % jobStatuses.length],
       timeline: timeline,
+      priority: Math.random() > 0.8,
     };
   });
-  localStorage.setItem("ugz_jobs", JSON.stringify(jobs));
+
+  // 5 Explicit Priority Jobs
+  const priorityJobs = Array.from({ length: 5 }).map((_, i) => {
+    const cust = randomEl(masterCustomer);
+    const city = randomEl(masterCity);
+    const pos = randomEl(masterPos);
+    const timeline = stages.map((st, idx) => ({
+      id: st.id,
+      title: st.title,
+      status: idx === 0 ? "Completed" : "Pending",
+      startDate: new Date().toISOString(),
+      deadlineDate: new Date(Date.now() + (idx + 1) * 2 * 24 * 60 * 60 * 1000).toISOString(),
+    }));
+
+    return {
+      id: randomId("job-prio"),
+      noRegistrasi: `REG-PRIO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      posisi: `Priority ${pos.name}`,
+      customerId: cust.id,
+      cityId: city.id,
+      provinceId: city.provinceId,
+      siteId: randomEl(masterSites).id,
+      statusPermintaan: "Penambahan",
+      jumlahPermintaan: 10,
+      tanggalMasuk: new Date().toISOString(),
+      globalStatus: "Active",
+      timeline: timeline,
+      priority: true,
+    };
+  });
+  const allJobs = [...jobs, ...priorityJobs];
+  localStorage.setItem("ugz_jobs", JSON.stringify(allJobs));
 
   // 3. CANDIDATES
   const eduOptions = ["SMA/SMK", "D3", "S1", "S2"];
@@ -227,6 +259,23 @@ export const generateDummyData = () => {
       isTalentPool: i % 3 === 0, // 1/3 are talent pool specific
     };
   });
+
+  const prioCandIds = Array.from({ length: 50 }).map(() => randomId("cand-prio"));
+  prioCandIds.forEach((id, i) => {
+    candidateProfiles[id] = {
+      id: id,
+      fullName: `Kandidat Priority ${i + 1}`,
+      email: `prio${i + 1}@example.com`,
+      whatsapp: `08123456789${i}`,
+      nik: `317123456789010${i}`,
+      latestEducation: randomEl(eduOptions),
+      city: randomEl(masterCity).name,
+      province: randomEl(masterProvince).name,
+      blkId: randomEl(MASTER_BLK_LPK).id,
+      isTalentPool: false,
+    };
+  });
+
   localStorage.setItem(
     "ugz_candidate_profiles",
     JSON.stringify(candidateProfiles),
@@ -275,5 +324,42 @@ export const generateDummyData = () => {
       history: history,
     };
   });
-  localStorage.setItem("ugz_applications", JSON.stringify(applications));
+
+  const prioApplications = prioCandIds.map((candId, i) => {
+    const jobIndex = Math.floor(i / 10);
+    const jobId = priorityJobs[jobIndex].id;
+    
+    const possibleStages = ["stage_1", "stage_2", "stage_3", "stage_4", "stage_5", "stage_6", "stage_7", "Rejected"];
+    const currentStage = possibleStages[i % possibleStages.length];
+    
+    const history = [
+      {
+        stageId: "stage_1",
+        stageName: "CV Screening",
+        date: new Date().toISOString(),
+        note: "Applied (Priority Job)",
+      },
+    ];
+    
+    if (currentStage !== "stage_1") {
+      history.push({
+        stageId: currentStage,
+        stageName: currentStage === "Rejected" ? "Rejected" : stages.find(s => s.id === currentStage)?.title || currentStage,
+        date: new Date().toISOString(),
+        note: "Updated Stage",
+      });
+    }
+
+    return {
+      id: randomId("app-prio"),
+      jobId: jobId,
+      candidateId: candId,
+      applicationDate: new Date().toISOString(),
+      currentStage: currentStage,
+      history: history,
+    };
+  });
+
+  const allApplications = [...applications, ...prioApplications];
+  localStorage.setItem("ugz_applications", JSON.stringify(allApplications));
 };

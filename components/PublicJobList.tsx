@@ -209,8 +209,11 @@ export default function PublicJobList() {
                   </span>
                 </div>
 
-                <h3 className="text-xl font-bold text-on-surface mb-2 group-hover:text-primary transition-colors">
+                <h3 className="text-xl font-bold text-on-surface mb-2 group-hover:text-primary transition-colors flex items-center gap-2">
                   {job.posisi}
+                  {job.priority && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-100 text-red-700 border border-red-200">Priority</span>
+                  )}
                 </h3>
                 
                 <div className="space-y-2 mb-6">
@@ -261,7 +264,12 @@ export default function PublicJobList() {
                     </span>
                   )}
                 </div>
-                <h3 className="text-2xl font-bold text-on-surface">{selectedJob.posisi}</h3>
+                <h3 className="text-2xl font-bold text-on-surface flex items-center gap-2">
+                  {selectedJob.posisi}
+                  {selectedJob.priority && (
+                    <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-red-100 text-red-700 border border-red-200">Priority</span>
+                  )}
+                </h3>
                 <div className="flex items-center text-sm text-on-surface-variant mt-2 gap-4">
                   <div className="flex items-center">
                     <MapPin className="w-4 h-4 mr-1 shrink-0 text-primary/60" />
