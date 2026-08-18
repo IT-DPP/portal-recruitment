@@ -1,84 +1,144 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
-import { Users, UserCheck, UserX, UserPlus, Briefcase } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Users, UserCheck, UserX, UserPlus, Briefcase, Filter, X } from 'lucide-react';
 import StatWidget from '@/components/dashboard/StatWidget';
 import RecentCandidatesTable, { CandidateRow } from '@/components/dashboard/RecentCandidatesTable';
 import InterviewCalendar, { InterviewEvent } from '@/components/dashboard/InterviewCalendar';
-import { subDays, startOfDay } from 'date-fns';
+import { startOfDay } from 'date-fns';
 
 export default function ExecutiveDashboard() {
-  const [startDate, setStartDate] = useState<Date | null>(subDays(new Date(), 30));
-  const [endDate, setEndDate] = useState<Date | null>(new Date());
-  
-  const [statsData, setStatsData] = useState({
-    total: 0,
-    hr: 0,
-    user: 0,
-    rejected: 0,
-    onboarding: 0
+  const [applications, setApplications] = useState<any[]>([]);
+  const [candidates, setCandidates] = useState<any>({});
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [sites, setSites] = useState<any[]>([]);
+
+  // Filter states
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filterSite, setFilterSite] = useState("");
+  const [filterPosition, setFilterPosition] = useState("");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+
+  const [activeFilters, setActiveFilters] = useState({
+    site: "",
+    position: "",
+    startDate: "",
+    endDate: ""
   });
 
-  const [stageBreakdown, setStageBreakdown] = useState([
-    { title: "CV Screening", value: 0, color: "bg-blue-500" },
-    { title: "Interview HR", value: 0, color: "bg-yellow-500" },
-    { title: "Psikotes", value: 0, color: "bg-purple-500" },
-    { title: "Technical Test", value: 0, color: "bg-indigo-500" },
-    { title: "Interview User", value: 0, color: "bg-green-500" },
-    { title: "Offering", value: 0, color: "bg-teal-500" },
-    { title: "MCU", value: 0, color: "bg-rose-500" },
-  ]);
-
-  const [recentCandidates, setRecentCandidates] = useState<CandidateRow[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<InterviewEvent[]>([]);
-
   useEffect(() => {
-    // 1. Load data from localStorage
+    // Load data from localStorage
     const rawApps = localStorage.getItem("ugz_applications");
     const rawCands = localStorage.getItem("ugz_candidate_profiles");
     const rawJobs = localStorage.getItem("ugz_jobs");
     const rawSites = localStorage.getItem("ugz_master_sites_operation");
 
-    if (!rawApps || !rawCands || !rawJobs || !rawSites) return;
+    if (rawApps) setApplications(JSON.parse(rawApps));
+    if (rawCands) setCandidates(JSON.parse(rawCands));
+    if (rawJobs) setJobs(JSON.parse(rawJobs));
+    if (rawSites) setSites(JSON.parse(rawSites));
+  }, []);
 
-    const apps = JSON.parse(rawApps);
-    const cands = JSON.parse(rawCands);
-    const jobs = JSON.parse(rawJobs);
-    const sites = JSON.parse(rawSites);
+  const handleApplyFilter = () => {
+    setActiveFilters({
+      site: filterSite,
+      position: filterPosition,
+      startDate: filterStartDate,
+      endDate: filterEndDate
+    });
+    setIsFilterModalOpen(false);
+  };
 
-    // 2. Compute Stats
+  const clearFilters = () => {
+    setFilterSite("");
+    setFilterPosition("");
+    setFilterStartDate("");
+    setFilterEndDate("");
+    setActiveFilters({
+      site: "",
+      position: "",
+      startDate: "",
+      endDate: ""
+    });
+    setIsFilterModalOpen(false);
+  };
+
+  const filteredApps = useMemo(() => {
+    return applications.filter(app => {
+      let match = true;
+      const job = jobs.find(j => j.id === app.jobId);
+      
+      if (activeFilters.site && job?.siteId !== activeFilters.site) {
+        match = false;
+      }
+      
+      if (activeFilters.position && job?.posisi !== activeFilters.position) {
+        match = false;
+      }
+
+      if (activeFilters.startDate || activeFilters.endDate) {
+        const jobDateStr = job?.publishedDate || job?.tanggalMasuk;
+        if (jobDateStr) {
+          const jobDate = new Date(jobDateStr);
+          jobDate.setHours(0,0,0,0);
+          
+          if (activeFilters.startDate) {
+            const sDate = new Date(activeFilters.startDate);
+            sDate.setHours(0,0,0,0);
+            if (jobDate < sDate) match = false;
+          }
+          if (activeFilters.endDate) {
+            const eDate = new Date(activeFilters.endDate);
+            eDate.setHours(0,0,0,0);
+            if (jobDate > eDate) match = false;
+          }
+        } else {
+          match = false;
+        }
+      }
+
+      return match;
+    });
+  }, [applications, jobs, activeFilters]);
+
+  const statsData = useMemo(() => {
     let hrCount = 0;
     let userCount = 0;
     let rejectedCount = 0;
     let offeringCount = 0;
-    
-    const stageCounts: Record<string, number> = {
-      "stage_1": 0, "stage_2": 0, "stage_3": 0, "stage_4": 0,
-      "stage_5": 0, "stage_6": 0, "stage_7": 0, "Rejected": 0
-    };
 
-    apps.forEach((app: any) => {
+    filteredApps.forEach((app: any) => {
       if (app.currentStage === "stage_2") hrCount++;
       if (app.currentStage === "stage_5") userCount++;
       if (app.currentStage === "Rejected") rejectedCount++;
       if (app.currentStage === "stage_6" || app.currentStage === "stage_7") offeringCount++;
-      
+    });
+
+    const uniqueCandidates = new Set(filteredApps.map(app => app.candidateId));
+
+    return {
+      total: uniqueCandidates.size,
+      hr: hrCount,
+      user: userCount,
+      rejected: rejectedCount,
+      onboarding: offeringCount
+    };
+  }, [filteredApps]);
+
+  const stageBreakdown = useMemo(() => {
+    const stageCounts: Record<string, number> = {
+      "stage_1": 0, "stage_2": 0, "stage_3": 0, "stage_4": 0,
+      "stage_5": 0, "stage_6": 0, "stage_7": 0
+    };
+
+    filteredApps.forEach((app: any) => {
       if (stageCounts[app.currentStage] !== undefined) {
         stageCounts[app.currentStage]++;
       }
     });
 
-    setStatsData({
-      total: Object.keys(cands).length,
-      hr: hrCount,
-      user: userCount,
-      rejected: rejectedCount,
-      onboarding: offeringCount
-    });
-
-    setStageBreakdown([
+    return [
       { title: "CV Screening", value: stageCounts["stage_1"], color: "bg-blue-500" },
       { title: "Interview HR", value: stageCounts["stage_2"], color: "bg-yellow-500" },
       { title: "Psikotes", value: stageCounts["stage_3"], color: "bg-purple-500" },
@@ -86,17 +146,18 @@ export default function ExecutiveDashboard() {
       { title: "Interview User", value: stageCounts["stage_5"], color: "bg-green-500" },
       { title: "Offering", value: stageCounts["stage_6"], color: "bg-teal-500" },
       { title: "MCU", value: stageCounts["stage_7"], color: "bg-rose-500" },
-    ]);
+    ];
+  }, [filteredApps]);
 
-    // 3. Recent Candidates
-    const sortedApps = [...apps].sort((a, b) => {
+  const recentCandidates = useMemo(() => {
+    const sortedApps = [...filteredApps].sort((a, b) => {
       const dateA = new Date(a.history[a.history.length - 1]?.date || 0).getTime();
       const dateB = new Date(b.history[b.history.length - 1]?.date || 0).getTime();
       return dateB - dateA;
     }).slice(0, 5);
 
-    const recent = sortedApps.map((app: any) => {
-      const cand = cands[app.candidateId];
+    return sortedApps.map((app: any) => {
+      const cand = candidates[app.candidateId];
       const job = jobs.find((j: any) => j.id === app.jobId);
       const site = sites.find((s: any) => s.id === job?.siteId);
       
@@ -115,12 +176,12 @@ export default function ExecutiveDashboard() {
         candidateId: app.candidateId
       };
     });
-    setRecentCandidates(recent);
+  }, [filteredApps, candidates, jobs, sites]);
 
-    // 4. Aggregated Calendar Events
+  const calendarEvents = useMemo(() => {
     const eventsMap: Record<string, { hr: number, user: number, skill: number }> = {};
     
-    apps.forEach((app: any) => {
+    filteredApps.forEach((app: any) => {
       app.history.forEach((hist: any) => {
         const dateKey = hist.date.split('T')[0];
         if (!eventsMap[dateKey]) eventsMap[dateKey] = { hr: 0, user: 0, skill: 0 };
@@ -145,8 +206,8 @@ export default function ExecutiveDashboard() {
       }
     });
 
-    setCalendarEvents(events);
-  }, []);
+    return events;
+  }, [filteredApps]);
 
   const stats = [
     { title: "Total Kandidat", value: statsData.total, icon: Users, trend: "+12%", trendUp: true },
@@ -156,6 +217,10 @@ export default function ExecutiveDashboard() {
     { title: "On Boarding", value: statsData.onboarding, icon: UserPlus, trend: "+8%", trendUp: true },
   ];
 
+  const activePositions = Array.from(
+    new Set(jobs.filter((j) => j.globalStatus === "Active" && j.posisi).map((j) => j.posisi))
+  ).sort();
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -164,27 +229,17 @@ export default function ExecutiveDashboard() {
           <p className="text-sm text-on-surface-variant">Overview of recruitment metrics and activities.</p>
         </div>
         
-        <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-table-border shadow-sm">
-          <DatePicker
-            selected={startDate}
-            onChange={(date: Date | null) => setStartDate(date)}
-            selectsStart
-            startDate={startDate}
-            endDate={endDate}
-            className="w-28 text-sm outline-none px-2 py-1 cursor-pointer bg-transparent text-on-surface font-medium"
-            dateFormat="dd MMM yyyy"
-          />
-          <span className="text-on-surface-variant">-</span>
-          <DatePicker
-            selected={endDate}
-            onChange={(date: Date | null) => setEndDate(date)}
-            selectsEnd
-            startDate={startDate}
-            endDate={endDate}
-            minDate={startDate || undefined}
-            className="w-28 text-sm outline-none px-2 py-1 cursor-pointer bg-transparent text-on-surface font-medium"
-            dateFormat="dd MMM yyyy"
-          />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsFilterModalOpen(true)}
+            className="px-4 py-2 bg-white border border-outline-variant text-on-surface font-semibold rounded-xl hover:bg-surface-container-low transition-colors flex items-center gap-2 shadow-sm shrink-0 whitespace-nowrap"
+          >
+            <Filter className="w-4 h-4" /> 
+            Filters
+            {(activeFilters.site || activeFilters.position || activeFilters.startDate || activeFilters.endDate) && (
+              <span className="flex h-2 w-2 rounded-full bg-primary relative -top-1 -right-1"></span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -221,7 +276,95 @@ export default function ExecutiveDashboard() {
           <InterviewCalendar events={calendarEvents} />
         </div>
       </div>
+
+      {/* Filter Modal */}
+      {isFilterModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-table-border flex justify-between items-center bg-surface-container-lowest">
+              <h3 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                <Filter className="w-5 h-5 text-primary" /> Filter Dashboard
+              </h3>
+              <button 
+                onClick={() => setIsFilterModalOpen(false)}
+                className="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-black rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-black mb-1.5">Site Operations</label>
+                <select
+                  value={filterSite}
+                  onChange={(e) => setFilterSite(e.target.value)}
+                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
+                >
+                  <option value="">Semua Site</option>
+                  {sites.map((s: any) => (
+                    <option key={s.id} value={s.id}>
+                      {s.siteName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-black mb-1.5">Posisi Job</label>
+                <select
+                  value={filterPosition}
+                  onChange={(e) => setFilterPosition(e.target.value)}
+                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
+                >
+                  <option value="">Semua Posisi</option>
+                  {activePositions.map((pos: any) => (
+                    <option key={pos} value={pos}>
+                      {pos}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-black mb-1.5">Start Date</label>
+                  <input
+                    type="date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-black mb-1.5">End Date</label>
+                  <input
+                    type="date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-table-border bg-surface-container-lowest flex justify-end gap-3">
+              <button
+                onClick={clearFilters}
+                className="px-5 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low rounded-xl transition-colors"
+              >
+                Clear Filters
+              </button>
+              <button
+                onClick={handleApplyFilter}
+                className="px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-container transition-colors shadow-sm"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
