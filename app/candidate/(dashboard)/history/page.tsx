@@ -10,6 +10,7 @@ import {
   Briefcase,
   AlertCircle,
   CheckCircle2,
+  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -175,8 +176,8 @@ export default function CandidateHistoryPage() {
                     <h4 className="font-bold text-sm text-on-surface mb-4 border-b border-table-border pb-2">
                       Recruiter Feedback / Notes
                     </h4>
-                    {Object.keys(app.stageNotes || {}).length > 0 ? (
-                      <div className="space-y-3">
+                    {Object.keys(app.stageNotes || {}).length > 0 && (
+                      <div className="space-y-3 mb-4">
                         {Object.entries(app.stageNotes).map(
                           ([stageId, note]) => {
                             const stageTitle =
@@ -199,7 +200,30 @@ export default function CandidateHistoryPage() {
                           },
                         )}
                       </div>
-                    ) : (
+                    )}
+
+                    {app.messages && app.messages.length > 0 && (
+                      <div className="space-y-3 mb-4">
+                        {app.messages.map((msg: any, idx: number) => {
+                          const stageTitle = job.timeline?.find((t: any) => t.id === msg.stage)?.title || msg.stage;
+                          return (
+                            <div key={idx} className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                              <div className="flex justify-between items-center mb-1">
+                                <p className="text-xs font-bold text-blue-800 flex items-center gap-1.5">
+                                  <MessageSquare className="w-4 h-4" /> Message at: {stageTitle}
+                                </p>
+                                {msg.date && <span className="text-[10px] text-blue-700 font-medium opacity-80">{new Date(msg.date).toLocaleDateString("id-ID")}</span>}
+                              </div>
+                              <p className="text-sm text-blue-900 leading-relaxed font-medium">
+                                "{msg.text}"
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {(!app.stageNotes || Object.keys(app.stageNotes).length === 0) && (!app.messages || app.messages.length === 0) && (
                       <div className="text-sm text-on-surface-variant italic bg-surface-container-low p-4 rounded-xl border border-outline-variant/50 text-center">
                         Belum ada catatan khusus dari recruiter untuk Anda.
                       </div>

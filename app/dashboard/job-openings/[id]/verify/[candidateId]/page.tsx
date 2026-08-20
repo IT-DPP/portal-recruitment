@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud } from "lucide-react";
+import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud, MessageSquare, Send } from "lucide-react";
 import { MASTER_SKEMA_SERTIFIKASI, MASTER_REJECTION_MESSAGE } from "@/lib/masterData";
 
 export default function AdvancedDocumentVerificationPage({
@@ -24,12 +24,14 @@ export default function AdvancedDocumentVerificationPage({
   const [certNumber, setCertNumber] = useState("");
   const [isApproved, setIsApproved] = useState(false);
   const [masterSkema, setMasterSkema] = useState<any[]>([]);
+  const [bnspFile, setBnspFile] = useState<{name: string, base64: string, type: string} | null>(null);
 
   // HR Interview Form State
   const [interviewResult, setInterviewResult] = useState("");
   const [interviewDate, setInterviewDate] = useState("");
   const [interviewFeedback, setInterviewFeedback] = useState("");
   const [interviewFile, setInterviewFile] = useState<{name: string, base64: string, type: string} | null>(null);
+  const [interviewResultFile, setInterviewResultFile] = useState<{name: string, base64: string, type: string} | null>(null);
 
   // Psikotes Form State
   const [psikotesResult, setPsikotesResult] = useState("");
@@ -80,6 +82,8 @@ export default function AdvancedDocumentVerificationPage({
   const [activeDocTab, setActiveDocTab] = useState("KTP");
   const [failureReason, setFailureReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageText, setMessageText] = useState("");
   const [masterRejection, setMasterRejection] = useState<any[]>([]);
 
   useEffect(() => {
@@ -107,12 +111,14 @@ export default function AdvancedDocumentVerificationPage({
         setExpiryDate(foundApp.bnspValidation.expiryDate || "");
         setCertNumber(foundApp.bnspValidation.certNumber || "");
         setIsApproved(foundApp.bnspValidation.isApproved || false);
+        setBnspFile(foundApp.bnspValidation.file || null);
       }
       if (foundApp.hrInterview) {
         setInterviewResult(foundApp.hrInterview.result || "");
         setInterviewDate(foundApp.hrInterview.date || "");
         setInterviewFeedback(foundApp.hrInterview.feedback || "");
         setInterviewFile(foundApp.hrInterview.file || null);
+        setInterviewResultFile(foundApp.hrInterview.resultFile || null);
       }
       if (foundApp.psikotes) {
         setPsikotesResult(foundApp.psikotes.result || "");
@@ -211,9 +217,9 @@ export default function AdvancedDocumentVerificationPage({
     const appIndex = allApps.findIndex((a: any) => a.id === application.id);
     if (appIndex !== -1) {
       if (isAdministration) {
-        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved };
+        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved, file: bnspFile };
       } else if (isHrInterview) {
-        allApps[appIndex].hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile };
+        allApps[appIndex].hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile, resultFile: interviewResultFile };
       } else if (isPsikotes) {
         allApps[appIndex].psikotes = { result: psikotesResult, date: psikotesDate, file: psikotesFile };
       } else if (isTestSkill) {
@@ -244,7 +250,7 @@ export default function AdvancedDocumentVerificationPage({
     
     if (appIndex !== -1) {
       if (isAdministration) {
-        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved: newIsApproved };
+        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved: newIsApproved, file: bnspFile };
       }
       safeSaveApplications(allApps);
     }
@@ -255,9 +261,9 @@ export default function AdvancedDocumentVerificationPage({
     const appIndex = allApps.findIndex((a: any) => a.id === application.id);
     if (appIndex !== -1) {
       if (isAdministration) {
-        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved };
+        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved, file: bnspFile };
       } else if (isHrInterview) {
-        allApps[appIndex].hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile };
+        allApps[appIndex].hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile, resultFile: interviewResultFile };
       } else if (isPsikotes) {
         allApps[appIndex].psikotes = { result: psikotesResult, date: psikotesDate, file: psikotesFile };
       } else if (isTestSkill) {
@@ -355,6 +361,29 @@ export default function AdvancedDocumentVerificationPage({
     }
   };
 
+  const handleSendMessage = () => {
+    if (!messageText.trim()) return;
+
+    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
+    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
+
+    if (appIndex !== -1) {
+      const app = allApps[appIndex];
+      if (!app.messages) app.messages = [];
+      app.messages.push({
+        stage: app.currentStage,
+        text: messageText,
+        date: new Date().toISOString()
+      });
+
+      if (safeSaveApplications(allApps)) {
+        window.alert("Pesan berhasil dikirim ke kandidat.");
+        setShowMessageModal(false);
+        setMessageText("");
+      }
+    }
+  };
+
   const handleApproveAll = () => {
     handleSaveDraftSilent();
     window.alert("All verification approved. Returning to Pipeline.");
@@ -374,6 +403,38 @@ export default function AdvancedDocumentVerificationPage({
     const file = e.dataTransfer.files?.[0];
     if (file) {
       processUploadedFile(file, (data) => setInterviewFile(data));
+    }
+  };
+
+  const handleInterviewResultFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setInterviewResultFile(data));
+    }
+  };
+
+  const handleInterviewResultFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setInterviewResultFile(data));
+    }
+  };
+
+  const handleBnspFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setBnspFile(data));
+    }
+  };
+
+  const handleBnspFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file, (data) => setBnspFile(data));
     }
   };
 
@@ -731,14 +792,17 @@ export default function AdvancedDocumentVerificationPage({
         </div>
         
         <div className="flex gap-3 items-center">
-          <button onClick={() => setShowRejectModal(true)} className="px-5 py-2 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5">
-            <Ban className="w-4 h-4" /> Reject
+          <button onClick={() => setShowMessageModal(true)} className="px-5 py-2 border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5 shadow-sm">
+            <MessageSquare className="w-4 h-4" /> Message
+          </button>
+          <button onClick={() => setShowRejectModal(true)} className="px-5 py-2 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5 shadow-sm">
+            <XCircle className="w-4 h-4" /> Reject
+          </button>
+          <button onClick={handleDraftMark} className="px-5 py-2 border border-outline-variant bg-white text-on-surface hover:bg-surface-container-low font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5 shadow-sm">
+            <Save className="w-4 h-4" /> Save as Draft
           </button>
           <button onClick={handleApproveNextStage} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5">
             Approve <ArrowRight className="w-4 h-4" />
-          </button>
-          <button onClick={handleDraftMark} className="px-5 py-2 border border-outline-variant text-black bg-white hover:bg-surface-container-low font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5">
-            <Save className="w-4 h-4" /> Save as Draft
           </button>
           <button onClick={handleApproveAll} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5">
             Approve All <CheckCircle className="w-4 h-4" />
@@ -771,27 +835,35 @@ export default function AdvancedDocumentVerificationPage({
               </h3>
               
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                {/* Certificate Preview Thumbnail */}
-                <div className="bg-surface-container-lowest border-2 border-dashed border-outline-variant/60 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] relative group overflow-hidden">
-                  {profile.fileSertifikat?.base64 ? (
-                    <>
-                      {profile.fileSertifikat.base64.startsWith("data:application/pdf") ? (
-                        <iframe src={profile.fileSertifikat.base64} className="w-full h-full border-none opacity-80 group-hover:opacity-100 transition-opacity pointer-events-none" title="Sertifikat PDF" />
-                      ) : profile.fileSertifikat.base64.startsWith("data:image/") ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={profile.fileSertifikat.base64} alt="Sertifikat" className="w-full h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
+                {/* Upload Bukti File Validasi BNSP */}
+                <div className="space-y-4">
+                  <label className="block text-sm font-bold text-black mb-3">Upload Bukti File Validasi BNSP</label>
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={handleBnspFileDrop}
+                    className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-8 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                  >
+                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handleBnspFileUpload} />
+                    <UploadCloud className="w-10 h-10 text-on-surface-variant mb-3" />
+                    <p className="text-base font-semibold text-black mb-1">Drag & Drop file bukti validasi BNSP</p>
+                    <p className="text-sm text-on-surface-variant">atau klik area ini untuk menelusuri komputer Anda</p>
+                    <p className="text-xs text-on-surface-variant mt-2 font-mono">PDF, PNG, JPG, JPEG (Max 5MB)</p>
+                  </div>
+                  
+                  {bnspFile && (
+                    <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[300px] relative group">
+                      {bnspFile.type === "application/pdf" ? (
+                        <iframe src={bnspFile.base64} className="w-full h-full border-none bg-white" title="Bukti BNSP" />
                       ) : (
-                         <p className="text-sm text-on-surface-variant text-center">Format tidak didukung<br/><span className="text-xs">Hanya PDF/Image</span></p>
+                        <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={bnspFile.base64} alt="Bukti BNSP" className="max-w-full max-h-full object-contain" />
+                        </div>
                       )}
-                      <div 
-                        className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                        onClick={() => setActiveDocTab("Sertifikat BNSP")}
-                      >
-                        <span className="text-white font-semibold text-sm bg-black/50 px-4 py-2 rounded-lg">View in Main Viewer</span>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-3 py-2 truncate backdrop-blur-sm">
+                        {bnspFile.name}
                       </div>
-                    </>
-                  ) : (
-                    <p className="text-sm text-on-surface-variant">No Certificate Uploaded</p>
+                    </div>
                   )}
                 </div>
                 
@@ -933,6 +1005,37 @@ export default function AdvancedDocumentVerificationPage({
                       )}
                       <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-3 py-2 truncate backdrop-blur-sm">
                         {interviewFile.name}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-table-border pt-4 mt-4">
+                  <label className="block text-sm font-bold text-black mb-3">Upload Hasil Penilaian Interview</label>
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={handleInterviewResultFileDrop}
+                    className="relative border-2 border-dashed border-outline-variant hover:border-primary/50 hover:bg-surface-container-low transition-colors rounded-xl p-8 flex flex-col items-center justify-center text-center bg-surface-container-lowest"
+                  >
+                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf, .png, .jpg, .jpeg" onChange={handleInterviewResultFileUpload} />
+                    <UploadCloud className="w-10 h-10 text-on-surface-variant mb-3" />
+                    <p className="text-base font-semibold text-black mb-1">Drag & Drop dokumen hasil penilaian interview</p>
+                    <p className="text-sm text-on-surface-variant">atau klik area ini untuk menelusuri komputer Anda</p>
+                    <p className="text-xs text-on-surface-variant mt-2 font-mono">PDF, PNG, JPG, JPEG (Max 5MB)</p>
+                  </div>
+                  
+                  {interviewResultFile && (
+                    <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden h-[300px] relative group">
+                      {interviewResultFile.type === "application/pdf" ? (
+                        <iframe src={interviewResultFile.base64} className="w-full h-full border-none bg-white" title="Hasil Penilaian Interview" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={interviewResultFile.base64} alt="Hasil Penilaian" className="max-w-full max-h-full object-contain" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-3 py-2 truncate backdrop-blur-sm">
+                        {interviewResultFile.name}
                       </div>
                     </div>
                   )}
@@ -1820,6 +1923,50 @@ export default function AdvancedDocumentVerificationPage({
                 className="px-4 py-2 bg-status-error text-white text-sm font-semibold rounded hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 Reject Candidate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message Modal */}
+      {showMessageModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+            <div className="p-4 border-b border-table-border bg-surface-container-lowest flex items-center justify-between">
+              <h3 className="font-bold text-blue-700 flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" /> Send Message to Candidate
+              </h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-black mb-4">
+                Tuliskan pesan atau catatan yang ingin disampaikan kepada kandidat pada tahap ini.
+              </p>
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Message</label>
+              <textarea
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                rows={4}
+                placeholder="Tulis pesan..."
+                className="w-full px-3 py-2 border border-outline-variant rounded focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm text-black bg-white"
+              />
+            </div>
+            <div className="p-4 bg-surface-container-lowest border-t border-table-border flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowMessageModal(false);
+                  setMessageText("");
+                }}
+                className="px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low rounded transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSendMessage}
+                disabled={!messageText.trim()}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" /> Kirim Pesan
               </button>
             </div>
           </div>

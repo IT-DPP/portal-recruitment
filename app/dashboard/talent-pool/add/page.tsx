@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { User, Mail, BookOpen, FileCheck, Save, Loader2, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import FileUpload from "@/components/FileUpload";
-import { MASTER_BLK_LPK } from "@/lib/masterData";
+import { MASTER_INSTITUTE, EDUCATION_TYPES, TRAINING_CENTER_TYPES, type Institute } from "@/lib/masterData";
 
 type TabValue = "pribadi" | "kontak" | "pendidikan" | "dokumen";
 
@@ -15,7 +15,7 @@ export default function AddTalentPoolPage() {
   const [isSaving, setIsSaving] = useState(false);
   
   const [selectedBlk, setSelectedBlk] = useState("");
-  const [masterBlkLpk, setMasterBlkLpk] = useState<any[]>([]);
+  const [masterInstitute, setMasterInstitute] = useState<Institute[]>([]);
 
   const [formData, setFormData] = useState({
     // Data Pribadi
@@ -38,8 +38,10 @@ export default function AddTalentPoolPage() {
     city: "",
     
     // Pendidikan
+    educationType: "",
     latestEducation: "",
     educationInstitution: "",
+    trainingCenterType: "",
     trainingCenter: "",
     
     // Dokumen
@@ -52,12 +54,12 @@ export default function AddTalentPoolPage() {
   });
 
   useEffect(() => {
-    let currentMasterBlk = MASTER_BLK_LPK;
-    const savedBlk = localStorage.getItem('ugz_master_blk_lpk');
-    if (savedBlk) {
-      currentMasterBlk = JSON.parse(savedBlk);
+    let currentMasterInst = MASTER_INSTITUTE;
+    const savedInst = localStorage.getItem('ugz_master_institute');
+    if (savedInst) {
+      currentMasterInst = JSON.parse(savedInst);
     }
-    setMasterBlkLpk(currentMasterBlk);
+    setMasterInstitute(currentMasterInst);
   }, []);
 
   const handleInputChange = (field: string, value: any) => {
@@ -338,35 +340,104 @@ export default function AddTalentPoolPage() {
           {activeTab === "pendidikan" && (
             <div className="grid grid-cols-1 gap-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Pendidikan Terakhir</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Jenis Pendidikan Terakhir <span className="text-status-error">*</span></label>
+                <select
+                  value={formData.educationType}
+                  onChange={(e) => {
+                    handleInputChange("educationType", e.target.value);
+                    handleInputChange("latestEducation", "");
+                    handleInputChange("educationInstitution", "");
+                  }}
+                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                >
+                  <option value="">Pilih Jenis Pendidikan</option>
+                  {EDUCATION_TYPES.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Tingkat Pendidikan</label>
                 <select
                   value={formData.latestEducation}
                   onChange={(e) => handleInputChange("latestEducation", e.target.value)}
                   className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  disabled={!formData.educationType}
                 >
-                  <option value="">Pilih Pendidikan Terakhir</option>
-                  <option value="SMA/SMK">SMA/SMK/Sederajat</option>
-                  <option value="D3">Diploma 3 (D3)</option>
-                  <option value="D4">Diploma 4 (D4)</option>
-                  <option value="S1">Sarjana (S1)</option>
-                  <option value="S2">Magister (S2)</option>
-                  <option value="S3">Doktor (S3)</option>
+                  <option value="">Pilih Tingkat Pendidikan</option>
+                  {formData.educationType === "Perguruan Tinggi" && (
+                    <>
+                      <option value="D3">Diploma 3 (D3)</option>
+                      <option value="D4">Diploma 4 (D4)</option>
+                      <option value="S1">Sarjana (S1)</option>
+                      <option value="S2">Magister (S2)</option>
+                      <option value="S3">Doktor (S3)</option>
+                    </>
+                  )}
+                  {formData.educationType === "SLTA" && <option value="SMA/SMK">SMA/SMK/Sederajat</option>}
+                  {formData.educationType === "SLTP" && <option value="SMP">SMP/Sederajat</option>}
+                  {formData.educationType === "SD" && <option value="SD">SD/Sederajat</option>}
                 </select>
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Nama Institusi Pendidikan</label>
-                <input
-                  type="text"
-                  value={formData.educationInstitution}
-                  onChange={(e) => handleInputChange("educationInstitution", e.target.value)}
+                <select
+                  value={
+                    formData.educationInstitution && masterInstitute.some(i => i.name === formData.educationInstitution && i.type === formData.educationType) 
+                      ? formData.educationInstitution 
+                      : (formData.educationInstitution ? "Other" : "")
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val !== "Other") {
+                      handleInputChange("educationInstitution", val);
+                    } else {
+                      handleInputChange("educationInstitution", "");
+                    }
+                  }}
                   className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                  placeholder="Contoh: Universitas Indonesia / SMKN 1 Jakarta"
-                />
+                  disabled={!formData.educationType}
+                >
+                  <option value="">Pilih Nama Institusi</option>
+                  {masterInstitute.filter(i => i.type === formData.educationType).map((inst) => (
+                    <option key={inst.id} value={inst.name}>{inst.name}</option>
+                  ))}
+                  <option value="Other">Lainnya (Ketik Manual)</option>
+                </select>
+                
+                {formData.educationInstitution && !masterInstitute.some(i => i.name === formData.educationInstitution && i.type === formData.educationType) && (
+                  <input
+                    type="text"
+                    value={formData.educationInstitution}
+                    onChange={(e) => handleInputChange("educationInstitution", e.target.value)}
+                    className="w-full px-4 py-2.5 mt-2 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    placeholder="Isi nama institusi pendidikan..."
+                  />
+                )}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Training Center (BLK/LPK)</label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Jenis Training Center (Opsional)</label>
+                <select
+                  value={formData.trainingCenterType}
+                  onChange={(e) => {
+                    handleInputChange("trainingCenterType", e.target.value);
+                    handleInputChange("trainingCenter", "");
+                    setSelectedBlk("");
+                  }}
+                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                >
+                  <option value="">Pilih Jenis Training Center</option>
+                  {TRAINING_CENTER_TYPES.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Nama Training Center</label>
                 <select
                   value={selectedBlk}
                   onChange={(e) => {
@@ -379,10 +450,11 @@ export default function AddTalentPoolPage() {
                     }
                   }}
                   className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  disabled={!formData.trainingCenterType}
                 >
-                  <option value="">Pilih Training Center (Opsional)</option>
-                  {masterBlkLpk.map((b) => (
-                    <option key={b.id} value={b.name}>{b.name}</option>
+                  <option value="">Pilih Training Center</option>
+                  {masterInstitute.filter(i => i.type === formData.trainingCenterType).map((inst) => (
+                    <option key={inst.id} value={inst.name}>{inst.name}</option>
                   ))}
                   <option value="Other">Lainnya (Ketik Manual)</option>
                 </select>
@@ -393,7 +465,7 @@ export default function AddTalentPoolPage() {
                     value={formData.trainingCenter}
                     onChange={(e) => handleInputChange("trainingCenter", e.target.value)}
                     className="w-full px-4 py-2.5 mt-2 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                    placeholder="Isi nama BLK/LPK..."
+                    placeholder="Isi nama Training Center..."
                   />
                 )}
               </div>

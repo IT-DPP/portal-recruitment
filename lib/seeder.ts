@@ -1,7 +1,8 @@
 import {
   MASTER_SKEMA_SERTIFIKASI,
-  MASTER_BLK_LPK,
+  MASTER_INSTITUTE,
   MASTER_REJECTION_MESSAGE,
+  TRAINING_CENTER_TYPES,
 } from "./masterData";
 
 export const generateDummyData = () => {
@@ -120,6 +121,11 @@ export const generateDummyData = () => {
     name: `Tipe Request ${i + 1}`,
   }));
 
+  // Filter training centers from MASTER_INSTITUTE
+  const trainingCenterInstitutes = MASTER_INSTITUTE.filter((inst) =>
+    TRAINING_CENTER_TYPES.includes(inst.type)
+  );
+
   localStorage.setItem("ugz_master_customer", JSON.stringify(masterCustomer));
   localStorage.setItem("ugz_master_province", JSON.stringify(masterProvince));
   localStorage.setItem("ugz_master_city", JSON.stringify(masterCity));
@@ -137,7 +143,7 @@ export const generateDummyData = () => {
     "ugz_master_skema_sertifikasi",
     JSON.stringify(MASTER_SKEMA_SERTIFIKASI),
   );
-  localStorage.setItem("ugz_master_blk_lpk", JSON.stringify(MASTER_BLK_LPK));
+  localStorage.setItem("ugz_master_institute", JSON.stringify(MASTER_INSTITUTE));
 
   // Create 10 Rejection Messages if there aren't enough
   const rejectMessages = MASTER_REJECTION_MESSAGE.slice(0, 10);
@@ -246,6 +252,7 @@ export const generateDummyData = () => {
 
   const candIds = Array.from({ length: 50 }).map(() => randomId("cand"));
   candIds.forEach((id, i) => {
+    const trainingInst = randomEl(trainingCenterInstitutes);
     candidateProfiles[id] = {
       id: id,
       fullName: `Kandidat Dummy ${i + 1}`,
@@ -255,13 +262,15 @@ export const generateDummyData = () => {
       latestEducation: randomEl(eduOptions),
       city: randomEl(masterCity).name,
       province: randomEl(masterProvince).name,
-      blkId: randomEl(MASTER_BLK_LPK).id,
+      trainingCenterType: trainingInst.type,
+      trainingCenter: trainingInst.name,
       isTalentPool: i % 3 === 0, // 1/3 are talent pool specific
     };
   });
 
   const prioCandIds = Array.from({ length: 50 }).map(() => randomId("cand-prio"));
   prioCandIds.forEach((id, i) => {
+    const trainingInst = randomEl(trainingCenterInstitutes);
     candidateProfiles[id] = {
       id: id,
       fullName: `Kandidat Priority ${i + 1}`,
@@ -271,7 +280,8 @@ export const generateDummyData = () => {
       latestEducation: randomEl(eduOptions),
       city: randomEl(masterCity).name,
       province: randomEl(masterProvince).name,
-      blkId: randomEl(MASTER_BLK_LPK).id,
+      trainingCenterType: trainingInst.type,
+      trainingCenter: trainingInst.name,
       isTalentPool: false,
     };
   });

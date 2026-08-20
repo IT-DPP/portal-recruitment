@@ -7,6 +7,7 @@ import GeoMap from '@/components/dashboard/GeoMap';
 import RegionalDistributionChart, { RegionalData } from '@/components/dashboard/RegionalDistributionChart';
 import TopBlkChart, { BlkData } from '@/components/dashboard/TopBlkChart';
 import { SiteMarker } from '@/components/dashboard/GeoMapComponent';
+import InstitutionRankingTable from '@/components/dashboard/InstitutionRankingTable';
 
 export default function GeoSourceDashboard() {
   const [applications, setApplications] = useState<any[]>([]);
@@ -37,13 +38,16 @@ export default function GeoSourceDashboard() {
     const rawCands = localStorage.getItem("ugz_candidate_profiles");
     const rawJobs = localStorage.getItem("ugz_jobs");
     const rawSites = localStorage.getItem("ugz_master_sites_operation");
-    const rawBlks = localStorage.getItem("ugz_master_blk_lpk");
+    const rawInstitutes = localStorage.getItem("ugz_master_institute");
 
     if (rawApps) setApplications(JSON.parse(rawApps));
     if (rawCands) setCandidates(JSON.parse(rawCands));
     if (rawJobs) setJobs(JSON.parse(rawJobs));
     if (rawSites) setSites(JSON.parse(rawSites));
-    if (rawBlks) setBlks(JSON.parse(rawBlks));
+    if (rawInstitutes) {
+      const allInst = JSON.parse(rawInstitutes);
+      setBlks(allInst.filter((i: any) => ["BPVP", "BLK", "LPK"].includes(i.type)));
+    }
   }, []);
 
   const handleApplyFilter = () => {
@@ -83,7 +87,7 @@ export default function GeoSourceDashboard() {
         match = false;
       }
       
-      if (activeFilters.blk && cand?.blkId !== activeFilters.blk) {
+      if (activeFilters.blk && cand?.trainingCenter !== activeFilters.blk) {
         match = false;
       }
 
@@ -115,6 +119,63 @@ export default function GeoSourceDashboard() {
       return match;
     });
   }, [applications, jobs, candidates, activeFilters]);
+
+  // Derive institution ranking data
+  const institutionRankingData = useMemo(() => {
+    const stats: Record<string, { total: number, accepted: number, active: number, type: string, name: string }> = {};
+
+    blks.forEach(b => {
+      let type = 'LPK';
+      if (b.type) {
+        type = b.type;
+      } else {
+        const nameUpper = b.name.toUpperCase();
+        if (nameUpper.includes('BLK')) type = 'BLK';
+        else if (nameUpper.includes('SMK') || nameUpper.includes('UNIV') || nameUpper.includes('POLITEKNIK') || nameUpper.includes('INSTITUT')) type = 'EDUCATIONAL';
+      }
+      
+      stats[b.name] = { 
+        total: 0, 
+        accepted: 0, 
+        active: 0, 
+        type,
+        name: b.name 
+      };
+    });
+
+    filteredApps.forEach(app => {
+      const cand = candidates[app.candidateId];
+      if (cand && cand.trainingCenter && stats[cand.trainingCenter]) {
+        stats[cand.trainingCenter].total++;
+        if (app.currentStage === "stage_6" || app.currentStage === "stage_7") {
+           stats[cand.trainingCenter].accepted++;
+        } else if (app.currentStage !== "Rejected") {
+           stats[cand.trainingCenter].active++;
+        }
+      }
+    });
+
+    return Object.keys(stats).map(id => {
+       const s = stats[id];
+       const passRate = s.total > 0 ? Math.round((s.accepted / s.total) * 100) : 0;
+       
+       let status = 'Standard';
+       if (s.total > 0) {
+         if (passRate >= 70) status = 'High Priority';
+         else if (passRate < 50) status = 'Underperforming';
+       }
+       
+       return {
+         id,
+         name: s.name,
+         type: s.type,
+         totalApplicants: s.total,
+         passRate,
+         activeCandidates: s.active,
+         status
+       };
+    }).filter(s => s.totalApplicants > 0).sort((a, b) => b.totalApplicants - a.totalApplicants);
+  }, [filteredApps, candidates, blks]);
 
   // Derive metrics
   const metrics = useMemo(() => {
@@ -156,9 +217,9 @@ export default function GeoSourceDashboard() {
         const prov = cand.province || 'Unknown';
         regionalStats[prov] = (regionalStats[prov] || 0) + 1;
 
-        const blkId = cand.blkId;
-        if (blkId) {
-          blkStats[blkId] = (blkStats[blkId] || 0) + 1;
+        const trainingCenter = cand.trainingCenter;
+        if (trainingCenter) {
+          blkStats[trainingCenter] = (blkStats[trainingCenter] || 0) + 1;
         }
       }
     });
@@ -181,11 +242,11 @@ export default function GeoSourceDashboard() {
       count: regionalStats[prov]
     })).sort((a, b) => b.count - a.count).slice(0, 10);
 
-    const topBlk = Object.keys(blkStats).map(blkId => {
-      const blk = blks.find((b: any) => b.id === blkId);
+    const topBlk = Object.keys(blkStats).map(tcName => {
+      const blk = blks.find((b: any) => b.name === tcName);
       return {
-        name: blk?.name || 'Unknown',
-        count: blkStats[blkId]
+        name: blk?.name || tcName,
+        count: blkStats[tcName]
       };
     }).sort((a, b) => b.count - a.count).slice(0, 5);
 
@@ -260,6 +321,10 @@ export default function GeoSourceDashboard() {
         </div>
       </div>
 
+      <div className="mt-0">
+        <InstitutionRankingTable data={institutionRankingData} />
+      </div>
+
       {/* Filter Modal */}
       {isFilterModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center p-4">
@@ -302,7 +367,7 @@ export default function GeoSourceDashboard() {
                 >
                   <option value="">Semua Institusi</option>
                   {blks.map((b: any) => (
-                    <option key={b.id} value={b.id}>
+                    <option key={b.name} value={b.name}>
                       {b.name}
                     </option>
                   ))}

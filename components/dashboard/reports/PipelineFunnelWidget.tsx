@@ -11,6 +11,9 @@ const STAGES = [
   { id: "stage_5", title: "Interview User", color: "#0097A7", light: "#e0f7fa" },
   { id: "stage_6", title: "Offering", color: "#00796B", light: "#e0f2f1" },
   { id: "stage_7", title: "MCU (Selesai)", color: "#2E7D32", light: "#e8f5e9" },
+  { id: "stage_8", title: "Training", color: "#388E3C", light: "#e8f5e9" },
+  { id: "stage_9", title: "Induction", color: "#4CAF50", light: "#e8f5e9" },
+  { id: "stage_10", title: "PKWT (Hired)", color: "#81C784", light: "#e8f5e9" },
 ];
 
 interface Application {
@@ -261,27 +264,33 @@ export default function PipelineFunnelWidget({
                   stage.total > 0
                     ? ((nextTotal / stage.total) * 100).toFixed(0)
                     : "0";
+                const failRate = stage.total > 0 ? (100 - parseFloat(convRate)).toFixed(0) : "0";
                 return (
                   <div key={stage.stageId} className="space-y-1">
                     <div className="flex justify-between items-center">
                       <span className="text-[9px] text-on-surface-variant truncate max-w-[90px]">
                         {stage.title} →
                       </span>
-                      <span
-                        className={`text-[10px] font-bold ${
-                          parseInt(convRate) >= 70
-                            ? "text-emerald-700"
-                            : parseInt(convRate) >= 40
-                            ? "text-amber-700"
-                            : "text-red-700"
-                        }`}
-                      >
-                        {convRate}%
-                      </span>
+                      <div className="flex gap-2">
+                        <span
+                          className={`text-[9px] font-bold ${
+                            parseInt(convRate) >= 70
+                              ? "text-emerald-700"
+                              : parseInt(convRate) >= 40
+                              ? "text-amber-700"
+                              : "text-red-700"
+                          }`}
+                        >
+                          {convRate}% Lolos
+                        </span>
+                        <span className="text-[9px] font-bold text-red-600">
+                          {failRate}% Gagal
+                        </span>
+                      </div>
                     </div>
-                    <div className="w-full h-1 bg-white rounded-full overflow-hidden">
+                    <div className="w-full h-1 bg-red-100 rounded-full overflow-hidden flex">
                       <div
-                        className={`h-full rounded-full ${
+                        className={`h-full ${
                           parseInt(convRate) >= 70
                             ? "bg-emerald-500"
                             : parseInt(convRate) >= 40
@@ -290,6 +299,7 @@ export default function PipelineFunnelWidget({
                         }`}
                         style={{ width: `${convRate}%` }}
                       />
+                      <div className="h-full bg-red-500" style={{ width: `${failRate}%` }} />
                     </div>
                   </div>
                 );

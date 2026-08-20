@@ -40,6 +40,8 @@ export default function CandidateLoginPage() {
         email: candidate.email
       }));
 
+      sessionStorage.setItem("showPrivacyModal", "true");
+
       setIsSubmitting(false);
       router.push("/candidate/jobs"); // Redirect to candidate dashboard / jobs
     }, 1000);

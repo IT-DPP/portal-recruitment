@@ -68,10 +68,10 @@ export default function MasterDataPage() {
       icon: Award,
     },
     {
-      title: "Training Center (BLK/LPK)",
+      title: "Institute",
       description:
-        "Kelola daftar Balai Latihan Kerja atau Lembaga Pelatihan Kerja.",
-      href: "/dashboard/settings/master-data/blk-lpk",
+        "Kelola master data institusi pendidikan, pelatihan, & training center.",
+      href: "/dashboard/settings/master-data/institute",
       icon: BookOpen,
     },
     {

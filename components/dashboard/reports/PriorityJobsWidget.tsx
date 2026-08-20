@@ -173,25 +173,26 @@ export default function PriorityJobsWidget({
                     </div>
                   </div>
 
-                  {/* Pass Rate */}
-                  <div className="flex items-center justify-between pt-2 border-t border-table-border">
-                    <div className="flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3 text-emerald-500" />
-                      <span className="text-[10px] text-on-surface-variant">
-                        Tingkat Lolos
+                  {/* Pass Rate & Fail Rate */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-table-border">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3 text-emerald-500" />
+                        <span className="text-[9px] text-on-surface-variant">Lolos</span>
+                      </div>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${parseFloat(passRate) >= 50 ? "bg-emerald-50 text-emerald-700" : parseFloat(passRate) >= 25 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
+                        {passRate}%
                       </span>
                     </div>
-                    <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        parseFloat(passRate) >= 50
-                          ? "bg-emerald-50 text-emerald-700"
-                          : parseFloat(passRate) >= 25
-                          ? "bg-amber-50 text-amber-700"
-                          : "bg-red-50 text-red-700"
-                      }`}
-                    >
-                      {passRate}%
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <UserX className="w-3 h-3 text-red-500" />
+                        <span className="text-[9px] text-on-surface-variant">Gagal</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-50 text-red-700">
+                        {job.applicants > 0 ? ((job.rejected / job.applicants) * 100).toFixed(1) : "0.0"}%
+                      </span>
+                    </div>
                   </div>
                 </button>
               );

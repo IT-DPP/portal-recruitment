@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { User, Mail, BookOpen, FileCheck, Save, Loader2, CheckCircle2 } from "lucide-react";
+import { User, Mail, BookOpen, FileCheck, Save, Loader2, CheckCircle2, ShieldCheck } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
-import { MASTER_BLK_LPK } from "@/lib/masterData";
+import { MASTER_INSTITUTE, EDUCATION_TYPES, TRAINING_CENTER_TYPES, type Institute } from "@/lib/masterData";
 
 type TabValue = "pribadi" | "kontak" | "pendidikan" | "dokumen";
 
@@ -12,7 +12,7 @@ export default function CandidateProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [selectedBlk, setSelectedBlk] = useState("");
-  const [masterBlkLpk, setMasterBlkLpk] = useState<any[]>([]);
+  const [masterInstitute, setMasterInstitute] = useState<Institute[]>([]);
   
 
   const [formData, setFormData] = useState({
@@ -36,8 +36,10 @@ export default function CandidateProfilePage() {
     city: "",
     
     // Pendidikan
+    educationType: "",
     latestEducation: "",
     educationInstitution: "",
+    trainingCenterType: "",
     trainingCenter: "",
     
     // Dokumen
@@ -54,12 +56,12 @@ export default function CandidateProfilePage() {
 
   useEffect(() => {
     // Load Master Data
-    let currentMasterBlk = MASTER_BLK_LPK;
-    const savedBlk = localStorage.getItem('ugz_master_blk_lpk');
-    if (savedBlk) {
-      currentMasterBlk = JSON.parse(savedBlk);
+    let currentMasterInst = MASTER_INSTITUTE;
+    const savedInst = localStorage.getItem('ugz_master_institute');
+    if (savedInst) {
+      currentMasterInst = JSON.parse(savedInst);
     }
-    setMasterBlkLpk(currentMasterBlk);
+    setMasterInstitute(currentMasterInst);
 
     // Load existing profile and email on mount
     const sessionStr = localStorage.getItem("nexus_candidate_session");
@@ -74,7 +76,7 @@ export default function CandidateProfilePage() {
         if (myProfile) {
           setFormData((prev) => ({ ...prev, ...myProfile }));
           if (myProfile.trainingCenter) {
-            const isMaster = currentMasterBlk.some((b: any) => b.name === myProfile.trainingCenter);
+            const isMaster = currentMasterInst.some((b: any) => b.name === myProfile.trainingCenter);
             if (isMaster) {
               setSelectedBlk(myProfile.trainingCenter);
             } else {
@@ -132,6 +134,19 @@ export default function CandidateProfilePage() {
         <p className="text-sm text-on-surface-variant mt-1">
           Complete your profile to apply for jobs.
         </p>
+      </div>
+
+      {/* Privacy Banner Widget */}
+      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 md:p-5 flex items-start gap-4 shadow-sm">
+        <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center shrink-0">
+          <ShieldCheck className="w-6 h-6" />
+        </div>
+        <div>
+          <h3 className="text-sm font-extrabold text-blue-900 mb-1 tracking-tight">Komitmen Keamanan Data</h3>
+          <p className="text-xs md:text-sm text-blue-800 leading-relaxed">
+            Seluruh informasi dan dokumen yang Anda lengkapi pada profil ini dijamin kerahasiaannya. Data Anda dilindungi oleh standar keamanan kami dan <strong>hanya digunakan secara eksklusif untuk keperluan proses rekrutmen</strong>.
+          </p>
+        </div>
       </div>
 
       <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm border border-table-border overflow-hidden">
@@ -233,23 +248,17 @@ export default function CandidateProfilePage() {
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Status Pernikahan <span className="text-status-error">*</span></label>
                 <div className="flex flex-wrap gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="maritalStatus" value="Single" checked={formData.maritalStatus === "Single"} onChange={(e) => handleInputChange("maritalStatus", e.target.value)} className="w-4 h-4 text-primary" required />
-                    <span className="text-sm font-bold text-black">Single</span>
+                    <input type="radio" name="maritalStatus" value="Lajang" checked={formData.maritalStatus === "Lajang"} onChange={(e) => handleInputChange("maritalStatus", e.target.value)} className="w-4 h-4 text-primary" required />
+                    <span className="text-sm font-bold text-black">Lajang</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="maritalStatus" value="Menikah" checked={formData.maritalStatus === "Menikah"} onChange={(e) => handleInputChange("maritalStatus", e.target.value)} className="w-4 h-4 text-primary" required />
                     <span className="text-sm font-bold text-black">Menikah</span>
                   </label>
-                  <div className="flex items-center gap-2">
-                    <input type="radio" name="maritalStatus" value="Lainnya" checked={!["Single", "Menikah", ""].includes(formData.maritalStatus)} onChange={() => handleInputChange("maritalStatus", "Lainnya")} className="w-4 h-4 text-primary" required />
-                    <input 
-                      type="text"
-                      placeholder="Lainnya..."
-                      value={!["Single", "Menikah", ""].includes(formData.maritalStatus) ? formData.maritalStatus : ""}
-                      onChange={(e) => handleInputChange("maritalStatus", e.target.value)}
-                      className="px-3 py-1 bg-surface-bright border border-outline-variant rounded text-sm font-bold text-black focus:border-primary outline-none"
-                    />
-                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="maritalStatus" value="Cerai" checked={formData.maritalStatus === "Cerai"} onChange={(e) => handleInputChange("maritalStatus", e.target.value)} className="w-4 h-4 text-primary" required />
+                    <span className="text-sm font-bold text-black">Cerai</span>
+                  </label>
                 </div>
               </div>
 
@@ -369,37 +378,108 @@ export default function CandidateProfilePage() {
           {activeTab === "pendidikan" && (
             <div className="grid grid-cols-1 gap-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Pendidikan Terakhir <span className="text-status-error">*</span></label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Jenis Pendidikan Terakhir <span className="text-status-error">*</span></label>
+                <select
+                  value={formData.educationType}
+                  onChange={(e) => {
+                    handleInputChange("educationType", e.target.value);
+                    handleInputChange("latestEducation", "");
+                    handleInputChange("educationInstitution", "");
+                  }}
+                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  required
+                >
+                  <option value="">Pilih Jenis Pendidikan</option>
+                  {EDUCATION_TYPES.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Tingkat Pendidikan <span className="text-status-error">*</span></label>
                 <select
                   value={formData.latestEducation}
                   onChange={(e) => handleInputChange("latestEducation", e.target.value)}
                   className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                   required
+                  disabled={!formData.educationType}
                 >
-                  <option value="">Pilih Pendidikan Terakhir</option>
-                  <option value="SMA/SMK">SMA/SMK/Sederajat</option>
-                  <option value="D3">Diploma 3 (D3)</option>
-                  <option value="D4">Diploma 4 (D4)</option>
-                  <option value="S1">Sarjana (S1)</option>
-                  <option value="S2">Magister (S2)</option>
-                  <option value="S3">Doktor (S3)</option>
+                  <option value="">Pilih Tingkat Pendidikan</option>
+                  {formData.educationType === "Perguruan Tinggi" && (
+                    <>
+                      <option value="D3">Diploma 3 (D3)</option>
+                      <option value="D4">Diploma 4 (D4)</option>
+                      <option value="S1">Sarjana (S1)</option>
+                      <option value="S2">Magister (S2)</option>
+                      <option value="S3">Doktor (S3)</option>
+                    </>
+                  )}
+                  {formData.educationType === "SLTA" && <option value="SMA/SMK">SMA/SMK/Sederajat</option>}
+                  {formData.educationType === "SLTP" && <option value="SMP">SMP/Sederajat</option>}
+                  {formData.educationType === "SD" && <option value="SD">SD/Sederajat</option>}
                 </select>
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Nama Institusi Pendidikan <span className="text-status-error">*</span></label>
-                <input
-                  type="text"
-                  value={formData.educationInstitution}
-                  onChange={(e) => handleInputChange("educationInstitution", e.target.value)}
+                <select
+                  value={
+                    formData.educationInstitution && masterInstitute.some(i => i.name === formData.educationInstitution && i.type === formData.educationType) 
+                      ? formData.educationInstitution 
+                      : (formData.educationInstitution ? "Other" : "")
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val !== "Other") {
+                      handleInputChange("educationInstitution", val);
+                    } else {
+                      handleInputChange("educationInstitution", "");
+                    }
+                  }}
                   className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                  placeholder="Contoh: Universitas Indonesia / SMKN 1 Jakarta"
                   required
-                />
+                  disabled={!formData.educationType}
+                >
+                  <option value="">Pilih Nama Institusi</option>
+                  {masterInstitute.filter(i => i.type === formData.educationType).map((inst) => (
+                    <option key={inst.id} value={inst.name}>{inst.name}</option>
+                  ))}
+                  <option value="Other">Lainnya (Ketik Manual)</option>
+                </select>
+                
+                {formData.educationInstitution && !masterInstitute.some(i => i.name === formData.educationInstitution && i.type === formData.educationType) && (
+                  <input
+                    type="text"
+                    value={formData.educationInstitution}
+                    onChange={(e) => handleInputChange("educationInstitution", e.target.value)}
+                    className="w-full px-4 py-2.5 mt-2 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    placeholder="Isi nama institusi pendidikan..."
+                    required
+                  />
+                )}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Training Center (BLK/LPK) <span className="text-status-error">*</span></label>
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Jenis Training Center (Opsional)</label>
+                <select
+                  value={formData.trainingCenterType}
+                  onChange={(e) => {
+                    handleInputChange("trainingCenterType", e.target.value);
+                    handleInputChange("trainingCenter", "");
+                    setSelectedBlk("");
+                  }}
+                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                >
+                  <option value="">Pilih Jenis Training Center</option>
+                  {TRAINING_CENTER_TYPES.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Nama Training Center</label>
                 <select
                   value={selectedBlk}
                   onChange={(e) => {
@@ -412,10 +492,11 @@ export default function CandidateProfilePage() {
                     }
                   }}
                   className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  disabled={!formData.trainingCenterType}
                 >
-                  <option value="">Pilih Training Center (Opsional)</option>
-                  {masterBlkLpk.map((b) => (
-                    <option key={b.id} value={b.name}>{b.name}</option>
+                  <option value="">Pilih Training Center</option>
+                  {masterInstitute.filter(i => i.type === formData.trainingCenterType).map((inst) => (
+                    <option key={inst.id} value={inst.name}>{inst.name}</option>
                   ))}
                   <option value="Other">Lainnya (Ketik Manual)</option>
                 </select>
@@ -426,7 +507,7 @@ export default function CandidateProfilePage() {
                     value={formData.trainingCenter}
                     onChange={(e) => handleInputChange("trainingCenter", e.target.value)}
                     className="w-full px-4 py-2.5 mt-2 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                    placeholder="Isi nama BLK/LPK..."
+                    placeholder="Isi nama Training Center..."
                   />
                 )}
               </div>
