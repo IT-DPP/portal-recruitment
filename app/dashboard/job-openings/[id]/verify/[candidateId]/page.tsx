@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud, MessageSquare, Send } from "lucide-react";
+import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud, MessageSquare, Send, ChevronDown, UserX } from "lucide-react";
 import { MASTER_SKEMA_SERTIFIKASI, MASTER_REJECTION_MESSAGE } from "@/lib/masterData";
 
 export default function AdvancedDocumentVerificationPage({
@@ -85,6 +85,9 @@ export default function AdvancedDocumentVerificationPage({
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [masterRejection, setMasterRejection] = useState<any[]>([]);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [showBlacklistModal, setShowBlacklistModal] = useState(false);
+  const [blacklistNote, setBlacklistNote] = useState("");
 
   useEffect(() => {
     // Load Job
@@ -357,6 +360,50 @@ export default function AdvancedDocumentVerificationPage({
       if (safeSaveApplications(allApps)) {
         window.alert("Kandidat berhasil ditolak (Rejected) dan diarsipkan.");
         router.push(`/dashboard/job-openings/${job.id}`);
+      }
+    }
+  };
+
+  const handleBlacklistCandidate = () => {
+    if (!blacklistNote.trim()) {
+      window.alert("Please provide a note for blacklisting.");
+      return;
+    }
+    
+    // Update Profile
+    const profiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
+    const candidateProfile = profiles[unwrappedParams.candidateId];
+    if (candidateProfile) {
+      candidateProfile.isBlacklisted = true;
+      candidateProfile.blacklistNote = blacklistNote;
+      candidateProfile.blacklistedDate = new Date().toISOString();
+      localStorage.setItem("ugz_candidate_profiles", JSON.stringify(profiles));
+      
+      setProfile(candidateProfile);
+    }
+    
+    // Set application status to Rejected (Blacklisted)
+    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
+    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
+    
+    if (appIndex !== -1) {
+      const app = allApps[appIndex];
+      const stageName = job.timeline?.find((t: any) => t.id === app.currentStage)?.title || app.currentStage;
+      
+      app.currentStage = "Rejected";
+      app.isDraft = false;
+      if (!app.history) app.history = [];
+      app.history.push({
+        stageId: "Rejected",
+        stageName: `Rejected (Blacklisted) at ${stageName}`,
+        date: new Date().toISOString(),
+        note: `Blacklisted: ${blacklistNote}`
+      });
+      
+      if (safeSaveApplications(allApps)) {
+        setShowBlacklistModal(false);
+        window.alert("Candidate has been blacklisted.");
+        router.push(`/dashboard/blacklist`);
       }
     }
   };
@@ -787,25 +834,20 @@ export default function AdvancedDocumentVerificationPage({
               {application.currentStage === "Hired" && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 uppercase tracking-wide">Employee</span>
               )}
+              {profile?.isBlacklisted && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-white uppercase tracking-wide">Blacklisted</span>
+              )}
             </h2>
           </div>
         </div>
         
         <div className="flex gap-3 items-center">
-          <button onClick={() => setShowMessageModal(true)} className="px-5 py-2 border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5 shadow-sm">
-            <MessageSquare className="w-4 h-4" /> Message
-          </button>
-          <button onClick={() => setShowRejectModal(true)} className="px-5 py-2 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5 shadow-sm">
-            <XCircle className="w-4 h-4" /> Reject
-          </button>
           <button onClick={handleDraftMark} className="px-5 py-2 border border-outline-variant bg-white text-on-surface hover:bg-surface-container-low font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5 shadow-sm">
             <Save className="w-4 h-4" /> Save as Draft
           </button>
-          <button onClick={handleApproveNextStage} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5">
-            Approve <ArrowRight className="w-4 h-4" />
-          </button>
-          <button onClick={handleApproveAll} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5">
-            Approve All <CheckCircle className="w-4 h-4" />
+          
+          <button onClick={() => setShowActionModal(true)} className="px-5 py-2 bg-primary hover:bg-primary-container text-white font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5 shadow-sm">
+            Action <ChevronDown className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -1967,6 +2009,88 @@ export default function AdvancedDocumentVerificationPage({
                 className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 <Send className="w-4 h-4" /> Kirim Pesan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Action Modal */}
+      {showActionModal && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex justify-center items-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-table-border bg-surface-container-lowest flex justify-between items-center">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2">
+                Candidate Actions
+              </h3>
+              <button onClick={() => setShowActionModal(false)} className="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-black rounded-lg transition-colors">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 flex flex-col gap-4">
+              <button onClick={() => { setShowActionModal(false); handleApproveNextStage(); }} className="w-full px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm">
+                <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5" /> Approve to Next Stage</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button onClick={() => { setShowActionModal(false); handleApproveAll(); }} className="w-full px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm">
+                <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5" /> Approve All Stages</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button onClick={() => { setShowActionModal(false); setShowMessageModal(true); }} className="w-full px-5 py-3 border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm">
+                <MessageSquare className="w-5 h-5" /> Send Message
+              </button>
+              <div className="h-px bg-outline-variant my-1"></div>
+              <button onClick={() => { setShowActionModal(false); setShowRejectModal(true); }} className="w-full px-5 py-3 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm">
+                <Ban className="w-5 h-5" /> Reject Candidate
+              </button>
+              <button onClick={() => { setShowActionModal(false); setShowBlacklistModal(true); }} className="w-full px-5 py-3 border border-slate-700 text-slate-800 bg-slate-100 hover:bg-slate-200 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm">
+                <UserX className="w-5 h-5" /> Blacklist Candidate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Blacklist Modal */}
+      {showBlacklistModal && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex justify-center items-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-table-border bg-slate-800 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <UserX className="w-5 h-5" /> Blacklist Candidate
+              </h3>
+              <button onClick={() => setShowBlacklistModal(false)} className="p-1.5 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-colors">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-black mb-4">
+                Are you sure you want to blacklist <strong>{profile?.fullName}</strong>? This will reject their current application and mark them as blacklisted across the system.
+              </p>
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Blacklist Note / Reason</label>
+              <textarea
+                value={blacklistNote}
+                onChange={(e) => setBlacklistNote(e.target.value)}
+                rows={4}
+                placeholder="Enter reason for blacklisting..."
+                className="w-full px-3 py-2 border border-outline-variant rounded focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800 text-sm text-black bg-white"
+              />
+            </div>
+            <div className="p-4 bg-surface-container-lowest border-t border-table-border flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowBlacklistModal(false);
+                  setBlacklistNote("");
+                }}
+                className="px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low rounded transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBlacklistCandidate}
+                disabled={!blacklistNote.trim()}
+                className="px-4 py-2 bg-slate-800 text-white text-sm font-semibold rounded hover:bg-slate-900 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                <UserX className="w-4 h-4" /> Confirm Blacklist
               </button>
             </div>
           </div>
