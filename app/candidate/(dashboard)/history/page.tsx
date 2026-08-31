@@ -17,6 +17,7 @@ import Link from "next/link";
 export default function CandidateHistoryPage() {
   const [applications, setApplications] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
+  const [proposals, setProposals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -39,8 +40,60 @@ export default function CandidateHistoryPage() {
     const allJobs = JSON.parse(localStorage.getItem("ugz_jobs") || "[]");
     setJobs(allJobs);
 
+    const allProposals = JSON.parse(localStorage.getItem("ugz_job_move_proposals") || "[]");
+    const myProposals = allProposals.filter((p: any) => p.candidateId === session.id && p.status === "Pending");
+    setProposals(myProposals);
+
     setIsLoading(false);
   }, []);
+
+  const handleApproveProposal = (proposal: any) => {
+    const allProposals = JSON.parse(localStorage.getItem("ugz_job_move_proposals") || "[]");
+    const propIndex = allProposals.findIndex((p: any) => p.id === proposal.id);
+    if (propIndex !== -1) {
+      allProposals[propIndex].status = "Approved";
+      localStorage.setItem("ugz_job_move_proposals", JSON.stringify(allProposals));
+    }
+
+    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
+    const appIndex = allApps.findIndex((a: any) => a.candidateId === proposal.candidateId && a.jobId === proposal.fromJobId && a.currentStage !== "Rejected");
+    
+    if (appIndex !== -1) {
+      const app = allApps[appIndex];
+      const job = jobs.find(j => j.id === proposal.toJobId);
+      
+      app.jobId = proposal.toJobId;
+      
+      const firstStage = job?.timeline?.[0]?.id || "stage_1";
+      app.currentStage = firstStage;
+      app.isDraft = false;
+      
+      if (!app.history) app.history = [];
+      app.history.push({
+        stageId: firstStage,
+        stageName: job?.timeline?.[0]?.title || "Administration",
+        date: new Date().toISOString(),
+        note: `Moved to new job opening by candidate approval.`
+      });
+      
+      localStorage.setItem("ugz_applications", JSON.stringify(allApps));
+      
+      setApplications(allApps.filter((a: any) => a.candidateId === proposal.candidateId && a.currentStage !== "Rejected"));
+      setProposals(proposals.filter(p => p.id !== proposal.id));
+      window.alert("You have successfully approved the job move request.");
+    }
+  };
+
+  const handleRejectProposal = (proposal: any) => {
+    const allProposals = JSON.parse(localStorage.getItem("ugz_job_move_proposals") || "[]");
+    const propIndex = allProposals.findIndex((p: any) => p.id === proposal.id);
+    if (propIndex !== -1) {
+      allProposals[propIndex].status = "Rejected";
+      localStorage.setItem("ugz_job_move_proposals", JSON.stringify(allProposals));
+      setProposals(proposals.filter(p => p.id !== proposal.id));
+      window.alert("You have rejected the job move request.");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -60,6 +113,40 @@ export default function CandidateHistoryPage() {
           Track the detailed status of your job applications.
         </p>
       </div>
+
+      {proposals.length > 0 && (
+        <div className="space-y-4 mb-8">
+          {proposals.map(proposal => {
+            const fromJob = jobs.find(j => j.id === proposal.fromJobId);
+            const toJob = jobs.find(j => j.id === proposal.toJobId);
+            return (
+              <div key={proposal.id} className="bg-amber-50 border-2 border-amber-200 rounded-xl p-5 shadow-sm">
+                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                  <div className="flex gap-4">
+                    <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                      <AlertCircle className="w-6 h-6 text-amber-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-amber-900">Job Move Proposal</h3>
+                      <p className="text-sm text-amber-800 mt-1 leading-relaxed">
+                        The recruiter has proposed to move your application from <strong>{fromJob?.posisi}</strong> to a new opening for <strong>{toJob?.posisi}</strong>. If you accept, your application will be transferred and start at the initial stage for the new position.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 w-full md:w-auto shrink-0 mt-4 md:mt-0">
+                    <button onClick={() => handleRejectProposal(proposal)} className="flex-1 md:flex-none px-4 py-2 border border-amber-300 text-amber-700 bg-white hover:bg-amber-100 font-semibold rounded-lg text-sm transition-colors">
+                      Reject
+                    </button>
+                    <button onClick={() => handleApproveProposal(proposal)} className="flex-1 md:flex-none px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-sm transition-colors">
+                      Accept Move
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {applications.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-table-border p-8 text-center min-h-[400px] flex flex-col items-center justify-center">

@@ -88,12 +88,19 @@ export default function AdvancedDocumentVerificationPage({
   const [showActionModal, setShowActionModal] = useState(false);
   const [showBlacklistModal, setShowBlacklistModal] = useState(false);
   const [blacklistNote, setBlacklistNote] = useState("");
+  const [showMoveJobModal, setShowMoveJobModal] = useState(false);
+  const [selectedMoveJobId, setSelectedMoveJobId] = useState("");
+  const [activeJobs, setActiveJobs] = useState<any[]>([]);
 
   useEffect(() => {
     // Load Job
     const allJobs = JSON.parse(localStorage.getItem("ugz_jobs") || "[]");
     const foundJob = allJobs.find((j: any) => j.id === unwrappedParams.id);
     if (foundJob) setJob(foundJob);
+
+    // Set active jobs for move
+    const otherActiveJobs = allJobs.filter((j: any) => j.globalStatus === "Active" && j.id !== unwrappedParams.id);
+    setActiveJobs(otherActiveJobs);
 
     // Load Profile
     const profiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
@@ -405,6 +412,48 @@ export default function AdvancedDocumentVerificationPage({
         window.alert("Candidate has been blacklisted.");
         router.push(`/dashboard/blacklist`);
       }
+    }
+  };
+
+  const handleMoveCandidateRequest = () => {
+    if (!selectedMoveJobId) {
+      window.alert("Please select a target job opening.");
+      return;
+    }
+
+    const proposals = JSON.parse(localStorage.getItem("ugz_job_move_proposals") || "[]");
+    
+    // Check if there's already a pending proposal for this candidate and this source job
+    const existingPending = proposals.find((p: any) => 
+      p.candidateId === unwrappedParams.candidateId && 
+      p.fromJobId === job.id && 
+      p.status === "Pending"
+    );
+
+    if (existingPending) {
+      window.alert("There is already a pending job move proposal for this candidate.");
+      return;
+    }
+
+    const newProposal = {
+      id: `jmp-${Math.random().toString(36).substr(2, 9)}`,
+      candidateId: unwrappedParams.candidateId,
+      fromJobId: job.id,
+      toJobId: selectedMoveJobId,
+      status: "Pending",
+      createdAt: new Date().toISOString()
+    };
+
+    proposals.push(newProposal);
+    try {
+      localStorage.setItem("ugz_job_move_proposals", JSON.stringify(proposals));
+      window.alert("Move request sent successfully. Waiting for candidate approval.");
+      setShowMoveJobModal(false);
+      setSelectedMoveJobId("");
+      setShowActionModal(false);
+    } catch (e) {
+      console.error("Failed to save proposal", e);
+      window.alert("Failed to send move request.");
     }
   };
 
@@ -2045,6 +2094,9 @@ export default function AdvancedDocumentVerificationPage({
               <button onClick={() => { setShowActionModal(false); setShowBlacklistModal(true); }} className="w-full px-5 py-3 border border-slate-700 text-slate-800 bg-slate-100 hover:bg-slate-200 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm">
                 <UserX className="w-5 h-5" /> Blacklist Candidate
               </button>
+              <button onClick={() => { setShowActionModal(false); setShowMoveJobModal(true); }} className="w-full px-5 py-3 border border-amber-500 text-amber-700 bg-amber-50 hover:bg-amber-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm">
+                <ArrowRight className="w-5 h-5" /> Move Candidate to Other Job
+              </button>
             </div>
           </div>
         </div>
@@ -2091,6 +2143,58 @@ export default function AdvancedDocumentVerificationPage({
                 className="px-4 py-2 bg-slate-800 text-white text-sm font-semibold rounded hover:bg-slate-900 transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 <UserX className="w-4 h-4" /> Confirm Blacklist
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Move Job Modal */}
+      {showMoveJobModal && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex justify-center items-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-table-border bg-amber-500 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <ArrowRight className="w-5 h-5" /> Move Candidate
+              </h3>
+              <button onClick={() => setShowMoveJobModal(false)} className="p-1.5 text-white/80 hover:bg-amber-600 hover:text-white rounded-lg transition-colors">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-black mb-4">
+                Select an active job opening to move <strong>{profile?.fullName}</strong> to. The candidate will need to approve this move on their dashboard.
+              </p>
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Target Job Opening</label>
+              <select
+                value={selectedMoveJobId}
+                onChange={(e) => setSelectedMoveJobId(e.target.value)}
+                className="w-full px-3 py-2 border border-outline-variant rounded focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm text-black bg-white"
+              >
+                <option value="">-- Select Job --</option>
+                {activeJobs.map((j) => (
+                  <option key={j.id} value={j.id}>
+                    {j.posisi} (Ref: {j.noRegistrasi})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="p-4 bg-surface-container-lowest border-t border-table-border flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowMoveJobModal(false);
+                  setSelectedMoveJobId("");
+                }}
+                className="px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low rounded transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMoveCandidateRequest}
+                disabled={!selectedMoveJobId}
+                className="px-4 py-2 bg-amber-500 text-white text-sm font-semibold rounded hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" /> Send Proposal
               </button>
             </div>
           </div>
