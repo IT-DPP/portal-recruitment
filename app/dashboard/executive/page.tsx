@@ -1,49 +1,108 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Users, UserCheck, UserX, UserPlus, Briefcase, Filter, X } from 'lucide-react';
-import StatWidget from '@/components/dashboard/StatWidget';
-import RecentCandidatesTable, { CandidateRow } from '@/components/dashboard/RecentCandidatesTable';
-import InterviewCalendar, { InterviewEvent } from '@/components/dashboard/InterviewCalendar';
-import { startOfDay } from 'date-fns';
+import React, { useEffect, useState, useMemo } from "react";
+import { RefreshCw, Download, Filter, X, LayoutDashboard } from "lucide-react";
+import SummaryWidgets from "@/components/dashboard/reports/SummaryWidgets";
+import PriorityJobsWidget, {
+  PriorityJob,
+} from "@/components/dashboard/reports/PriorityJobsWidget";
+import PipelineFunnelWidget from "@/components/dashboard/reports/PipelineFunnelWidget";
+import RejectionAnalysisWidget from "@/components/dashboard/reports/RejectionAnalysisWidget";
+import RecentCandidatesTable from "@/components/dashboard/RecentCandidatesTable";
 
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+interface Job {
+  id: string;
+  noRegistrasi: string;
+  posisi: string;
+  siteId: string;
+  jumlahPermintaan: number;
+  globalStatus: string;
+  priority: boolean;
+  customerId?: string;
+  publishedDate?: string;
+  tanggalMasuk?: string;
+}
+
+interface Application {
+  id: string;
+  jobId: string;
+  candidateId: string;
+  applicationDate: string;
+  currentStage: string;
+  history: {
+    stageId: string;
+    stageName: string;
+    date: string;
+    note: string;
+  }[];
+}
+
+interface Site {
+  id: string;
+  siteName: string;
+}
+
+// ─────────────────────────────────────────────
+// Page Component
+// ─────────────────────────────────────────────
 export default function ExecutiveDashboard() {
-  const [applications, setApplications] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [candidates, setCandidates] = useState<any>({});
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [sites, setSites] = useState<any[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   // Filter states
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [filterSite, setFilterSite] = useState("");
   const [filterPosition, setFilterPosition] = useState("");
+  const [filterCustomer, setFilterCustomer] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
 
   const [activeFilters, setActiveFilters] = useState({
-    site: "",
     position: "",
+    customer: "",
     startDate: "",
     endDate: ""
   });
 
-  useEffect(() => {
-    // Load data from localStorage
-    const rawApps = localStorage.getItem("ugz_applications");
-    const rawCands = localStorage.getItem("ugz_candidate_profiles");
-    const rawJobs = localStorage.getItem("ugz_jobs");
-    const rawSites = localStorage.getItem("ugz_master_sites_operation");
+  const loadData = () => {
+    setIsLoading(true);
+    try {
+      const savedJobs = localStorage.getItem("ugz_jobs");
+      const savedApps = localStorage.getItem("ugz_applications");
+      const savedSites = localStorage.getItem("ugz_master_sites_operation");
+      const savedCustomers = localStorage.getItem("ugz_master_customer");
+      const savedCands = localStorage.getItem("ugz_candidate_profiles");
 
-    if (rawApps) setApplications(JSON.parse(rawApps));
-    if (rawCands) setCandidates(JSON.parse(rawCands));
-    if (rawJobs) setJobs(JSON.parse(rawJobs));
-    if (rawSites) setSites(JSON.parse(rawSites));
+      if (savedJobs) setJobs(JSON.parse(savedJobs));
+      if (savedApps) setApplications(JSON.parse(savedApps));
+      if (savedSites) setSites(JSON.parse(savedSites));
+      if (savedCustomers) setCustomers(JSON.parse(savedCustomers));
+      if (savedCands) setCandidates(JSON.parse(savedCands));
+      
+      setLastRefreshed(new Date());
+    } catch (err) {
+      console.error("Failed to load dashboard data:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const handleApplyFilter = () => {
     setActiveFilters({
-      site: filterSite,
       position: filterPosition,
+      customer: filterCustomer,
       startDate: filterStartDate,
       endDate: filterEndDate
     });
@@ -51,34 +110,28 @@ export default function ExecutiveDashboard() {
   };
 
   const clearFilters = () => {
-    setFilterSite("");
     setFilterPosition("");
+    setFilterCustomer("");
     setFilterStartDate("");
     setFilterEndDate("");
     setActiveFilters({
-      site: "",
       position: "",
+      customer: "",
       startDate: "",
       endDate: ""
     });
     setIsFilterModalOpen(false);
   };
 
-  const filteredApps = useMemo(() => {
-    return applications.filter(app => {
+  // ── Apply Filters ──
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
       let match = true;
-      const job = jobs.find(j => j.id === app.jobId);
+      if (activeFilters.position && job.posisi !== activeFilters.position) match = false;
+      if (activeFilters.customer && job.customerId !== activeFilters.customer) match = false;
       
-      if (activeFilters.site && job?.siteId !== activeFilters.site) {
-        match = false;
-      }
-      
-      if (activeFilters.position && job?.posisi !== activeFilters.position) {
-        match = false;
-      }
-
       if (activeFilters.startDate || activeFilters.endDate) {
-        const jobDateStr = job?.publishedDate || job?.tanggalMasuk;
+        const jobDateStr = job.publishedDate || job.tanggalMasuk;
         if (jobDateStr) {
           const jobDate = new Date(jobDateStr);
           jobDate.setHours(0,0,0,0);
@@ -97,58 +150,57 @@ export default function ExecutiveDashboard() {
           match = false;
         }
       }
-
       return match;
     });
-  }, [applications, jobs, activeFilters]);
+  }, [jobs, activeFilters]);
 
-  const statsData = useMemo(() => {
-    let hrCount = 0;
-    let userCount = 0;
-    let rejectedCount = 0;
-    let offeringCount = 0;
+  const validJobIds = useMemo(() => new Set(filteredJobs.map(j => j.id)), [filteredJobs]);
 
-    filteredApps.forEach((app: any) => {
-      if (app.currentStage === "stage_2") hrCount++;
-      if (app.currentStage === "stage_5") userCount++;
-      if (app.currentStage === "Rejected") rejectedCount++;
-      if (app.currentStage === "stage_6" || app.currentStage === "stage_7") offeringCount++;
-    });
+  const filteredApps = useMemo(() => {
+    return applications.filter(app => validJobIds.has(app.jobId));
+  }, [applications, validJobIds]);
 
-    const uniqueCandidates = new Set(filteredApps.map(app => app.candidateId));
-
-    return {
-      total: uniqueCandidates.size,
-      hr: hrCount,
-      user: userCount,
-      rejected: rejectedCount,
-      onboarding: offeringCount
-    };
+  // ── Summary Stats ──
+  const summaryData = useMemo(() => {
+    const totalCandidates = filteredApps.length;
+    const inPipeline = filteredApps.filter(
+      (a) =>
+        a.currentStage !== "Rejected" &&
+        a.currentStage !== "stage_7"
+    ).length;
+    const employees = filteredApps.filter(
+      (a) => a.currentStage === "stage_7"
+    ).length;
+    const rejected = filteredApps.filter(
+      (a) => a.currentStage === "Rejected"
+    ).length;
+    return { totalCandidates, inPipeline, employees, rejected };
   }, [filteredApps]);
 
-  const stageBreakdown = useMemo(() => {
-    const stageCounts: Record<string, number> = {
-      "stage_1": 0, "stage_2": 0, "stage_3": 0, "stage_4": 0,
-      "stage_5": 0, "stage_6": 0, "stage_7": 0
-    };
-
-    filteredApps.forEach((app: any) => {
-      if (stageCounts[app.currentStage] !== undefined) {
-        stageCounts[app.currentStage]++;
-      }
+  // ── Priority Jobs ──
+  const priorityJobs = useMemo<PriorityJob[]>(() => {
+    const pJobs = filteredJobs.filter((j) => j.priority === true).slice(0, 5);
+    return pJobs.map((job) => {
+      const jobApps = filteredApps.filter((a) => a.jobId === job.id);
+      const accepted = jobApps.filter((a) => a.currentStage === "stage_7").length;
+      const rejected = jobApps.filter((a) => a.currentStage === "Rejected").length;
+      const siteName =
+        sites.find((s) => s.id === job.siteId)?.siteName || job.siteId || "-";
+      return {
+        id: job.id,
+        noRegistrasi: job.noRegistrasi,
+        posisi: job.posisi,
+        siteId: job.siteId,
+        jumlahPermintaan: job.jumlahPermintaan,
+        applicants: jobApps.length,
+        accepted,
+        rejected,
+        siteName,
+      };
     });
+  }, [filteredJobs, filteredApps, sites]);
 
-    return [
-      { title: "CV Screening", value: stageCounts["stage_1"], color: "bg-blue-500" },
-      { title: "Interview HR", value: stageCounts["stage_2"], color: "bg-yellow-500" },
-      { title: "Psikotes", value: stageCounts["stage_3"], color: "bg-purple-500" },
-      { title: "Technical Test", value: stageCounts["stage_4"], color: "bg-indigo-500" },
-      { title: "Interview User", value: stageCounts["stage_5"], color: "bg-green-500" },
-      { title: "Offering", value: stageCounts["stage_6"], color: "bg-teal-500" },
-      { title: "MCU", value: stageCounts["stage_7"], color: "bg-rose-500" },
-    ];
-  }, [filteredApps]);
-
+  // ── Recent Candidates (5 items) ──
   const recentCandidates = useMemo(() => {
     const sortedApps = [...filteredApps].sort((a, b) => {
       const dateA = new Date(a.history[a.history.length - 1]?.date || 0).getTime();
@@ -178,104 +230,138 @@ export default function ExecutiveDashboard() {
     });
   }, [filteredApps, candidates, jobs, sites]);
 
-  const calendarEvents = useMemo(() => {
-    const eventsMap: Record<string, { hr: number, user: number, skill: number }> = {};
-    
-    filteredApps.forEach((app: any) => {
-      app.history.forEach((hist: any) => {
-        const dateKey = hist.date.split('T')[0];
-        if (!eventsMap[dateKey]) eventsMap[dateKey] = { hr: 0, user: 0, skill: 0 };
-        
-        if (hist.stageId === 'stage_2') eventsMap[dateKey].hr++;
-        if (hist.stageId === 'stage_5') eventsMap[dateKey].user++;
-        if (hist.stageId === 'stage_4' || hist.stageId === 'stage_3') eventsMap[dateKey].skill++;
-      });
-    });
+  // ── Selected job name for funnel label ──
+  const selectedJobName = useMemo(() => {
+    if (!selectedJobId) return undefined;
+    return filteredJobs.find((j) => j.id === selectedJobId)?.posisi;
+  }, [selectedJobId, filteredJobs]);
 
-    const events: InterviewEvent[] = [];
-    Object.keys(eventsMap).forEach(dateKey => {
-      const d = startOfDay(new Date(dateKey));
-      if (eventsMap[dateKey].hr > 0) {
-        events.push({ title: `${eventsMap[dateKey].hr}`, start: d, end: d, type: 'hr', count: eventsMap[dateKey].hr });
-      }
-      if (eventsMap[dateKey].user > 0) {
-        events.push({ title: `${eventsMap[dateKey].user}`, start: d, end: d, type: 'user', count: eventsMap[dateKey].user });
-      }
-      if (eventsMap[dateKey].skill > 0) {
-        events.push({ title: `${eventsMap[dateKey].skill}`, start: d, end: d, type: 'skill', count: eventsMap[dateKey].skill });
-      }
-    });
-
-    return events;
-  }, [filteredApps]);
-
-  const stats = [
-    { title: "Total Kandidat", value: statsData.total, icon: Users, trend: "+12%", trendUp: true },
-    { title: "HR Interview", value: statsData.hr, icon: UserCheck, trend: "+5%", trendUp: true },
-    { title: "User Interview", value: statsData.user, icon: Briefcase, trend: "-2%", trendUp: false },
-    { title: "Rejected", value: statsData.rejected, icon: UserX, trend: "+15%", trendUp: false },
-    { title: "On Boarding", value: statsData.onboarding, icon: UserPlus, trend: "+8%", trendUp: true },
-  ];
+  // ── Print / Export ──
+  const handleExportPrint = () => {
+    window.print();
+  };
 
   const activePositions = Array.from(
     new Set(jobs.filter((j) => j.globalStatus === "Active" && j.posisi).map((j) => j.posisi))
   ).sort();
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-on-surface">Executive Dashboard</h2>
-          <p className="text-sm text-on-surface-variant">Overview of recruitment metrics and activities.</p>
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="flex flex-col items-center gap-3 text-on-surface-variant">
+          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-sm font-medium">Memuat data dashboard...</p>
         </div>
-        
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-7 pb-10">
+      {/* ── Page Header ── */}
+      <div className="flex items-end justify-between">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <LayoutDashboard className="w-5 h-5 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold text-primary tracking-tight">
+              Executive Dashboard
+            </h1>
+          </div>
+          <p className="text-sm text-on-surface-variant ml-[52px]">
+            Laporan komprehensif dan ringkasan aktivitas rekrutmen.{" "}
+            <span className="text-[11px] font-mono text-on-surface-variant/70">
+              Diperbarui:{" "}
+              {lastRefreshed.toLocaleString("id-ID", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </span>
+          </p>
+        </div>
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsFilterModalOpen(true)}
-            className="px-4 py-2 bg-white border border-outline-variant text-on-surface font-semibold rounded-xl hover:bg-surface-container-low transition-colors flex items-center gap-2 shadow-sm shrink-0 whitespace-nowrap"
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-outline-variant text-on-surface font-semibold rounded-xl hover:bg-surface-container-low transition-colors shadow-sm shrink-0 whitespace-nowrap"
           >
             <Filter className="w-4 h-4" /> 
             Filters
-            {(activeFilters.site || activeFilters.position || activeFilters.startDate || activeFilters.endDate) && (
+            {(activeFilters.position || activeFilters.customer || activeFilters.startDate || activeFilters.endDate) && (
               <span className="flex h-2 w-2 rounded-full bg-primary relative -top-1 -right-1"></span>
             )}
+          </button>
+          <button
+            onClick={loadData}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-on-surface border border-outline-variant rounded-xl hover:bg-surface-container-low transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+          <button
+            onClick={handleExportPrint}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary rounded-xl hover:bg-primary-container transition-colors shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+            Export
           </button>
         </div>
       </div>
 
-      {/* Top Widgets Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {stats.map((stat, idx) => (
-          <StatWidget key={idx} {...stat} />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left Column: Recent Candidates & Stage Breakdown */}
-        <div className="xl:col-span-2 space-y-6">
-          <RecentCandidatesTable candidates={recentCandidates} />
-          
-          <div className="bg-white rounded-xl shadow-sm border border-table-border p-5">
-            <h3 className="font-bold text-on-surface mb-4">Stage Breakdown</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {stageBreakdown.map((stage, idx) => (
-                <div key={idx} className="p-4 rounded-lg bg-surface-container-lowest border border-table-border flex flex-col justify-between">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={`w-3 h-3 rounded-full ${stage.color}`}></div>
-                    <span className="text-xs font-medium text-on-surface-variant line-clamp-1" title={stage.title}>{stage.title}</span>
-                  </div>
-                  <span className="text-2xl font-bold text-on-surface">{stage.value}</span>
-                </div>
-              ))}
-            </div>
+      {/* ── No Data Warning ── */}
+      {applications.length === 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+            <RefreshCw className="w-4 h-4 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-amber-800">Data Kosong</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Belum ada data. Silakan jalankan Seeder terlebih dahulu melalui
+              halaman Settings → Master Data untuk mengisi data dummy.
+            </p>
           </div>
         </div>
+      )}
 
-        {/* Right Column: Calendar */}
-        <div className="xl:col-span-1">
-          <InterviewCalendar events={calendarEvents} />
-        </div>
-      </div>
+      {/* ── Section 1: Summary Stats ── */}
+      <section>
+        <SectionLabel label="Ringkasan Kandidat" />
+        <SummaryWidgets data={summaryData} />
+      </section>
+      
+      {/* ── Section: Recent Activities ── */}
+      <section>
+        <SectionLabel label="5 Aktivitas Terbaru (Recent Candidates)" />
+        <RecentCandidatesTable candidates={recentCandidates} />
+      </section>
+
+      {/* ── Section 2: Priority Jobs ── */}
+      <section>
+        <SectionLabel label="Top 5 Lowongan Priority" />
+        <PriorityJobsWidget
+          jobs={priorityJobs}
+          selectedJobId={selectedJobId}
+          onSelectJob={setSelectedJobId}
+        />
+      </section>
+
+      {/* ── Section 3: Pipeline Funnel ── */}
+      <section>
+        <SectionLabel label="End-to-End Pipeline Funnel" />
+        <PipelineFunnelWidget
+          applications={filteredApps}
+          selectedJobId={selectedJobId}
+          selectedJobName={selectedJobName}
+        />
+      </section>
+
+      {/* ── Section 4: Rejection Analysis ── */}
+      <section>
+        <SectionLabel label="Analisis Penyebab Gugur" />
+        <RejectionAnalysisWidget applications={filteredApps} />
+      </section>
 
       {/* Filter Modal */}
       {isFilterModalOpen && (
@@ -295,22 +381,6 @@ export default function ExecutiveDashboard() {
             
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-black mb-1.5">Site Operations</label>
-                <select
-                  value={filterSite}
-                  onChange={(e) => setFilterSite(e.target.value)}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
-                >
-                  <option value="">Semua Site</option>
-                  {sites.map((s: any) => (
-                    <option key={s.id} value={s.id}>
-                      {s.siteName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
                 <label className="block text-sm font-semibold text-black mb-1.5">Posisi Job</label>
                 <select
                   value={filterPosition}
@@ -321,6 +391,22 @@ export default function ExecutiveDashboard() {
                   {activePositions.map((pos: any) => (
                     <option key={pos} value={pos}>
                       {pos}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-black mb-1.5">Customer</label>
+                <select
+                  value={filterCustomer}
+                  onChange={(e) => setFilterCustomer(e.target.value)}
+                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
+                >
+                  <option value="">Semua Customer</option>
+                  {customers.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
                     </option>
                   ))}
                 </select>
@@ -368,3 +454,19 @@ export default function ExecutiveDashboard() {
     </div>
   );
 }
+
+// ─────────────────────────────────────────────
+// Helper: Section Label
+// ─────────────────────────────────────────────
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <div className="w-1 h-5 rounded-full bg-primary" />
+      <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider">
+        {label}
+      </h2>
+      <div className="flex-1 h-px bg-table-border" />
+    </div>
+  );
+}
+

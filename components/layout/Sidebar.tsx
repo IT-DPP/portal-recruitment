@@ -37,7 +37,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
 
   // Track if Dashboard menu is expanded
   const [isDashboardOpen, setIsDashboardOpen] = useState(
-    pathname === "/dashboard" || pathname.includes("/dashboard/executive") || pathname.includes("/dashboard/geosource"),
+    pathname === "/dashboard" || pathname.includes("/dashboard/executive") || pathname.includes("/dashboard/geosource") || pathname.includes("/dashboard/calendar"),
   );
 
   const handleLogout = () => {
@@ -75,7 +75,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
           <button
             onClick={() => setIsDashboardOpen(!isDashboardOpen)}
             className={`w-full flex items-center justify-between px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-              pathname === "/dashboard" || pathname.includes("/dashboard/executive") || pathname.includes("/dashboard/geosource")
+              pathname === "/dashboard" || pathname.includes("/dashboard/executive") || pathname.includes("/dashboard/geosource") || pathname.includes("/dashboard/calendar")
                 ? "text-primary font-bold"
                 : "text-on-surface-variant hover:bg-surface-container-low"
             } ${isCollapsed ? 'justify-center px-0' : ''}`}
@@ -116,6 +116,18 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
               >
                 <span className="font-sans text-[11px] font-semibold">
                   GeoSource Dashboard
+                </span>
+              </Link>
+              <Link
+                href="/dashboard/calendar"
+                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
+                  pathname.includes("/dashboard/calendar")
+                    ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
+                    : "text-on-surface-variant hover:bg-surface-container-low"
+                }`}
+              >
+                <span className="font-sans text-[11px] font-semibold">
+                  Calendar
                 </span>
               </Link>
             </div>
@@ -198,19 +210,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         >
           <Users className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
           {!isCollapsed && <span className="font-sans text-xs font-semibold">Interviews</span>}
-        </Link>
-
-        <Link
-          href="/dashboard/reports"
-          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-            pathname.includes("/dashboard/reports")
-              ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
-              : "text-on-surface-variant hover:bg-surface-container-low"
-          } ${isCollapsed ? 'justify-center px-0' : ''}`}
-          title={isCollapsed ? "Reports" : undefined}
-        >
-          <BarChart2 className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 shrink-0`} />
-          {!isCollapsed && <span className="font-sans text-xs font-semibold">Reports</span>}
         </Link>
 
         {/* Expandable Settings Menu */}

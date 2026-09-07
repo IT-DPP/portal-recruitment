@@ -268,12 +268,12 @@ export default function PipelineFunnelWidget({
                 return (
                   <div key={stage.stageId} className="space-y-1">
                     <div className="flex justify-between items-center">
-                      <span className="text-[9px] text-on-surface-variant truncate max-w-[90px]">
+                      <span className="text-[11px] text-on-surface-variant truncate max-w-[90px]">
                         {stage.title} →
                       </span>
                       <div className="flex gap-2">
                         <span
-                          className={`text-[9px] font-bold ${
+                          className={`text-[11px] font-bold ${
                             parseInt(convRate) >= 70
                               ? "text-emerald-700"
                               : parseInt(convRate) >= 40
@@ -283,7 +283,7 @@ export default function PipelineFunnelWidget({
                         >
                           {convRate}% Lolos
                         </span>
-                        <span className="text-[9px] font-bold text-red-600">
+                        <span className="text-[11px] font-bold text-red-600">
                           {failRate}% Gagal
                         </span>
                       </div>
