@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud, MessageSquare, Send, ChevronDown, UserX } from "lucide-react";
+import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud, MessageSquare, Send, ChevronDown, UserX, Clock } from "lucide-react";
 import { MASTER_SKEMA_SERTIFIKASI, MASTER_REJECTION_MESSAGE } from "@/lib/masterData";
 
 export default function AdvancedDocumentVerificationPage({
@@ -40,6 +40,7 @@ export default function AdvancedDocumentVerificationPage({
 
   // Test Skill Form State
   const [testSkillDate, setTestSkillDate] = useState("");
+  const [testSkillVideoLink, setTestSkillVideoLink] = useState("");
   const [testSkillProofs, setTestSkillProofs] = useState<{title: string, file: {name: string, base64: string, type: string} | null}[]>([{ title: "", file: null }]);
   const [testSkillResultFile, setTestSkillResultFile] = useState<{name: string, base64: string, type: string} | null>(null);
 
@@ -137,6 +138,7 @@ export default function AdvancedDocumentVerificationPage({
       }
       if (foundApp.testSkill) {
         setTestSkillDate(foundApp.testSkill.date || "");
+        setTestSkillVideoLink(foundApp.testSkill.videoLink || "");
         setTestSkillProofs(foundApp.testSkill.proofs || [{ title: "", file: null }]);
         setTestSkillResultFile(foundApp.testSkill.resultFile || null);
       }
@@ -199,15 +201,15 @@ export default function AdvancedDocumentVerificationPage({
 
   const currentStageName = job.timeline?.find((t: any) => t.id === application.currentStage)?.title || application.currentStage;
   const isAdministration = application.currentStage === "stage_1" || currentStageName.toLowerCase().includes("administration");
-  const isHrInterview = application.currentStage === "stage_2" || currentStageName.toLowerCase().includes("hr interview");
-  const isPsikotes = currentStageName.toLowerCase().includes("psikotes") || currentStageName.toLowerCase().includes("psychotest") || currentStageName.toLowerCase().includes("psychological");
-  const isTestSkill = currentStageName.toLowerCase().includes("test skill") || currentStageName.toLowerCase().includes("technical assessment");
-  const isUserInterview = currentStageName.toLowerCase().includes("user interview");
-  const isOfferingLetter = currentStageName.toLowerCase().includes("offering");
-  const isMcu = currentStageName.toLowerCase().includes("mcu") || currentStageName.toLowerCase().includes("medical");
-  const isTrainingUser = currentStageName.toLowerCase().includes("training") || application.currentStage === "stage_8";
-  const isInduction = currentStageName.toLowerCase().includes("induction") || application.currentStage === "stage_9";
-  const isPkwt = currentStageName.toLowerCase().includes("pkwt") || application.currentStage === "stage_10" || application.currentStage === "Hired";
+  const isHrInterview = application.currentStage === "stage_2" || currentStageName.toLowerCase().includes("hr interview") || currentStageName.toLowerCase().includes("interview hr");
+  const isPsikotes = application.currentStage === "stage_3" || currentStageName.toLowerCase().includes("psikotes") || currentStageName.toLowerCase().includes("psychotest") || currentStageName.toLowerCase().includes("psychological");
+  const isTestSkill = application.currentStage === "stage_4" || currentStageName.toLowerCase().includes("test skill") || currentStageName.toLowerCase().includes("technical");
+  const isUserInterview = application.currentStage === "stage_5" || currentStageName.toLowerCase().includes("user interview") || currentStageName.toLowerCase().includes("interview user");
+  const isOfferingLetter = application.currentStage === "stage_6" || currentStageName.toLowerCase().includes("offering");
+  const isMcu = application.currentStage === "stage_7" || currentStageName.toLowerCase().includes("mcu") || currentStageName.toLowerCase().includes("medical");
+  const isTrainingUser = application.currentStage === "stage_8" || currentStageName.toLowerCase().includes("training");
+  const isInduction = application.currentStage === "stage_9" || currentStageName.toLowerCase().includes("induction");
+  const isPkwt = application.currentStage === "stage_10" || currentStageName.toLowerCase().includes("pkwt") || application.currentStage === "Hired";
 
   const safeSaveApplications = (allApps: any[], silent = false) => {
     try {
@@ -233,7 +235,7 @@ export default function AdvancedDocumentVerificationPage({
       } else if (isPsikotes) {
         allApps[appIndex].psikotes = { result: psikotesResult, date: psikotesDate, file: psikotesFile };
       } else if (isTestSkill) {
-        allApps[appIndex].testSkill = { date: testSkillDate, proofs: testSkillProofs, resultFile: testSkillResultFile };
+        allApps[appIndex].testSkill = { date: testSkillDate, videoLink: testSkillVideoLink, proofs: testSkillProofs, resultFile: testSkillResultFile };
       } else if (isUserInterview) {
         allApps[appIndex].userInterview = { result: userInterviewResult, date: userInterviewDate, feedback: userInterviewFeedback, file: userInterviewFile };
       } else if (isOfferingLetter) {
@@ -277,7 +279,7 @@ export default function AdvancedDocumentVerificationPage({
       } else if (isPsikotes) {
         allApps[appIndex].psikotes = { result: psikotesResult, date: psikotesDate, file: psikotesFile };
       } else if (isTestSkill) {
-        allApps[appIndex].testSkill = { date: testSkillDate, proofs: testSkillProofs, resultFile: testSkillResultFile };
+        allApps[appIndex].testSkill = { date: testSkillDate, videoLink: testSkillVideoLink, proofs: testSkillProofs, resultFile: testSkillResultFile };
       } else if (isUserInterview) {
         allApps[appIndex].userInterview = { result: userInterviewResult, date: userInterviewDate, feedback: userInterviewFeedback, file: userInterviewFile };
       } else if (isOfferingLetter) {
@@ -299,6 +301,20 @@ export default function AdvancedDocumentVerificationPage({
     }
   };
 
+  const getActorInfo = () => {
+    let actor = "System";
+    let actorEmail = "";
+    try {
+      const str = localStorage.getItem("nexus_logged_user");
+      if (str) {
+        const userObj = JSON.parse(str);
+        actor = userObj.fullName || userObj.username || "System";
+        actorEmail = userObj.email || "";
+      }
+    } catch (e) {}
+    return { actor, actorEmail };
+  };
+
   const handleApproveNextStage = () => {
     handleSaveDraftSilent();
     const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
@@ -312,11 +328,13 @@ export default function AdvancedDocumentVerificationPage({
         app.currentStage = nextStage.id;
         app.isDraft = false; // Remove draft if approved
         if (!app.history) app.history = [];
+        const actorInfo = getActorInfo();
         app.history.push({
           stageId: nextStage.id,
           stageName: nextStage.title,
           date: new Date().toISOString(),
-          note: "Approved to next stage"
+          note: "Approved to next stage",
+          ...actorInfo
         });
         if (safeSaveApplications(allApps)) {
           window.alert(`Candidate approved and moved to ${nextStage.title}.`);
@@ -327,11 +345,13 @@ export default function AdvancedDocumentVerificationPage({
           app.currentStage = "Hired";
           app.isDraft = false;
           if (!app.history) app.history = [];
+          const actorInfo = getActorInfo();
           app.history.push({
             stageId: "Hired",
             stageName: "Hired / Employee",
             date: new Date().toISOString(),
-            note: "Candidate successfully hired."
+            note: "Candidate successfully hired.",
+            ...actorInfo
           });
           if (safeSaveApplications(allApps)) {
             window.alert(`Candidate successfully hired and marked as Employee!`);
@@ -357,11 +377,13 @@ export default function AdvancedDocumentVerificationPage({
       app.currentStage = "Rejected";
       app.isDraft = false;
       if (!app.history) app.history = [];
+      const actorInfo = getActorInfo();
       app.history.push({
         stageId: "Rejected",
         stageName: `Rejected at ${stageName}`,
         date: new Date().toISOString(),
-        note: `Reason: ${failureReason}`
+        note: `Reason: ${failureReason}`,
+        ...actorInfo
       });
       
       if (safeSaveApplications(allApps)) {
@@ -400,11 +422,13 @@ export default function AdvancedDocumentVerificationPage({
       app.currentStage = "Rejected";
       app.isDraft = false;
       if (!app.history) app.history = [];
+      const actorInfo = getActorInfo();
       app.history.push({
         stageId: "Rejected",
         stageName: `Rejected (Blacklisted) at ${stageName}`,
         date: new Date().toISOString(),
-        note: `Blacklisted: ${blacklistNote}`
+        note: `Blacklisted: ${blacklistNote}`,
+        ...actorInfo
       });
       
       if (safeSaveApplications(allApps)) {
@@ -1203,14 +1227,26 @@ export default function AdvancedDocumentVerificationPage({
               </h3>
               
               <div className="space-y-6">
-                <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Test Skill</label>
-                  <input 
-                    type="date" 
-                    value={testSkillDate}
-                    onChange={(e) => setTestSkillDate(e.target.value)}
-                    className="w-full md:w-1/2 px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Test Skill</label>
+                    <input 
+                      type="date" 
+                      value={testSkillDate}
+                      onChange={(e) => setTestSkillDate(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Link Video Test Skill</label>
+                    <input 
+                      type="text" 
+                      value={testSkillVideoLink}
+                      onChange={(e) => setTestSkillVideoLink(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-4 py-2.5 border border-outline-variant rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-black"
+                    />
+                  </div>
                 </div>
 
                 <div className="border-t border-table-border pt-6">
@@ -1935,6 +1971,41 @@ export default function AdvancedDocumentVerificationPage({
             </div>
           </div>
           
+          {/* Section 3: Recruitment History */}
+          <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
+            <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
+              <Clock className="w-5 h-5 text-blue-600" /> 3. Recruitment History
+            </h3>
+            
+            <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-outline-variant before:to-transparent">
+              {(() => {
+                const combinedHistory = [
+                  ...(application.history || []).map((h: any) => ({ ...h, type: 'stage' })),
+                  ...(application.messages || []).map((m: any) => ({ ...m, type: 'message', stageName: 'Message Sent', note: m.text }))
+                ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                return combinedHistory.length > 0 ? combinedHistory.map((hist: any, index: number) => (
+                  <div key={index} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 ${hist.type === 'message' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                      {hist.type === 'message' ? <MessageSquare className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                    </div>
+                    <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm hover:border-primary/50 transition-colors">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-bold text-black text-sm">{hist.stageName}</h4>
+                        <time className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md text-right">
+                          {new Date(hist.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </time>
+                      </div>
+                      <p className="text-sm text-on-surface-variant mt-2">{hist.note || "Memasuki tahapan ini."}</p>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-center py-8 text-sm text-on-surface-variant relative z-10 bg-white border border-outline-variant rounded-xl mx-10">Belum ada riwayat terekam.</div>
+                );
+              })()}
+            </div>
+          </div>
+          
         </div>
         
         {/* Right Column: Document Preview */}
@@ -2087,6 +2158,9 @@ export default function AdvancedDocumentVerificationPage({
               <button onClick={() => { setShowActionModal(false); setShowMessageModal(true); }} className="w-full px-5 py-3 border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm">
                 <MessageSquare className="w-5 h-5" /> Send Message
               </button>
+              <a href={`https://wa.me/${profile?.whatsapp?.replace(/\D/g, '') || ''}`} target="_blank" rel="noopener noreferrer" onClick={() => setShowActionModal(false)} className="w-full px-5 py-3 border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm">
+                <MessageSquare className="w-5 h-5" /> Message in WhatsApp
+              </a>
               <div className="h-px bg-outline-variant my-1"></div>
               <button onClick={() => { setShowActionModal(false); setShowRejectModal(true); }} className="w-full px-5 py-3 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm">
                 <Ban className="w-5 h-5" /> Reject Candidate

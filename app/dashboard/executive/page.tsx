@@ -24,6 +24,7 @@ interface Job {
   customerId?: string;
   publishedDate?: string;
   tanggalMasuk?: string;
+  timeline?: any[];
 }
 
 interface Application {
@@ -219,13 +220,27 @@ export default function ExecutiveDashboard() {
         stageName = lastHistory.stageName;
       }
 
+      let status = "On Schedule";
+      let message = "";
+      const currentTimeline = job?.timeline?.find((t: any) => t.id === app.currentStage);
+      if (currentTimeline) {
+        if (currentTimeline.status === "Completed") {
+          status = "Completed";
+        } else if (new Date() > new Date(currentTimeline.deadlineDate) || currentTimeline.overdueNotes) {
+          status = "Overdue";
+          message = currentTimeline.overdueNotes || "";
+        }
+      }
+
       return {
         id: app.id,
         name: cand?.fullName || 'Unknown',
         position: job?.posisi || 'Unknown',
         stage: stageName,
         site: site?.siteName || 'Unknown',
-        candidateId: app.candidateId
+        candidateId: app.candidateId,
+        status,
+        message
       };
     });
   }, [filteredApps, candidates, jobs, sites]);

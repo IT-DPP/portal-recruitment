@@ -31,7 +31,7 @@ export default function LoginPage() {
 
   // Pre-configured simulated credentials (Username/Password)
   const getAuthorizedLogins = () => {
-    return [
+    const defaultAdmins = [
       {
         username: "admin",
         password: "password",
@@ -40,6 +40,29 @@ export default function LoginPage() {
         fullName: "Admin DPP",
       },
     ];
+
+    try {
+      const savedUsers = localStorage.getItem("nexus_users_db");
+      if (savedUsers) {
+        const parsedUsers = JSON.parse(savedUsers);
+        // Ensure mapping for login works with user schema
+        return [
+          ...defaultAdmins,
+          ...parsedUsers.map((u: any) => ({
+            username: u.username,
+            password: u.password,
+            role: u.role,
+            email: u.email,
+            fullName: u.fullName,
+            department: u.department,
+          })),
+        ];
+      }
+    } catch (e) {
+      console.error("Failed to read user database from localStorage:", e);
+    }
+    
+    return defaultAdmins;
   };
 
   const handleSubmit = (e: React.FormEvent) => {

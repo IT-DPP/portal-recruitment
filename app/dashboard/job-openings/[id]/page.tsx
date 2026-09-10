@@ -51,6 +51,10 @@ export default function JobDetailPage({
   const [activeTab, setActiveTab] = useState<"details" | "pipeline" | "hired">("details");
   const [hiredCandidates, setHiredCandidates] = useState<any[]>([]);
 
+  // B1 Form Edit State
+  const [isEditingB1, setIsEditingB1] = useState(false);
+  const [tempB1, setTempB1] = useState("");
+
   useEffect(() => {
     const jobs = JSON.parse(localStorage.getItem("ugz_jobs") || "[]");
     const found = jobs.find((j: any) => j.id === id);
@@ -431,16 +435,34 @@ export default function JobDetailPage({
                   {new Date(job.tanggalMasuk).toLocaleDateString("id-ID")}
                 </p>
               </div>
-              {job.noFormB1 && (
-                <div>
-                  <p className="text-xs font-semibold text-on-surface-variant mb-0.5">
-                    No Form B1
-                  </p>
-                  <p className="font-medium text-black font-mono">
-                    {job.noFormB1}
-                  </p>
-                </div>
-              )}
+              <div>
+                <p className="text-xs font-semibold text-on-surface-variant mb-0.5">
+                  No Form B1
+                </p>
+                {isEditingB1 ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <input 
+                      type="text" 
+                      value={tempB1} 
+                      onChange={(e) => setTempB1(e.target.value)} 
+                      className="px-2 py-1 border border-outline-variant rounded text-sm font-mono text-black w-48 focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="Input No Form B1"
+                    />
+                    <button onClick={() => {
+                      saveJobState({ ...job, noFormB1: tempB1 });
+                      setIsEditingB1(false);
+                    }} className="text-xs font-semibold bg-primary text-white px-2.5 py-1.5 rounded hover:bg-primary-container transition-colors">Save</button>
+                    <button onClick={() => setIsEditingB1(false)} className="text-xs font-semibold bg-surface-container-low text-on-surface-variant px-2.5 py-1.5 rounded hover:bg-surface-container transition-colors">Cancel</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-black font-mono">
+                      {job.noFormB1 || "-"}
+                    </p>
+                    <button onClick={() => { setTempB1(job.noFormB1 || ""); setIsEditingB1(true); }} className="text-[11px] font-bold text-blue-600 hover:underline">Edit</button>
+                  </div>
+                )}
+              </div>
               <div>
                 <p className="text-xs font-semibold text-on-surface-variant mb-0.5">
                   Lokasi Penempatan

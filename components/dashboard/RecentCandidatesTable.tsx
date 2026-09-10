@@ -9,6 +9,8 @@ export interface CandidateRow {
   stage: string;
   site: string;
   candidateId: string;
+  status?: string;
+  message?: string;
 }
 
 interface Props {
@@ -32,6 +34,7 @@ export default function RecentCandidatesTable({ candidates }: Props) {
               <th className="px-5 py-3 font-semibold">Posisi</th>
               <th className="px-5 py-3 font-semibold">Stage</th>
               <th className="px-5 py-3 font-semibold">Site Operation</th>
+              <th className="px-5 py-3 font-semibold">Status SLA</th>
               <th className="px-5 py-3 font-semibold text-center">Action</th>
             </tr>
           </thead>
@@ -46,6 +49,20 @@ export default function RecentCandidatesTable({ candidates }: Props) {
                   </span>
                 </td>
                 <td className="px-5 py-3 text-on-surface-variant">{c.site}</td>
+                <td className="px-5 py-3">
+                  <div className="flex flex-col gap-1">
+                    {c.status === "Overdue" ? (
+                      <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 uppercase">OVERDUE</span>
+                    ) : c.status === "Completed" ? (
+                      <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase">COMPLETED</span>
+                    ) : (
+                      <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200 uppercase">ON SCHEDULE</span>
+                    )}
+                    {c.message && (
+                      <p className="text-[10px] text-red-600 italic line-clamp-2 max-w-[150px]" title={c.message}>&quot;{c.message}&quot;</p>
+                    )}
+                  </div>
+                </td>
                 <td className="px-5 py-3 text-center">
                   <Link href={`/dashboard/pipeline?candidate=${c.candidateId}`} className="inline-flex items-center justify-center p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors">
                     <ChevronRight className="w-5 h-5" />

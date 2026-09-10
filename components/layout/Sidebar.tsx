@@ -40,6 +40,18 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
     pathname === "/dashboard" || pathname.includes("/dashboard/executive") || pathname.includes("/dashboard/geosource") || pathname.includes("/dashboard/calendar"),
   );
 
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const loggedUser = localStorage.getItem("nexus_logged_user");
+    if (loggedUser) {
+      try {
+        const parsed = JSON.parse(loggedUser);
+        setUserRole(parsed.role?.toLowerCase() || null);
+      } catch (e) {}
+    }
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem("nexus_logged_user");
     localStorage.removeItem("nexus_remember_login");
@@ -249,6 +261,21 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                   Master Data
                 </span>
               </Link>
+              {(userRole === 'administrator' || userRole === 'admin') && (
+                <Link
+                  href="/dashboard/settings/users"
+                  className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
+                    pathname.includes("/settings/users")
+                      ? "text-primary font-bold bg-surface-container-low/50"
+                      : "text-on-surface-variant hover:bg-surface-container-low"
+                  }`}
+                >
+                  <Users className="mr-2 w-4 h-4 shrink-0" />
+                  <span className="font-sans text-[11px] font-semibold">
+                    Users
+                  </span>
+                </Link>
+              )}
               <Link
                 href="/dashboard/settings/sla"
                 className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${

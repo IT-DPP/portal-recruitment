@@ -78,6 +78,18 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
       app.currentStage = targetStageId;
       app.isDraft = false; // Remove draft status when moved to another stage
       
+      // Getting current user
+      let actor = "System";
+      let actorEmail = "";
+      const loggedUserStr = localStorage.getItem("nexus_logged_user");
+      if (loggedUserStr) {
+        try {
+          const userObj = JSON.parse(loggedUserStr);
+          actor = userObj.fullName || userObj.username || "System";
+          actorEmail = userObj.email || "";
+        } catch (e) {}
+      }
+
       // Update history milestone
       if (!app.history) app.history = [];
       const stageName = timeline.find(t => t.id === targetStageId)?.title || targetStageId;
@@ -85,6 +97,8 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
         stageId: targetStageId,
         stageName,
         date: new Date().toISOString(),
+        actor,
+        actorEmail
       });
 
       allApps[appIndex] = app;
@@ -105,6 +119,18 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
       if (!appToUpdate.stageNotes) appToUpdate.stageNotes = {};
       appToUpdate.stageNotes[appToUpdate.currentStage] = overdueNote;
       
+      // Getting current user
+      let actor = "System";
+      let actorEmail = "";
+      const loggedUserStr = localStorage.getItem("nexus_logged_user");
+      if (loggedUserStr) {
+        try {
+          const userObj = JSON.parse(loggedUserStr);
+          actor = userObj.fullName || userObj.username || "System";
+          actorEmail = userObj.email || "";
+        } catch (e) {}
+      }
+
       // Also record this in candidate history
       if (!appToUpdate.history) appToUpdate.history = [];
       const stageName = timeline.find((t: any) => t.id === appToUpdate.currentStage)?.title || appToUpdate.currentStage;
@@ -112,7 +138,9 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
         stageId: appToUpdate.currentStage,
         stageName: `${stageName} (Overdue Note Added)`,
         date: new Date().toISOString(),
-        note: overdueNote
+        note: overdueNote,
+        actor,
+        actorEmail
       });
       
       const updatedApps = allApps.map((app: any) => 
