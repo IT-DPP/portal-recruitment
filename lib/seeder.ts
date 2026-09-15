@@ -26,19 +26,44 @@ export const generateDummyData = () => {
     ).toISOString();
 
   // 1. MASTER DATA
-  const masterCustomer = Array.from({ length: 10 }).map((_, i) => ({
+  const companyNames = [
+    "PT Pamapersada Nusantara",
+    "PT United Tractors Tbk",
+    "PT Bukit Asam Tbk",
+    "PT Adaro Energy Indonesia Tbk",
+    "PT Kaltim Prima Coal",
+    "PT Freeport Indonesia",
+    "PT Berau Coal",
+    "PT Vale Indonesia Tbk",
+    "PT Bumi Resources Tbk",
+    "PT Petrosea Tbk",
+  ];
+  const masterCustomer = companyNames.map((name, i) => ({
     id: `CST-${i + 1}`,
-    name: `PT Perusahaan Contoh ${i + 1} Tbk`,
+    name: name,
   }));
-  const masterProvince = Array.from({ length: 10 }).map((_, i) => ({
-    id: `PRV-${i + 1}`,
-    name: `Provinsi ${i + 1}`,
-  }));
-  const masterCity = Array.from({ length: 10 }).map((_, i) => ({
-    id: `CTY-${i + 1}`,
-    name: `Kota ${i + 1}`,
-    provinceId: randomEl(masterProvince).id,
-  }));
+
+  const masterProvince = [
+    { id: "PRV-1", name: "Kalimantan Timur" },
+    { id: "PRV-2", name: "Sumatera Selatan" },
+    { id: "PRV-3", name: "Papua Tengah" },
+    { id: "PRV-4", name: "Sulawesi Selatan" },
+    { id: "PRV-5", name: "Maluku Utara" },
+    { id: "PRV-6", name: "Sulawesi Tengah" },
+  ];
+
+  const masterCity = [
+    { id: "CTY-1", name: "Sangatta", provinceId: "PRV-1" },
+    { id: "CTY-2", name: "Balikpapan", provinceId: "PRV-1" },
+    { id: "CTY-3", name: "Tanjung Enim", provinceId: "PRV-2" },
+    { id: "CTY-4", name: "Muara Enim", provinceId: "PRV-2" },
+    { id: "CTY-5", name: "Timika", provinceId: "PRV-3" },
+    { id: "CTY-6", name: "Tembagapura", provinceId: "PRV-3" },
+    { id: "CTY-7", name: "Sorowako", provinceId: "PRV-4" },
+    { id: "CTY-8", name: "Makassar", provinceId: "PRV-4" },
+    { id: "CTY-9", name: "Morowali", provinceId: "PRV-6" },
+    { id: "CTY-10", name: "Halmahera Tengah", provinceId: "PRV-5" },
+  ];
 
   const siteData = [
     {
@@ -112,9 +137,21 @@ export const generateDummyData = () => {
     id: `DPT-${i + 1}`,
     name: `Departemen ${i + 1}`,
   }));
-  const masterPos = Array.from({ length: 10 }).map((_, i) => ({
+  const positionNames = [
+    "Operator Hauler (HD785)",
+    "Operator Excavator (PC2000)",
+    "Mining Engineer",
+    "Heavy Equipment Mechanic",
+    "HSE Officer",
+    "Pit Control Engineer",
+    "Geologist",
+    "Surveyor Tambang",
+    "Drill & Blast Engineer",
+    "Auto Electrician"
+  ];
+  const masterPos = positionNames.map((name, i) => ({
     id: `POS-${i + 1}`,
-    name: `Posisi Dummy ${i + 1}`,
+    name: name,
   }));
   const masterReqType = Array.from({ length: 10 }).map((_, i) => ({
     id: `REQ-${i + 1}`,
@@ -248,15 +285,31 @@ export const generateDummyData = () => {
 
   // 3. CANDIDATES
   const eduOptions = ["SMA/SMK", "D3", "S1", "S2"];
+  const indonesianNames = [
+    "Andi Pratama", "Budi Santoso", "Citra Kirana", "Dian Sastrowardoyo", "Eko Yulianto",
+    "Fajar Nugroho", "Gita Gutawa", "Hendra Setiawan", "Irfan Hakim", "Joko Purwanto",
+    "Kartika Putri", "Lukman Hakim", "Muhammad Rizky", "Nisa Sabyan", "Oka Antara",
+    "Putra Perdana", "Qory Sandioriva", "Reza Rahadian", "Siti Aminah", "Taufik Hidayat",
+    "Umar Syarief", "Vina Panduwinata", "Wawan Hendrawan", "Xaverius Prawiro", "Yusuf Mansur",
+    "Zainal Arif", "Aditya Suryo", "Bayu Skak", "Chico Jericho", "Dede Sunandar",
+    "Rizky Billar", "Agus Yudhoyono", "Tantri Syalindri", "Bambang Pamungkas", "Raffi Ahmad",
+    "Bintang Emon", "Arya Saloka", "Deddy Corbuzier", "Ivan Gunawan", "Ahmad Dhani",
+    "Ananda Omesh", "Denny Sumargo", "Dimas Anggara", "Surya Insomnia", "Iqbaal Ramadhan",
+    "Kevin Sanjaya", "Marcus Fernaldi", "Anthony Ginting", "Jonatan Christie", "Greysia Polii",
+    "Apriyani Rahayu", "Agnez Mo", "Raisa Andriana", "Isyana Sarasvati", "Tulus",
+    "Kunto Aji", "Glenn Fredly", "Tompi", "Sandhy Sondoro", "Afgan Syahreza"
+  ];
   const candidateProfiles: Record<string, any> = {};
 
   const candIds = Array.from({ length: 50 }).map(() => randomId("cand"));
   candIds.forEach((id, i) => {
     const trainingInst = randomEl(trainingCenterInstitutes);
+    const name = indonesianNames[i % indonesianNames.length];
+    const firstName = name.split(" ")[0].toLowerCase();
     candidateProfiles[id] = {
       id: id,
-      fullName: `Kandidat Dummy ${i + 1}`,
-      email: `kandidat${i + 1}@example.com`,
+      fullName: name,
+      email: `${firstName}${i + 1}@example.com`,
       whatsapp: `0812345678${i}`,
       nik: `317123456789000${i}`,
       latestEducation: randomEl(eduOptions),
@@ -271,10 +324,13 @@ export const generateDummyData = () => {
   const prioCandIds = Array.from({ length: 50 }).map(() => randomId("cand-prio"));
   prioCandIds.forEach((id, i) => {
     const trainingInst = randomEl(trainingCenterInstitutes);
+    const nameIndex = (i + 25) % indonesianNames.length;
+    const name = indonesianNames[nameIndex];
+    const firstName = name.split(" ")[0].toLowerCase();
     candidateProfiles[id] = {
       id: id,
-      fullName: `Kandidat Priority ${i + 1}`,
-      email: `prio${i + 1}@example.com`,
+      fullName: name,
+      email: `prio.${firstName}${i + 1}@example.com`,
       whatsapp: `08123456789${i}`,
       nik: `317123456789010${i}`,
       latestEducation: randomEl(eduOptions),
@@ -297,6 +353,8 @@ export const generateDummyData = () => {
     const isInterview = i % 3 === 0 && !isRejected;
     const jobId = jobs[i % jobs.length].id;
 
+    const stageKeys = ["stage_1", "stage_2", "stage_3", "stage_4", "stage_5", "stage_6", "stage_7"];
+    
     let currentStage = "stage_1";
     let history = [
       {
@@ -315,14 +373,16 @@ export const generateDummyData = () => {
         date: new Date().toISOString(),
         note: `Reason: ${randomEl(rejectMessages).message}`,
       });
-    } else if (isInterview) {
-      currentStage = "stage_2";
-      history.push({
-        stageId: "stage_2",
-        stageName: "Interview HR",
-        date: new Date().toISOString(),
-        note: "Moved to Interview",
-      });
+    } else {
+      currentStage = stageKeys[i % stageKeys.length];
+      if (currentStage !== "stage_1") {
+        history.push({
+          stageId: currentStage,
+          stageName: currentStage === "stage_6" ? "Offering Letter" : currentStage === "stage_7" ? "MCU" : "Moved to Next Stage",
+          date: new Date().toISOString(),
+          note: "Updated Stage",
+        });
+      }
     }
 
     return {

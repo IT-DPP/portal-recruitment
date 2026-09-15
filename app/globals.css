@@ -95,3 +95,23 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #727780;
 }
+
+/* Tiptap / Rich Text overrides for Tailwind */
+.ProseMirror ul, .prose ul, .prose-export ul {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ProseMirror ol, .prose ol, .prose-export ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ProseMirror li > p, .prose li > p, .prose-export li > p {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
