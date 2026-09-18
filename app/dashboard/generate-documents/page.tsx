@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { generateDocx, generatePdfFromElement } from "@/lib/document-generator";
+import * as XLSX from "xlsx";
+
 
 // Simple Tiptap toolbar
 const MenuBar = ({ editor }: { editor: any }) => {
@@ -49,6 +51,18 @@ export default function GenerateDocumentsPage() {
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // BAST States
+  const [bastMonth, setBastMonth] = useState("");
+  const [bastCustomerId, setBastCustomerId] = useState("");
+  const [bastSelectedAreas, setBastSelectedAreas] = useState<string[]>([]);
+  const [bastSelectedJobs, setBastSelectedJobs] = useState<string[]>([]);
+  const [bastSelectedCandidates, setBastSelectedCandidates] = useState<string[]>([]);
+  const [bastInputs, setBastInputs] = useState<any>({});
+  
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [sites, setSites] = useState<any[]>([]);
+
 
   const [tugasHtml, setTugasHtml] = useState(
     "<p>1. Mematuhi peraturan K3LH yang berlaku di area operasi.</p><p>2. Mengoperasikan alat berat sesuai standar (SOP).</p>",
@@ -120,6 +134,10 @@ export default function GenerateDocumentsPage() {
     setJobs(enrichedJobs);
     setApplications(savedApps);
     setCandidates(savedCands);
+
+    setCustomers(savedCustomers);
+    setSites(savedSites);
+
   }, []);
 
   const selectedJob = jobs.find((j) => j.id === selectedJobId);
@@ -151,6 +169,107 @@ export default function GenerateDocumentsPage() {
   };
 
   const totalMonths = calcTotalMonths();
+
+  
+  // --- BAST Logic ---
+  const availableBastJobs = jobs.filter((j) => {
+    if (!bastMonth || !bastCustomerId) return false;
+    if (j.customerId !== bastCustomerId) return false;
+    
+    // Match month based on tanggalMasuk
+    if (j.tanggalMasuk) {
+      const jobMonth = j.tanggalMasuk.substring(0, 7); // YYYY-MM
+      if (jobMonth !== bastMonth) return false;
+    } else {
+      return false;
+    }
+
+    if (bastSelectedAreas.length > 0) {
+      if (!bastSelectedAreas.includes(j.siteId)) return false;
+    }
+
+    return true;
+  });
+
+  const availableBastCandidates = applications.filter((app) => {
+    if (!bastSelectedJobs.includes(app.jobId)) return false;
+    return ["stage_6", "stage_7", "Completed"].includes(app.currentStage);
+  });
+
+  const handleToggleArea = (siteId: string) => {
+    setBastSelectedAreas((prev) =>
+      prev.includes(siteId) ? prev.filter((id) => id !== siteId) : [...prev, siteId]
+    );
+  };
+
+  const handleToggleJob = (jobId: string) => {
+    setBastSelectedJobs((prev) =>
+      prev.includes(jobId) ? prev.filter((id) => id !== jobId) : [...prev, jobId]
+    );
+  };
+
+  const handleToggleCandidate = (appId: string) => {
+    setBastSelectedCandidates((prev) =>
+      prev.includes(appId) ? prev.filter((id) => id !== appId) : [...prev, appId]
+    );
+  };
+
+  const handleBastInputChange = (appId: string, field: string, value: string) => {
+    setBastInputs((prev: any) => ({
+      ...prev,
+      [appId]: {
+        ...(prev[appId] || {}),
+        [field]: value,
+      }
+    }));
+  };
+
+  const handleDownloadExcelBAST = () => {
+    if (bastSelectedCandidates.length === 0) {
+      alert("Pilih minimal satu kandidat.");
+      return;
+    }
+
+    const dataRows = bastSelectedCandidates.map((appId, index) => {
+      const app = availableBastCandidates.find(a => a.id === appId);
+      if (!app) return null;
+      const job = jobs.find(j => j.id === app.jobId);
+      const cand = candidates[app.candidateId];
+      const inputs = bastInputs[appId] || {};
+      const site = sites.find(s => s.id === job?.siteId);
+
+      return {
+        "No": index + 1,
+        "No. Request": job?.noRegistrasi || "",
+        "No. B1": job?.noB1 || "", 
+        "Tanggal Terima B1": job?.tanggalMasuk ? new Date(job.tanggalMasuk).toLocaleDateString("id-ID") : "",
+        "Nama": cand?.fullName || "",
+        "NIK": cand?.nik || "",
+        "Posisi": job?.posisi || "",
+        "Status": inputs.status || "",
+        "NRP DPP": inputs.nrp || "",
+        "Area Kerja": site?.siteName || job?.location || "",
+        "Awal Kontrak": inputs.start ? new Date(inputs.start).toLocaleDateString("id-ID") : "",
+        "Akhir Kontrak": inputs.end ? new Date(inputs.end).toLocaleDateString("id-ID") : "",
+        "Link Sertifikat": inputs.link || "",
+        "Validasi": inputs.validasi || ""
+      };
+    }).filter(Boolean);
+
+    const ws = XLSX.utils.json_to_sheet(dataRows);
+    
+    // Auto-size columns slightly
+    const columnWidths = [
+      { wch: 5 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 30 }, 
+      { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 30 }, 
+      { wch: 15 }, { wch: 15 }, { wch: 30 }, { wch: 15 }
+    ];
+    ws["!cols"] = columnWidths;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "BAST");
+    XLSX.writeFile(wb, "BAST_Document.xlsx");
+  };
 
   const handleDownloadDocx = () => {
     if (!nomorSurat || !selectedJob || !selectedCandidate) {
@@ -357,13 +476,158 @@ export default function GenerateDocumentsPage() {
                 </button>
               </div>
             </div>
+          ) : documentType === "bast" ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-on-surface mb-2">Bulan & Tahun</label>
+                  <input
+                    type="month"
+                    value={bastMonth}
+                    onChange={(e) => {
+                      setBastMonth(e.target.value);
+                      setBastSelectedJobs([]);
+                      setBastSelectedCandidates([]);
+                    }}
+                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-on-surface"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-on-surface mb-2">Customer / Perusahaan</label>
+                  <select
+                    value={bastCustomerId}
+                    onChange={(e) => {
+                      setBastCustomerId(e.target.value);
+                      setBastSelectedAreas([]);
+                      setBastSelectedJobs([]);
+                      setBastSelectedCandidates([]);
+                    }}
+                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-on-surface"
+                  >
+                    <option value="">-- Pilih Customer --</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {bastCustomerId && (
+                <div>
+                  <label className="block text-sm font-semibold text-on-surface mb-2">Filter Area (Opsional)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {sites.filter(s => s.customerId === bastCustomerId).map((site) => (
+                      <label key={site.id} className="flex items-center gap-2 bg-surface-container px-3 py-1.5 rounded-lg border border-table-border text-sm cursor-pointer hover:bg-surface-container-high transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={bastSelectedAreas.includes(site.id)}
+                          onChange={() => handleToggleArea(site.id)}
+                          className="w-4 h-4 rounded text-primary focus:ring-primary/50 bg-surface-container-lowest border-table-border"
+                        />
+                        <span className="text-on-surface">{site.siteName}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {bastMonth && bastCustomerId && (
+                <div>
+                  <label className="block text-sm font-semibold text-on-surface mb-2">Pilih Lowongan</label>
+                  {availableBastJobs.length === 0 ? (
+                    <p className="text-sm text-on-surface-variant italic">Tidak ada lowongan di bulan & customer ini.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-40 overflow-y-auto border border-table-border rounded-lg p-3 bg-surface-container-lowest">
+                      {availableBastJobs.map(job => (
+                        <label key={job.id} className="flex items-start gap-3 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={bastSelectedJobs.includes(job.id)}
+                            onChange={() => handleToggleJob(job.id)}
+                            className="w-4 h-4 mt-1 rounded text-primary focus:ring-primary/50 bg-surface border-table-border"
+                          />
+                          <div>
+                            <p className="text-sm font-medium text-on-surface group-hover:text-primary transition-colors">{job.noRegistrasi} - {job.posisi}</p>
+                            <p className="text-xs text-on-surface-variant">Tanggal: {new Date(job.tanggalMasuk).toLocaleDateString("id-ID")}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {bastSelectedJobs.length > 0 && (
+                <div>
+                  <label className="block text-sm font-semibold text-on-surface mb-2">Daftar Kandidat (Hired)</label>
+                  <div className="overflow-x-auto border border-table-border rounded-lg">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-on-surface-variant uppercase bg-surface-container-low border-b border-table-border whitespace-nowrap">
+                        <tr>
+                          <th className="px-4 py-3"><input type="checkbox" onChange={(e) => setBastSelectedCandidates(e.target.checked ? availableBastCandidates.map(a => a.id) : [])} checked={bastSelectedCandidates.length === availableBastCandidates.length && availableBastCandidates.length > 0} className="w-4 h-4 rounded text-primary focus:ring-primary/50" /></th>
+                          <th className="px-4 py-3">Lowongan</th>
+                          <th className="px-4 py-3">Nama</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">NRP DPP</th>
+                          <th className="px-4 py-3 min-w-[140px]">Awal Kontrak</th>
+                          <th className="px-4 py-3 min-w-[140px]">Akhir Kontrak</th>
+                          <th className="px-4 py-3">Link Sertifikat</th>
+                          <th className="px-4 py-3">Validasi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {availableBastCandidates.length === 0 ? (
+                          <tr><td colSpan={9} className="px-4 py-4 text-center text-on-surface-variant italic">Tidak ada kandidat terpilih dari lowongan tersebut.</td></tr>
+                        ) : availableBastCandidates.map(app => {
+                          const job = jobs.find(j => j.id === app.jobId);
+                          const cand = candidates[app.candidateId];
+                          const inputs = bastInputs[app.id] || {};
+                          const isSelected = bastSelectedCandidates.includes(app.id);
+                          return (
+                            <tr key={app.id} className="border-b border-table-border last:border-0 hover:bg-surface-container-lowest/50 bg-surface-container-lowest">
+                              <td className="px-4 py-3">
+                                <input type="checkbox" checked={isSelected} onChange={() => handleToggleCandidate(app.id)} className="w-4 h-4 rounded text-primary focus:ring-primary/50" />
+                              </td>
+                              <td className="px-4 py-3 text-on-surface whitespace-nowrap">{job?.noRegistrasi}</td>
+                              <td className="px-4 py-3 text-on-surface whitespace-nowrap">{cand?.fullName}</td>
+                              <td className="px-4 py-3"><input type="text" value={inputs.status || ""} onChange={e => handleBastInputChange(app.id, "status", e.target.value)} className="w-full min-w-[100px] bg-surface border border-table-border rounded px-2 py-1 text-xs outline-none focus:border-primary" /></td>
+                              <td className="px-4 py-3"><input type="text" value={inputs.nrp || ""} onChange={e => handleBastInputChange(app.id, "nrp", e.target.value)} className="w-full min-w-[100px] bg-surface border border-table-border rounded px-2 py-1 text-xs outline-none focus:border-primary" /></td>
+                              <td className="px-4 py-3"><input type="date" value={inputs.start || ""} onChange={e => handleBastInputChange(app.id, "start", e.target.value)} className="w-full bg-surface border border-table-border rounded px-2 py-1 text-xs outline-none focus:border-primary" /></td>
+                              <td className="px-4 py-3"><input type="date" value={inputs.end || ""} onChange={e => handleBastInputChange(app.id, "end", e.target.value)} className="w-full bg-surface border border-table-border rounded px-2 py-1 text-xs outline-none focus:border-primary" /></td>
+                              <td className="px-4 py-3"><input type="text" value={inputs.link || ""} onChange={e => handleBastInputChange(app.id, "link", e.target.value)} className="w-full min-w-[120px] bg-surface border border-table-border rounded px-2 py-1 text-xs outline-none focus:border-primary" /></td>
+                              <td className="px-4 py-3">
+                                <select value={inputs.validasi || ""} onChange={e => handleBastInputChange(app.id, "validasi", e.target.value)} className="w-full min-w-[100px] bg-surface border border-table-border rounded px-2 py-1 text-xs outline-none focus:border-primary">
+                                  <option value="">-</option>
+                                  <option value="Valid">Valid</option>
+                                  <option value="Invalid">Invalid</option>
+                                </select>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-6 border-t border-table-border flex justify-end">
+                <button
+                  onClick={handleDownloadExcelBAST}
+                  disabled={bastSelectedCandidates.length === 0}
+                  className="px-6 py-2.5 text-white bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-on-primary rounded-xl font-semibold text-sm transition-colors shadow-sm cursor-pointer"
+                >
+                  Download Excel BAST
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="py-16 flex flex-col items-center justify-center text-center bg-surface-container-lowest rounded-xl border border-dashed border-table-border">
               <p className="text-on-surface-variant text-lg font-semibold">
                 Form for this template document not set yet.
               </p>
               <p className="text-on-surface-variant text-sm mt-2">
-                Pilih "Offering Letter" untuk melanjutkan.
+                Pilih "Offering Letter" atau "BAST" untuk melanjutkan.
               </p>
             </div>
           )}
