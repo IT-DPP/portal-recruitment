@@ -1,33 +1,23 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Search, Bell, Grid, User, DatabaseZap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 import { generateDummyData } from '@/lib/seeder';
 
 export default function Header() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const loggedUser = localStorage.getItem('nexus_logged_user');
-    if (loggedUser) {
-      try {
-        setUser(JSON.parse(loggedUser));
-      } catch (e) {}
-    }
-  }, []);
 
   const notifications = [
     { id: 1, text: "System updated to Next.js App Router", time: "Just now", unread: true },
   ];
 
   const handleLogout = () => {
-    localStorage.removeItem('nexus_logged_user');
-    localStorage.removeItem('nexus_remember_login');
-    router.push('/login');
+    signOut({ callbackUrl: '/login' });
   };
 
   return (
@@ -111,8 +101,8 @@ export default function Header() {
             className="flex items-center gap-3 pl-4 border-l border-table-border text-left focus:outline-none cursor-pointer"
           >
             <div className="text-right hidden md:block">
-              <p className="font-sans text-xs font-semibold text-on-surface leading-none">{user?.fullName || 'User'}</p>
-              <p className="font-mono text-[11px] font-medium text-on-surface-variant mt-0.5 leading-none">{user?.role || 'Role'}</p>
+              <p className="font-sans text-xs font-semibold text-on-surface leading-none">{session?.user?.name || 'User'}</p>
+              <p className="font-mono text-[11px] font-medium text-on-surface-variant mt-0.5 leading-none">{(session?.user as any)?.role || 'Role'}</p>
             </div>
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white">
               <User className="w-4 h-4" />
@@ -122,8 +112,8 @@ export default function Header() {
           {showProfileMenu && (
             <div className="absolute right-0 mt-2 w-48 bg-white border border-table-border rounded-lg shadow-lg z-50 py-1">
               <div className="px-4 py-2 border-b border-table-border">
-                <p className="text-xs font-bold text-on-surface leading-snug">{user?.fullName}</p>
-                <p className="text-[11px] text-on-surface-variant font-mono truncate">{user?.email}</p>
+                <p className="text-xs font-bold text-on-surface leading-snug">{session?.user?.name}</p>
+                <p className="text-[11px] text-on-surface-variant font-mono truncate">{session?.user?.email}</p>
               </div>
               <button
                 onClick={() => {

@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
-import { Menu } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -12,23 +12,34 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { data: session, status } = useSession();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  useEffect(() => {
-    const loggedUser = localStorage.getItem('nexus_logged_user');
-    if (!loggedUser) {
-      router.push('/login');
-    } else {
-      setIsAuthenticated(true);
-    }
-  }, [router]);
+  // Still loading session from server
+  if (status === 'loading') {
+    return (
+      <div className="flex h-screen items-center justify-center bg-surface-bright">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-sm text-on-surface-variant">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (!isAuthenticated) return null; // Or a loading spinner
+  // Not authenticated — redirect to login
+  React.useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
+  if (status === 'unauthenticated' || !session) {
+    return null;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-bright font-sans text-on-surface relative">
-      {/* Mobile Toggle inside header or absolute */}
       <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
       <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300 ${isCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
         <Header />

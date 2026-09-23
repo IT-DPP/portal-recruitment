@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { UserPlus, Briefcase } from "lucide-react";
+import Image from "next/image";
+import { LogIn } from "lucide-react";
 import PublicJobList from "@/components/PublicJobList";
 
 export default function Home() {
@@ -8,28 +9,31 @@ export default function Home() {
       <div className="max-w-6xl mx-auto p-6 md:p-10">
         <header className="flex justify-between items-center mb-16">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary flex items-center justify-center rounded-2xl shadow-lg shadow-primary/20">
-              <Briefcase className="text-white w-7 h-7" />
+            <div className="w-12 h-12  bg-primary rounded-md p-1 flex items-center justify-center overflow-hidden">
+              <Image
+                src="/icon.png"
+                alt="Logo"
+                width={48}
+                height={48}
+                className="object-contain"
+              />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-primary leading-tight">DPP Portal Career</h1>
-              <p className="text-xs text-on-surface-variant font-medium">Discover Your Next Journey</p>
+              <h1 className="text-2xl font-bold text-primary leading-tight">
+                DPP Portal Career
+              </h1>
+              <p className="text-xs text-on-surface-variant font-medium">
+                Discover Your Next Journey
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Link
-              href="/candidate/login"
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-outline-variant text-primary rounded-xl font-bold hover:bg-surface-container-low transition-all duration-300 shadow-sm"
-            >
-              <UserPlus className="w-4 h-4" />
-              Candidate Login
-            </Link>
-            <Link
               href="/login"
-              className="flex items-center gap-2 px-5 py-2.5 bg-primary/10 text-primary rounded-xl font-bold hover:bg-primary hover:text-white transition-all duration-300"
+              className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-all duration-300 shadow-sm"
             >
-              <UserPlus className="w-4 h-4" />
-              Recruiter Login
+              <LogIn className="w-4 h-4" />
+              Login
             </Link>
           </div>
         </header>
@@ -40,10 +44,11 @@ export default function Home() {
               Find the perfect job for <span className="text-primary">you</span>
             </h2>
             <p className="text-lg text-on-surface-variant leading-relaxed">
-              Explore open opportunities, find your next career move, and join our team of passionate professionals building the future.
+              Explore open opportunities, find your next career move, and join
+              our team of passionate professionals building the future.
             </p>
           </div>
-          
+
           <div className="w-full">
             <PublicJobList />
           </div>

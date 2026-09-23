@@ -1,135 +1,73 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  UserPlus,
-  User,
-  Lock,
-  Eye,
-  EyeOff,
-  LogIn,
-  HelpCircle,
-  Headphones,
-  BarChart2,
-  ShieldCheck,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useModal } from "@/components/providers/ModalProvider";
 
 export default function LoginPage() {
   const router = useRouter();
-  const modal = useModal();
+  const { data: session, status } = useSession();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [authSuccess, setAuthSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Pre-configured simulated credentials (Username/Password)
-  const getAuthorizedLogins = () => {
-    const defaultAdmins = [
-      {
-        username: "admin",
-        password: "password",
-        role: "Administrator",
-        email: "admin@example.com",
-        fullName: "Admin DPP",
-      },
-    ];
-
-    try {
-      const savedUsers = localStorage.getItem("nexus_users_db");
-      if (savedUsers) {
-        const parsedUsers = JSON.parse(savedUsers);
-        // Ensure mapping for login works with user schema
-        return [
-          ...defaultAdmins,
-          ...parsedUsers.map((u: any) => ({
-            username: u.username,
-            password: u.password,
-            role: u.role,
-            email: u.email,
-            fullName: u.fullName,
-            department: u.department,
-          })),
-        ];
+  // If already authenticated, redirect to the correct dashboard based on role
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      const userRole = (session.user as any)?.role;
+      if (userRole === "ADMIN" || userRole === "RECRUITER") {
+        router.push('/dashboard');
+      } else {
+        router.push('/candidate/jobs');
       }
-    } catch (e) {
-      console.error("Failed to read user database from localStorage:", e);
     }
-    
-    return defaultAdmins;
-  };
+  }, [status, session, router]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAuthenticating(true);
     setErrorMsg("");
 
-    setTimeout(() => {
-      const inputId = identifier.trim().toLowerCase();
-      const credentialsList = getAuthorizedLogins();
+    try {
+      const res = await signIn("credentials", {
+        redirect: false,
+        email: identifier,
+        password: password,
+      });
 
-      // Basic validation for prototype
-      const matched = credentialsList.find(
-        (acc: any) =>
-          (acc.username.toLowerCase() === inputId ||
-            acc.email.toLowerCase() === inputId) &&
-          acc.password === password,
-      );
-
-      if (!matched) {
+      if (res?.error) {
+        setErrorMsg("Invalid email or password");
         setIsAuthenticating(false);
-        setErrorMsg(
-          "Invalid login credentials. Access is restricted to specific authorized personnel.",
-        );
-        return;
-      }
-
-      // Handle persistence
-      if (rememberMe) {
-        localStorage.setItem("nexus_remember_login", "true");
-        localStorage.setItem(
-          "nexus_logged_user",
-          JSON.stringify({
-            username: matched.username,
-            email: matched.email,
-            fullName: matched.fullName,
-            role: matched.role,
-          }),
-        );
       } else {
-        localStorage.removeItem("nexus_remember_login");
-        localStorage.removeItem("nexus_logged_user");
+        // Fetch fresh session to check role
+        const { getSession } = await import("next-auth/react");
+        const freshSession = await getSession();
+        const role = (freshSession?.user as any)?.role;
+        
+        if (role === "ADMIN" || role === "RECRUITER") {
+          router.push("/dashboard");
+        } else {
+          router.push("/candidate/jobs");
+        }
       }
-
+    } catch (error) {
+      setErrorMsg("An error occurred during login");
       setIsAuthenticating(false);
-      setAuthSuccess(true);
-
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 800);
-    }, 1200);
+    }
   };
 
   const handleGoogleLogin = async () => {
-    await modal.alert(
-      "Simulasi",
-      "Google Login is disabled in prototype mode. Please use credentials.",
-    );
-  };
-
-  const handleOpenCandidatePortal = () => {
-    router.push("/"); // Portal is at root
+    // We use default redirect. We can't conditionally set callbackUrl before login,
+    // so we set it to /login. Then the useEffect will catch the authenticated status
+    // and redirect correctly.
+    await signIn("google", { callbackUrl: "/login" });
   };
 
   return (
     <div className="bg-surface-bright flex min-h-screen items-center justify-center p-4 md:p-0 relative overflow-hidden font-sans">
-      {/* Subtle Background Pattern */}
       <div
         className="absolute inset-0 z-0 pointer-events-none opacity-20"
         style={{
@@ -137,288 +75,134 @@ export default function LoginPage() {
           backgroundSize: "24px 24px",
         }}
       />
-
-      {/* Hero Image Decoration (Asymmetric Layout Element) */}
       <div className="hidden lg:block absolute -left-20 bottom-10 w-96 h-96 rounded-full bg-secondary-container blur-3xl opacity-40 z-0" />
       <div className="hidden lg:block absolute -right-20 top-10 w-80 h-80 rounded-full bg-primary-container blur-3xl opacity-20 z-0" />
 
       <main className="relative z-10 w-full max-w-[480px]">
-        {/* Login Card Container */}
         <div className="bg-surface-container-lowest border border-table-border rounded-lg shadow-sm p-8 md:p-12">
-          {/* Brand Identity */}
           <div className="flex flex-col items-center mb-10">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-primary flex items-center justify-center rounded">
-                <UserPlus className="text-white w-6 h-6" />
-              </div>
-              <h1 className="font-sans text-3xl font-bold text-primary tracking-tight">
-                DPP Portal Career
-              </h1>
-            </div>
-            <p className="font-sans text-sm text-on-surface-variant text-center">
-              Recruitment Management System
+            <h1 className="text-2xl font-bold text-on-surface">Sign In</h1>
+            <p className="text-sm text-on-surface-variant mt-2 text-center">
+              Welcome to the Recruitment Portal
             </p>
           </div>
 
-          {/* Error Message Box */}
-          {errorMsg && (
-            <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded text-xs text-status-error flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-status-error" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-md p-3 text-sm font-medium text-gray-700 hover:bg-gray-50 mb-6 transition-colors"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                fill="#4285F4"
+              />
+              <path
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                fill="#34A853"
+              />
+              <path
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                fill="#FBBC05"
+              />
+              <path
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                fill="#EA4335"
+              />
+            </svg>
+            Sign in with Google
+          </button>
 
-          {/* Login Form */}
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Username/Email Field */}
-            <div className="space-y-1.5">
-              <label
-                className="font-mono text-[11px] font-semibold text-on-surface uppercase tracking-wider block"
-                htmlFor="identifier"
-              >
-                Username or Email
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-table-border"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-surface-container-lowest text-on-surface-variant">
+                Or continue with credentials
+              </span>
+            </div>
+          </div>
+
+          <form onSubmit={handleCredentialsLogin} className="space-y-5">
+            {errorMsg && (
+              <div className="p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">
+                {errorMsg}
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-on-surface mb-1.5">
+                Email Address
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant w-5 h-5" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-4 w-4 text-on-surface-variant" />
+                </div>
                 <input
-                  type="text"
-                  id="identifier"
-                  name="identifier"
+                  type="email"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="Enter your credentials"
+                  className="block w-full pl-10 pr-3 py-2.5 border border-table-border rounded-md text-sm shadow-sm placeholder-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-surface"
+                  placeholder="Enter your email"
                   required
-                  className="w-full h-11 pl-10 pr-4 bg-white border border-outline-variant rounded text-sm text-black transition-all focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-sans"
                 />
               </div>
             </div>
-
-            {/* Password Field */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <label
-                  className="font-mono text-[11px] font-semibold text-on-surface uppercase tracking-wider block"
-                  htmlFor="password"
-                >
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-on-surface">
                   Password
                 </label>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant w-5 h-5" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-4 w-4 text-on-surface-variant" />
+                </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  id="password"
-                  name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full pl-10 pr-10 py-2.5 border border-table-border rounded-md text-sm shadow-sm placeholder-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-surface"
                   placeholder="••••••••"
                   required
-                  className="w-full h-11 pl-10 pr-12 bg-white border border-outline-variant rounded text-sm text-black transition-all focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-sans"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary focus:outline-none"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-on-surface-variant hover:text-on-surface"
                 >
                   {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
+                    <EyeOff className="h-4 w-4" />
                   ) : (
-                    <Eye className="w-5 h-5" />
+                    <Eye className="h-4 w-4" />
                   )}
                 </button>
               </div>
             </div>
-
-            {/* Action Row */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary"
-                />
-                <span className="font-sans text-xs text-on-surface-variant group-hover:text-on-surface transition-colors">
-                  Remember me
-                </span>
-              </label>
-              <button
-                type="button"
-                onClick={async () =>
-                  await modal.alert(
-                    "Lupa Password",
-                    "Password reset is simulated. Any login attempt succeeds!",
-                  )
-                }
-                className="font-mono text-xs font-semibold text-primary hover:underline underline-offset-4"
-              >
-                Forgot password?
-              </button>
-            </div>
-
-            {/* Submit Button */}
             <button
               type="submit"
-              disabled={isAuthenticating || authSuccess}
-              className={`w-full text-white h-12 rounded font-sans font-medium text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
-                authSuccess
-                  ? "bg-status-success"
-                  : "bg-primary hover:bg-primary-container"
-              }`}
+              disabled={isAuthenticating}
+              className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
             >
               {isAuthenticating ? (
                 <>
-                  <Loader2 className="animate-spin w-5 h-5" />
-                  <span>Authenticating...</span>
-                </>
-              ) : authSuccess ? (
-                <>
-                  <ShieldCheck className="w-5 h-5" />
-                  <span>Success</span>
+                  <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                  Signing in...
                 </>
               ) : (
-                <>
-                  <span>Sign In</span>
-                  <LogIn className="w-5 h-5" />
-                </>
+                "Sign in"
               )}
             </button>
-
-            {/* Separator */}
-            <div className="relative flex py-1 items-center">
-              <div className="flex-grow border-t border-table-border"></div>
-              <span className="flex-shrink mx-4 text-[10px] font-mono text-on-surface-variant uppercase tracking-widest">
-                or
-              </span>
-              <div className="flex-grow border-t border-table-border"></div>
-            </div>
-
-            {/* Google Login Button */}
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={isAuthenticating || authSuccess}
-              className="w-full flex items-center justify-center gap-3 h-12 px-4 bg-white border border-outline-variant hover:border-primary/50 text-xs font-semibold text-on-surface hover:bg-surface-container-low/20 rounded shadow-sm transition-all cursor-pointer active:scale-[0.98]"
-            >
-              <svg
-                version="1.1"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                className="w-5 h-5 shrink-0"
-              >
-                <path
-                  fill="#EA4335"
-                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-                ></path>
-                <path
-                  fill="#4285F4"
-                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-                ></path>
-                <path
-                  fill="#FBBC05"
-                  d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-                ></path>
-                <path
-                  fill="#34A853"
-                  d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-                ></path>
-              </svg>
-              <span>Sign In with Google</span>
-            </button>
-
-            {/* Candidate Portal Public Access Button */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleOpenCandidatePortal}
-                className="w-full flex items-center justify-center gap-2 h-11 px-4 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white text-xs font-bold rounded shadow-sm transition-all cursor-pointer active:scale-[0.98]"
-              >
-                <UserPlus className="w-4 h-4 text-blue-200" />
-                <span>Akses Portal Pelamar / Cek Status Lamaran</span>
-              </button>
-            </div>
           </form>
-
-          {/* Footer Info */}
-          <div className="mt-10 pt-8 border-t border-table-border text-center">
-            <p className="font-sans text-xs text-on-surface-variant mb-4">
-              Are you a recruiter or administrator?
-            </p>
-            <div className="flex flex-wrap justify-center items-center gap-3">
-              <button
-                type="button"
-                onClick={async () =>
-                  await modal.alert(
-                    "Request Akses",
-                    "Access Request Form is simulated.",
-                  )
-                }
-                className="flex items-center gap-1.5 font-sans text-xs font-semibold text-secondary hover:text-primary transition-colors focus:outline-none"
-              >
-                <HelpCircle className="w-4 h-4" />
-                <span>Request Access</span>
-              </button>
-              <span className="text-outline-variant">|</span>
-              <button
-                type="button"
-                onClick={async () =>
-                  await modal.alert(
-                    "Technical Support",
-                    "Please contact Hilmiassidqi27@gmail.com for technical support.",
-                  )
-                }
-                className="flex items-center gap-1.5 font-sans text-xs font-semibold text-secondary hover:text-primary transition-colors focus:outline-none"
-              >
-                <Headphones className="w-4 h-4" />
-                <span>Technical Support</span>
-              </button>
-            </div>
+          
+          <div className="mt-6 text-center text-sm text-on-surface-variant">
+            Don't have an account?{" "}
+            <a href="/candidate/register" className="font-medium text-primary hover:underline">
+              Register here
+            </a>
           </div>
-        </div>
-
-        {/* System Status Bar */}
-        <div className="mt-6 flex items-center justify-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" />
-            <span className="font-sans text-xs text-on-surface-variant">
-              System Operational
-            </span>
-          </div>
-          <span className="text-outline-variant text-[10px] font-mono">
-            v3.0.0-next.1
-          </span>
         </div>
       </main>
-
-      {/* Side Graphic for Desktop */}
-      <aside className="hidden xl:flex fixed right-8 top-1/2 -translate-y-1/2 flex-col gap-4 max-w-sm pointer-events-none">
-        <div className="p-6 bg-surface-container-high border border-table-border rounded-lg space-y-4">
-          <div className="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center bg-[#d2e4ff]">
-            <BarChart2 className="text-primary w-6 h-6" />
-          </div>
-          <h3 className="font-sans text-lg font-semibold text-primary">
-            Advanced Analytics
-          </h3>
-          <p className="font-sans text-xs text-on-surface-variant leading-relaxed">
-            Track your recruitment pipeline with real-time data visualization
-            and industrial-grade reporting tools designed for high-volume
-            operations.
-          </p>
-        </div>
-
-        <div className="p-6 bg-surface-container-low border border-table-border rounded-lg space-y-4 opacity-70 scale-95 origin-right">
-          <div className="w-12 h-12 rounded-full bg-secondary-fixed flex items-center justify-center bg-[#cbe7f5]">
-            <ShieldCheck className="text-secondary w-6 h-6" />
-          </div>
-          <h3 className="font-sans text-lg font-semibold text-secondary">
-            Secure Integration
-          </h3>
-          <p className="font-sans text-xs text-on-surface-variant leading-relaxed">
-            Enterprise-level security protocols ensuring your talent pool and
-            candidate data remain compliant and protected.
-          </p>
-        </div>
-      </aside>
     </div>
   );
 }

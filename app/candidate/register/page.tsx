@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { UserPlus, Mail, Lock, Eye, EyeOff, User, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 
 export default function CandidateRegisterPage() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function CandidateRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMsg("");
@@ -34,37 +35,45 @@ export default function CandidateRegisterPage() {
       return;
     }
 
-    setTimeout(() => {
-      const existingCandidatesRaw = localStorage.getItem("ugz_candidates");
-      const candidates = existingCandidatesRaw ? JSON.parse(existingCandidatesRaw) : [];
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+        }),
+      });
 
-      const candidateExists = candidates.some((c: any) => c.email.toLowerCase() === email.toLowerCase());
+      const data = await response.json();
 
-      if (candidateExists) {
-        setErrorMsg("Email is already registered. Please login instead.");
+      if (!response.ok) {
+        setErrorMsg(data.message || "Registration failed");
         setIsSubmitting(false);
         return;
       }
 
-      const newCandidate = {
-        id: Date.now().toString(),
-        email: email.toLowerCase(),
-        password: password, // In a real app, this should be hashed
-        createdAt: new Date().toISOString()
-      };
-
-      candidates.push(newCandidate);
-      localStorage.setItem("ugz_candidates", JSON.stringify(candidates));
-      
       // Auto login after register
-      localStorage.setItem("nexus_candidate_session", JSON.stringify({
-        id: newCandidate.id,
-        email: newCandidate.email
-      }));
+      const res = await signIn("credentials", {
+        redirect: false,
+        email: email,
+        password: password,
+      });
+
+      if (res?.error) {
+        setErrorMsg("Registration successful but auto-login failed. Please sign in manually.");
+        setIsSubmitting(false);
+        return;
+      }
 
       setIsSubmitting(false);
       router.push("/candidate/jobs"); // Redirect to candidate jobs list
-    }, 1000);
+    } catch (error) {
+      setErrorMsg("An unexpected error occurred. Please try again.");
+      setIsSubmitting(false);
+    }
   };
 
   return (
