@@ -1,40 +1,26 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql" // atau mysql/sqlite sesuai preferensi
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// ------------------------------------------------------
-// 1. AUTHENTICATION & USER MANAGEMENT (NextAuth OAuth)
-// ------------------------------------------------------
-
-enum UserRole {
-  ADMIN
-  RECRUITER
-  CANDIDATE
-}
-
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -48,20 +34,17 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  password      String?
-  department    String?
-  emailVerified DateTime?
-  image         String?
-  role          UserRole  @default(CANDIDATE)
-
-  accounts      Account[]
-  sessions      Session[]
-  
-  // Relasi ke Candidate Profile jika role-nya CANDIDATE
+  id               String            @id @default(cuid())
+  name             String?
+  email            String?           @unique
+  password         String?
+  department       String?
+  emailVerified    DateTime?
+  image            String?
+  role             UserRole          @default(CANDIDATE)
+  accounts         Account[]
   candidateProfile CandidateProfile?
+  sessions         Session[]
 }
 
 model VerificationToken {
@@ -72,134 +55,253 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// ------------------------------------------------------
-// 2. MASTER DATA (Referensi)
-// ------------------------------------------------------
-
 model MasterProvince {
-  id          String   @id @default(cuid())
-  code        String?  @unique // PRV-1
-  name        String
-  
-  cities      MasterCity[]
-  sites       MasterSite[]
-  profiles    CandidateProfile[]
-  jobs        JobOpening[]
+  id       String             @id @default(cuid())
+  code     String?            @unique
+  name     String
+  profiles CandidateProfile[]
+  jobs     JobOpening[]
+  cities   MasterCity[]
+  sites    MasterSite[]
 }
 
 model MasterCity {
-  id          String   @id @default(cuid())
-  code        String?  @unique // CTY-1
-  name        String
-  provinceId  String
-  
-  province    MasterProvince @relation(fields: [provinceId], references: [id])
-  sites       MasterSite[]
-  profiles    CandidateProfile[]
-  jobs        JobOpening[]
+  id         String             @id @default(cuid())
+  code       String?            @unique
+  name       String
+  provinceId String
+  profiles   CandidateProfile[]
+  jobs       JobOpening[]
+  province   MasterProvince     @relation(fields: [provinceId], references: [id])
+  sites      MasterSite[]
 }
 
 model MasterCustomer {
-  id          String   @id @default(cuid())
-  code        String?  @unique // CST-1
-  name        String
-
-  sites       MasterSite[]
-  jobs        JobOpening[]
+  id    String       @id @default(cuid())
+  code  String?      @unique
+  name  String
+  jobs  JobOpening[]
+  sites MasterSite[]
 }
 
 model MasterSite {
-  id          String   @id @default(cuid())
-  code        String?  @unique // SIT-1
-  name        String
-  latitude    Float?
-  longitude   Float?
-  
-  customerId  String
-  cityId      String
-  provinceId  String
-
-  customer    MasterCustomer @relation(fields: [customerId], references: [id])
-  city        MasterCity     @relation(fields: [cityId], references: [id])
-  province    MasterProvince @relation(fields: [provinceId], references: [id])
-  jobs        JobOpening[]
+  id             String         @id @default(cuid())
+  code           String?        @unique
+  name           String
+  latitude       Float?
+  longitude      Float?
+  customerId     String
+  cityId         String
+  provinceId     String
+  useSpecificSla Boolean        @default(false)
+  jobs           JobOpening[]
+  city           MasterCity     @relation(fields: [cityId], references: [id])
+  customer       MasterCustomer @relation(fields: [customerId], references: [id])
+  province       MasterProvince @relation(fields: [provinceId], references: [id])
+  siteSlas       SiteSla[]
 }
 
 model MasterPosition {
-  id          String   @id @default(cuid())
-  code        String?  @unique // POS-1
-  name        String
-
-  jobs        JobOpening[]
+  id   String       @id @default(cuid())
+  code String?      @unique
+  name String
+  jobs JobOpening[]
 }
 
 model MasterPipelineStage {
-  id          String   @id @default(cuid())
-  name        String   // CV Screening, Interview HR, Skill Test, Interview User, dll.
-  orderIndex  Int
-  slaDays     Int      @default(3) // Service Level Agreement dalam hari
+  id                String                   @id @default(cuid())
+  name              String
+  orderIndex        Int
+  slaDays           Int                      @default(3)
+  reminderDays      Int                      @default(1)
+  applications      Application[]            @relation("CurrentStage")
+  appHistories      ApplicationHistory[]
+  jobTimelines      JobTimeline[]
+  rejectionMessages MasterRejectionMessage[]
+  siteSlas          SiteSla[]
+}
 
-  jobTimelines JobTimeline[]
-  appHistories ApplicationHistory[]
-  applications Application[] @relation("CurrentStage")
+model SiteSla {
+  id           String              @id @default(cuid())
+  siteId       String
+  stageId      String
+  slaDays      Int
+  reminderDays Int
+  site         MasterSite          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  stage        MasterPipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, stageId])
 }
 
 model MasterRejectionMessage {
-  id          String   @id @default(cuid())
-  title       String
-  message     String   @db.Text
+  id      String              @id @default(cuid())
+  message String
+  code    String?             @unique
+  stageId String
+  stage   MasterPipelineStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
 }
 
-// ------------------------------------------------------
-// 3. CANDIDATE & PROFILES
-// ------------------------------------------------------
+model MasterInstitute {
+  id       String  @id @default(cuid())
+  code     String? @unique
+  name     String
+  address  String?
+  city     String?
+  province String?
+  status   String?
+  type     String?
+}
+
+model MasterDepartment {
+  id   String       @id @default(cuid())
+  code String?      @unique
+  name String
+  jobs JobOpening[]
+}
+
+model MasterCertificationSchema {
+  id   String  @id @default(cuid())
+  code String? @unique
+  name String
+}
+
+model MasterRequestType {
+  id   String  @id @default(cuid())
+  code String? @unique
+  name String
+}
+
+model MasterCertification {
+  id   String  @id @default(cuid())
+  code String? @unique
+  name String
+}
 
 model CandidateProfile {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  nik                String?  @unique
+  id                 String              @id @default(cuid())
+  userId             String              @unique
+  nik                String?             @unique
   whatsapp           String?
   latestEducation    String?
   trainingCenterType String?
   trainingCenterName String?
-  
   cityId             String?
   provinceId         String?
-
-  // Flags untuk Blacklist & Archive & Talent Pool
-  isTalentPool       Boolean  @default(false)
-  isBlacklisted      Boolean  @default(false)
-  isArchived         Boolean  @default(false)
-  
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-
-  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  city               MasterCity?     @relation(fields: [cityId], references: [id])
-  province           MasterProvince? @relation(fields: [provinceId], references: [id])
-  
-  documents          CandidateDocument[]
+  isTalentPool       Boolean             @default(false)
+  isBlacklisted      Boolean             @default(false)
+  isArchived         Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   applications       Application[]
+  documents          CandidateDocument[]
+  city               MasterCity?         @relation(fields: [cityId], references: [id])
+  province           MasterProvince?     @relation(fields: [provinceId], references: [id])
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Menangani dokumen (CV, KTP, Sertifikat) yang disimpan di MinIO / S3
 model CandidateDocument {
-  id                 String   @id @default(cuid())
+  id                 String           @id @default(cuid())
   candidateProfileId String
-  documentType       String   // CV, PORTFOLIO, KTP, dll
-  fileUrl            String   // URL untuk akses file (presigned atau public)
-  objectKey          String   // Kunci object di S3/MinIO bucket (misal: cv/kandidat_123.pdf)
+  documentType       String
+  fileUrl            String
+  objectKey          String
   mimeType           String?
   sizeBytes          Int?
-  
-  createdAt          DateTime @default(now())
-
+  createdAt          DateTime         @default(now())
   candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
 }
 
-// ------------------------------------------------------
-// 4. JOB OPENINGS & PIPELINE
-// ------------------------------------------------------
+model JobOpening {
+  id                String           @id @default(cuid())
+  noRegistrasi      String           @unique
+  positionId        String
+  customerId        String
+  cityId            String
+  provinceId        String
+  siteId            String
+  statusPermintaan  String
+  jumlahPermintaan  Int
+  tanggalMasuk      DateTime
+  status            JobStatus        @default(DRAFT)
+  isPriority        Boolean          @default(false)
+  requiresSkillTest Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  departmentId      String
+  departmentName    String?
+  positionName      String?
+  benefit           String?
+  district          String?
+  kualifikasi       String?
+  noFormB1          String?
+  requiresBnsp      Boolean          @default(false)
+  publishedDate     DateTime?
+  applications      Application[]
+  city              MasterCity       @relation(fields: [cityId], references: [id])
+  customer          MasterCustomer   @relation(fields: [customerId], references: [id])
+  department        MasterDepartment @relation(fields: [departmentId], references: [id])
+  position          MasterPosition   @relation(fields: [positionId], references: [id])
+  province          MasterProvince   @relation(fields: [provinceId], references: [id])
+  site              MasterSite       @relation(fields: [siteId], references: [id])
+  timeline          JobTimeline[]
+}
+
+model JobTimeline {
+  id           String              @id @default(cuid())
+  jobId        String
+  stageId      String
+  status       String              @default("Pending")
+  startDate    DateTime
+  deadlineDate DateTime
+  job          JobOpening          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  stage        MasterPipelineStage @relation(fields: [stageId], references: [id])
+
+  @@unique([jobId, stageId])
+}
+
+model Application {
+  id                 String               @id @default(cuid())
+  jobId              String
+  candidateProfileId String
+  currentStageId     String?
+  status             ApplicationStatus    @default(ACTIVE)
+  applicationDate    DateTime             @default(now())
+  candidateProfile   CandidateProfile     @relation(fields: [candidateProfileId], references: [id])
+  currentStage       MasterPipelineStage? @relation("CurrentStage", fields: [currentStageId], references: [id])
+  job                JobOpening           @relation(fields: [jobId], references: [id])
+  history            ApplicationHistory[]
+  interviews         Interview[]
+}
+
+model ApplicationHistory {
+  id            String               @id @default(cuid())
+  applicationId String
+  stageId       String?
+  stageName     String
+  date          DateTime             @default(now())
+  note          String?
+  application   Application          @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  stage         MasterPipelineStage? @relation(fields: [stageId], references: [id])
+}
+
+model Interview {
+  id              String      @id @default(cuid())
+  applicationId   String
+  type            String
+  title           String
+  scheduledAt     DateTime
+  durationMinutes Int         @default(60)
+  locationOrLink  String?
+  interviewerName String?
+  createdAt       DateTime    @default(now())
+  application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+enum UserRole {
+  ADMIN
+  RECRUITER
+  CANDIDATE
+}
 
 enum JobStatus {
   DRAFT
@@ -208,110 +310,9 @@ enum JobStatus {
   OVERDUE
 }
 
-model JobOpening {
-  id                 String    @id @default(cuid())
-  noRegistrasi       String    @unique
-  
-  positionId         String
-  customerId         String
-  cityId             String
-  provinceId         String
-  siteId             String
-
-  statusPermintaan   String    // Penambahan, Pergantian
-  jumlahPermintaan   Int
-  tanggalMasuk       DateTime
-  
-  status             JobStatus @default(DRAFT)
-  isPriority         Boolean   @default(false)
-  
-  // Flag ini menandakan apakah lowongan ini mewajibkan skill test
-  // Jika false, MasterPipelineStage untuk Skill Test bisa diabaikan/dilewati di JobTimeline
-  requiresSkillTest  Boolean   @default(false)
-
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-
-  position           MasterPosition @relation(fields: [positionId], references: [id])
-  customer           MasterCustomer @relation(fields: [customerId], references: [id])
-  city               MasterCity     @relation(fields: [cityId], references: [id])
-  province           MasterProvince @relation(fields: [provinceId], references: [id])
-  site               MasterSite     @relation(fields: [siteId], references: [id])
-
-  timeline           JobTimeline[]
-  applications       Application[]
-}
-
-// Representasi SLA dan Deadline per Job Stage
-// Karena stage statis tapi Skill Test opsional, relasi ini berguna untuk merekam tahap apa saja
-// yang berlaku untuk suatu job dan kapan deadline-nya.
-model JobTimeline {
-  id            String   @id @default(cuid())
-  jobId         String
-  stageId       String
-  
-  status        String   @default("Pending") // Pending, Completed
-  startDate     DateTime
-  deadlineDate  DateTime
-  
-  job           JobOpening          @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  stage         MasterPipelineStage @relation(fields: [stageId], references: [id])
-
-  @@unique([jobId, stageId])
-}
-
-// ------------------------------------------------------
-// 5. APPLICATIONS & INTERVIEWS
-// ------------------------------------------------------
-
 enum ApplicationStatus {
   ACTIVE
   REJECTED
   HIRED
   WITHDRAWN
-}
-
-model Application {
-  id                 String   @id @default(cuid())
-  jobId              String
-  candidateProfileId String
-  currentStageId     String?
-  
-  status             ApplicationStatus @default(ACTIVE)
-  applicationDate    DateTime @default(now())
-
-  job                JobOpening          @relation(fields: [jobId], references: [id], onDelete: Restrict)
-  candidateProfile   CandidateProfile    @relation(fields: [candidateProfileId], references: [id], onDelete: Restrict)
-  currentStage       MasterPipelineStage? @relation("CurrentStage", fields: [currentStageId], references: [id])
-
-  history            ApplicationHistory[]
-  interviews         Interview[]
-}
-
-model ApplicationHistory {
-  id                 String   @id @default(cuid())
-  applicationId      String
-  stageId            String?
-  stageName          String   // Bisa jadi 'Rejected' atau nama stage valid
-  date               DateTime @default(now())
-  note               String?  @db.Text
-
-  application        Application          @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  stage              MasterPipelineStage? @relation(fields: [stageId], references: [id])
-}
-
-// Event Interview untuk Kalender Wawancara
-model Interview {
-  id                 String   @id @default(cuid())
-  applicationId      String
-  type               String   // HR, USER, SKILL
-  title              String
-  scheduledAt        DateTime
-  durationMinutes    Int      @default(60)
-  locationOrLink     String?
-  interviewerName    String?  // Jika tidak punya akun di sistem (bisa diganti User relation jika ada)
-  
-  createdAt          DateTime @default(now())
-
-  application        Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 }

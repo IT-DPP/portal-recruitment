@@ -1,0 +1,25 @@
+import { z } from "zod";
+
+export const JobOpeningSchema = z.object({
+  noRegistrasi: z.string().min(1, "No Registrasi is required"),
+  positionId: z.string().min(1, "Position is required"),
+  positionName: z.string().optional(),
+  departmentId: z.string().min(1, "Department is required"),
+  departmentName: z.string().optional(),
+  customerId: z.string().min(1, "Customer is required"),
+  provinceId: z.string().min(1, "Province is required"),
+  cityId: z.string().min(1, "City is required"),
+  siteId: z.string().min(1, "Site is required"),
+  statusPermintaan: z.string().min(1, "Status Permintaan is required"),
+  jumlahPermintaan: z.number().min(1, "Jumlah Permintaan must be at least 1"),
+  tanggalMasuk: z.date(),
+  noFormB1: z.string().optional(),
+  district: z.string().optional(),
+  kualifikasi: z.string().optional(),
+  benefit: z.string().optional(),
+  requiresSkillTest: z.boolean().default(false),
+  requiresBnsp: z.boolean().default(false),
+  isPriority: z.boolean().default(false),
+});
+
+export type JobOpeningInput = z.infer<typeof JobOpeningSchema>;

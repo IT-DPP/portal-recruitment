@@ -15,6 +15,13 @@ export default function DashboardLayout({
   const { data: session, status } = useSession();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Not authenticated — redirect to login
+  React.useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
   // Still loading session from server
   if (status === 'loading') {
     return (
@@ -26,13 +33,6 @@ export default function DashboardLayout({
       </div>
     );
   }
-
-  // Not authenticated — redirect to login
-  React.useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
 
   if (status === 'unauthenticated' || !session) {
     return null;
