@@ -112,6 +112,28 @@ async function main() {
     }
   }
 
+  // Seed Departments
+  const departments = [
+    { code: 'DEPT-01', name: 'Human Resources (HR)' },
+    { code: 'DEPT-02', name: 'Finance & Accounting' },
+    { code: 'DEPT-03', name: 'Information Technology (IT)' },
+    { code: 'DEPT-04', name: 'Operations & Production' },
+    { code: 'DEPT-05', name: 'Engineering' },
+    { code: 'DEPT-06', name: 'Health, Safety & Environment (HSE)' },
+    { code: 'DEPT-07', name: 'Supply Chain & Logistics' },
+    { code: 'DEPT-08', name: 'Maintenance' },
+    { code: 'DEPT-09', name: 'Sales & Marketing' }
+  ];
+  for (const d of departments) {
+    let dept = await prisma.masterDepartment.findFirst({
+      where: { OR: [{ name: d.name }, { code: d.code }] }
+    });
+    if (!dept) {
+      await prisma.masterDepartment.create({ data: d });
+      console.log(`Created department: ${d.name}`);
+    }
+  }
+
   // Seed Sites
   const siteData = [
     { name: "KPC Sangatta Coal Mine", lat: 0.823979, lng: 117.599032, loc: "Kalimantan Timur" },

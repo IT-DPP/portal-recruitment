@@ -1,42 +1,54 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, ArrowLeft } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useModal } from '@/components/providers/ModalProvider';
+import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from '@/app/actions/master-data';
 
 export default function DepartmentMaster() {
   const modal = useModal();
   const [data, setData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '' });
+  const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('ugz_master_department');
-    if (saved) {
-      setData(JSON.parse(saved));
+  const loadData = async () => {
+    setIsLoading(true);
+    const res = await getDepartments();
+    if (res.success && res.data) {
+      setData(res.data);
     }
-  }, []);
-
-  const saveToLocal = (newData: any[]) => {
-    setData(newData);
-    localStorage.setItem('ugz_master_department', JSON.stringify(newData));
+    setIsLoading(false);
   };
 
-  const handleSave = () => {
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleSave = async () => {
     if (!formData.name) return;
+    setIsSaving(true);
     
     if (isEditing) {
-      const updated = data.map(item => 
-        item.id === isEditing ? { ...item, name: formData.name } : item
-      );
-      saveToLocal(updated);
+      const res = await updateDepartment(isEditing, { name: formData.name });
+      if (res.success) {
+        await loadData();
+      } else {
+        alert(res.error);
+      }
     } else {
-      const newItem = { id: Date.now().toString(), name: formData.name };
-      saveToLocal([...data, newItem]);
+      const res = await createDepartment({ name: formData.name });
+      if (res.success) {
+        await loadData();
+      } else {
+        alert(res.error);
+      }
     }
     
+    setIsSaving(false);
     setIsEditing(null);
     setFormData({ name: '' });
     setIsModalOpen(false);
@@ -44,7 +56,12 @@ export default function DepartmentMaster() {
 
   const handleDelete = async (id: string) => {
     if(await modal.confirm("Konfirmasi Hapus", "Apakah Anda yakin ingin menghapus data ini?", true)) {
-      saveToLocal(data.filter(item => item.id !== id));
+      const res = await deleteDepartment(id);
+      if (res.success) {
+        await loadData();
+      } else {
+        alert(res.error);
+      }
     }
   };
 
@@ -109,9 +126,10 @@ export default function DepartmentMaster() {
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-container transition-colors flex items-center gap-2"
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-container transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
-                  <Save className="w-4 h-4" />
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {isEditing ? "Update" : "Save"}
                 </button>
               </div>
@@ -129,7 +147,13 @@ export default function DepartmentMaster() {
               </tr>
             </thead>
             <tbody>
-              {data.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={3} className="px-6 py-8 text-center text-on-surface-variant flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Memuat data...
+                  </td>
+                </tr>
+              ) : data.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-6 py-8 text-center text-on-surface-variant">Belum ada data.</td>
                 </tr>

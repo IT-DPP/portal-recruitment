@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useModal } from "@/components/providers/ModalProvider";
 import PipelineBoard from "@/components/PipelineBoard";
+import { publishJob } from "@/app/actions/job";
 
 interface JobDetailClientProps {
   initialJob: any;
@@ -156,14 +157,23 @@ export default function JobDetailClient({
     const now = new Date().toISOString();
     const generatedTimelines = calculateTimelines(now, job.needTestSkill);
 
-    const updatedJob = {
-      ...job,
-      globalStatus: "Active",
-      publishedDate: now,
-      timeline: generatedTimelines,
-    };
-
-    saveJobState(updatedJob);
+    try {
+      const res = await publishJob(job.id, generatedTimelines);
+      if (res.success) {
+        const updatedJob = {
+          ...job,
+          globalStatus: "Active",
+          publishedDate: now,
+          timeline: generatedTimelines,
+        };
+        saveJobState(updatedJob);
+        modal.alert("Berhasil", "Lowongan berhasil dipublish dan aktif.");
+      } else {
+        modal.alert("Error", res.error || "Gagal mempublish lowongan.");
+      }
+    } catch (e) {
+      modal.alert("Error", "Terjadi kesalahan sistem.");
+    }
   };
 
   const handleCloseJob = async () => {

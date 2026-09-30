@@ -1,107 +1,17 @@
-"use client";
-
-import React, { useEffect, useState } from "react";
-import {
-  Clock,
-  FileText,
-  ChevronRight,
-  Building2,
-  MapPin,
-  Briefcase,
-  AlertCircle,
-  CheckCircle2,
-  MessageSquare,
-} from "lucide-react";
+import React from "react";
 import Link from "next/link";
+import { getCandidateProfile } from "@/app/actions/candidate-profile";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-export default function CandidateHistoryPage() {
-  const [applications, setApplications] = useState<any[]>([]);
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [proposals, setProposals] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export const dynamic = "force-dynamic";
 
-  useEffect(() => {
-    const sessionStr = localStorage.getItem("nexus_candidate_session");
-    if (!sessionStr) {
-      setIsLoading(false);
-      return;
-    }
-    const session = JSON.parse(sessionStr);
-
-    const allApps = JSON.parse(
-      localStorage.getItem("ugz_applications") || "[]",
-    );
-    const myApps = allApps.filter(
-      (app: any) =>
-        app.candidateId === session.id && app.currentStage !== "Rejected",
-    );
-    setApplications(myApps);
-
-    const allJobs = JSON.parse(localStorage.getItem("ugz_jobs") || "[]");
-    setJobs(allJobs);
-
-    const allProposals = JSON.parse(localStorage.getItem("ugz_job_move_proposals") || "[]");
-    const myProposals = allProposals.filter((p: any) => p.candidateId === session.id && p.status === "Pending");
-    setProposals(myProposals);
-
-    setIsLoading(false);
-  }, []);
-
-  const handleApproveProposal = (proposal: any) => {
-    const allProposals = JSON.parse(localStorage.getItem("ugz_job_move_proposals") || "[]");
-    const propIndex = allProposals.findIndex((p: any) => p.id === proposal.id);
-    if (propIndex !== -1) {
-      allProposals[propIndex].status = "Approved";
-      localStorage.setItem("ugz_job_move_proposals", JSON.stringify(allProposals));
-    }
-
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const appIndex = allApps.findIndex((a: any) => a.candidateId === proposal.candidateId && a.jobId === proposal.fromJobId && a.currentStage !== "Rejected");
-    
-    if (appIndex !== -1) {
-      const app = allApps[appIndex];
-      const job = jobs.find(j => j.id === proposal.toJobId);
-      
-      app.jobId = proposal.toJobId;
-      
-      const firstStage = job?.timeline?.[0]?.id || "stage_1";
-      app.currentStage = firstStage;
-      app.isDraft = false;
-      
-      if (!app.history) app.history = [];
-      app.history.push({
-        stageId: firstStage,
-        stageName: job?.timeline?.[0]?.title || "Administration",
-        date: new Date().toISOString(),
-        note: `Moved to new job opening by candidate approval.`
-      });
-      
-      localStorage.setItem("ugz_applications", JSON.stringify(allApps));
-      
-      setApplications(allApps.filter((a: any) => a.candidateId === proposal.candidateId && a.currentStage !== "Rejected"));
-      setProposals(proposals.filter(p => p.id !== proposal.id));
-      window.alert("You have successfully approved the job move request.");
-    }
-  };
-
-  const handleRejectProposal = (proposal: any) => {
-    const allProposals = JSON.parse(localStorage.getItem("ugz_job_move_proposals") || "[]");
-    const propIndex = allProposals.findIndex((p: any) => p.id === proposal.id);
-    if (propIndex !== -1) {
-      allProposals[propIndex].status = "Rejected";
-      localStorage.setItem("ugz_job_move_proposals", JSON.stringify(allProposals));
-      setProposals(proposals.filter(p => p.id !== proposal.id));
-      window.alert("You have rejected the job move request.");
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="p-8 text-center text-on-surface-variant font-medium">
-        Loading applications...
-      </div>
-    );
-  }
+export default async function HistoryPage() {
+  const session = await getServerSession(authOptions);
+  
+  const profileRes = await getCandidateProfile();
+  const profile = profileRes.success ? profileRes.data as any : null;
+  const applications = profile?.applications?.filter((app: any) => app.status !== "REJECTED") || [];
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
@@ -110,49 +20,12 @@ export default function CandidateHistoryPage() {
           My Applications
         </h2>
         <p className="text-sm text-on-surface-variant mt-1">
-          Track the detailed status of your job applications.
+          Lacak status lamaran pekerjaan Anda di sini.
         </p>
       </div>
 
-      {proposals.length > 0 && (
-        <div className="space-y-4 mb-8">
-          {proposals.map(proposal => {
-            const fromJob = jobs.find(j => j.id === proposal.fromJobId);
-            const toJob = jobs.find(j => j.id === proposal.toJobId);
-            return (
-              <div key={proposal.id} className="bg-amber-50 border-2 border-amber-200 rounded-xl p-5 shadow-sm">
-                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                  <div className="flex gap-4">
-                    <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                      <AlertCircle className="w-6 h-6 text-amber-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg text-amber-900">Job Move Proposal</h3>
-                      <p className="text-sm text-amber-800 mt-1 leading-relaxed">
-                        The recruiter has proposed to move your application from <strong>{fromJob?.posisi}</strong> to a new opening for <strong>{toJob?.posisi}</strong>. If you accept, your application will be transferred and start at the initial stage for the new position.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 w-full md:w-auto shrink-0 mt-4 md:mt-0">
-                    <button onClick={() => handleRejectProposal(proposal)} className="flex-1 md:flex-none px-4 py-2 border border-amber-300 text-amber-700 bg-white hover:bg-amber-100 font-semibold rounded-lg text-sm transition-colors">
-                      Reject
-                    </button>
-                    <button onClick={() => handleApproveProposal(proposal)} className="flex-1 md:flex-none px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-sm transition-colors">
-                      Accept Move
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {applications.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-table-border p-8 text-center min-h-[400px] flex flex-col items-center justify-center">
-          <div className="w-16 h-16 bg-surface-container-low rounded-full flex items-center justify-center mb-4 mx-auto">
-            <FileText className="w-8 h-8 text-primary/50" />
-          </div>
           <h3 className="text-lg font-bold text-on-surface mb-2">
             No Applications Yet
           </h3>
@@ -164,32 +37,31 @@ export default function CandidateHistoryPage() {
             href="/candidate/jobs"
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg font-semibold hover:bg-primary-container transition-colors"
           >
-            Browse Jobs <ChevronRight className="w-4 h-4" />
+            Browse Jobs
           </Link>
         </div>
       ) : (
         <div className="space-y-6">
-          {applications.map((app) => {
-            const job = jobs.find((j) => j.id === app.jobId);
+          {applications.map((app: any) => {
+            const job = app.job;
             if (!job) return null;
 
-            // Find current stage details
             const currentStageInfo = job.timeline?.find(
-              (t: any) => t.id === app.currentStage,
+              (t: any) => t.id === app.currentStageId,
             );
             const currentStageName =
-              currentStageInfo?.title || app.currentStage;
-            const currentNote =
-              app.stageNotes && app.stageNotes[app.currentStage];
+              currentStageInfo?.stage?.name || currentStageInfo?.title || "Administration";
 
-            // Setup history array for display
-            const milestones = app.history || [
+            const milestones = app.history && app.history.length > 0 ? app.history : [
               {
-                stageId: "stage_1",
+                stageId: app.currentStageId,
                 stageName: "Administration",
                 date: app.applicationDate,
               },
             ];
+            
+            const latestMilestone = milestones[milestones.length - 1];
+            const displayStageName = latestMilestone.stageName;
 
             return (
               <div
@@ -199,18 +71,13 @@ export default function CandidateHistoryPage() {
                 {/* Header: Job Info */}
                 <div className="p-6 border-b border-table-border bg-surface-container-lowest">
                   <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
-                        <Building2 className="w-6 h-6 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-on-surface">
-                          {job.posisi}
-                        </h3>
-                        <p className="text-xs font-mono text-on-surface-variant font-semibold mt-1">
-                          Ref: {job.noRegistrasi}
-                        </p>
-                      </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-on-surface">
+                        {job.positionId === "0" ? job.positionName : job.position?.name || "Posisi Pekerjaan"}
+                      </h3>
+                      <p className="text-xs font-mono text-on-surface-variant font-semibold mt-1">
+                        Ref: {job.noRegistrasi}
+                      </p>
                     </div>
                     <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-200">
                       Applied:{" "}
@@ -226,7 +93,7 @@ export default function CandidateHistoryPage() {
                         Current Stage
                       </p>
                       <p className="font-bold text-primary text-sm">
-                        {currentStageName}
+                        {displayStageName}
                       </p>
                     </div>
                     <div className="bg-white p-3 rounded-xl border border-outline-variant/50">
@@ -234,7 +101,7 @@ export default function CandidateHistoryPage() {
                         Status Lowongan
                       </p>
                       <p className="font-bold text-black text-sm">
-                        {job.statusPermintaan}
+                        {job.statusPermintaan || "Active"}
                       </p>
                     </div>
                     <div className="bg-white p-3 rounded-xl border border-outline-variant/50">
@@ -242,7 +109,7 @@ export default function CandidateHistoryPage() {
                         Lokasi
                       </p>
                       <p className="font-bold text-black text-sm truncate">
-                        {job.areaKerja || job.siteId || "-"}
+                        {job.site?.name || job.areaKerja || job.siteId || "-"}
                       </p>
                     </div>
                     <div className="bg-white p-3 rounded-xl border border-outline-variant/50">
@@ -250,7 +117,7 @@ export default function CandidateHistoryPage() {
                         Status Pelamaran
                       </p>
                       <p className="font-bold text-emerald-600 text-sm flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" /> Sedang Diproses
+                        {app.status === "ACTIVE" ? "Sedang Diproses" : app.status}
                       </p>
                     </div>
                   </div>
@@ -263,56 +130,10 @@ export default function CandidateHistoryPage() {
                     <h4 className="font-bold text-sm text-on-surface mb-4 border-b border-table-border pb-2">
                       Recruiter Feedback / Notes
                     </h4>
-                    {Object.keys(app.stageNotes || {}).length > 0 && (
-                      <div className="space-y-3 mb-4">
-                        {Object.entries(app.stageNotes).map(
-                          ([stageId, note]) => {
-                            const stageTitle =
-                              job.timeline?.find((t: any) => t.id === stageId)
-                                ?.title || stageId;
-                            return (
-                              <div
-                                key={stageId}
-                                className="bg-red-50 border border-red-100 rounded-xl p-4"
-                              >
-                                <p className="text-xs font-bold text-red-800 mb-1 flex items-center gap-1.5">
-                                  <AlertCircle className="w-4 h-4" /> Note at:{" "}
-                                  {stageTitle}
-                                </p>
-                                <p className="text-sm text-red-900 leading-relaxed font-medium">
-                                  "{String(note)}"
-                                </p>
-                              </div>
-                            );
-                          },
-                        )}
-                      </div>
-                    )}
 
-                    {app.messages && app.messages.length > 0 && (
-                      <div className="space-y-3 mb-4">
-                        {app.messages.map((msg: any, idx: number) => {
-                          const stageTitle = job.timeline?.find((t: any) => t.id === msg.stage)?.title || msg.stage;
-                          return (
-                            <div key={idx} className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                              <div className="flex justify-between items-center mb-1">
-                                <p className="text-xs font-bold text-blue-800 flex items-center gap-1.5">
-                                  <MessageSquare className="w-4 h-4" /> Message at: {stageTitle}
-                                </p>
-                                {msg.date && <span className="text-[10px] text-blue-700 font-medium opacity-80">{new Date(msg.date).toLocaleDateString("id-ID")}</span>}
-                              </div>
-                              <p className="text-sm text-blue-900 leading-relaxed font-medium">
-                                "{msg.text}"
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {(!app.stageNotes || Object.keys(app.stageNotes).length === 0) && (!app.messages || app.messages.length === 0) && (
+                    {(!app.messages || app.messages.length === 0) && (
                       <div className="text-sm text-on-surface-variant italic bg-surface-container-low p-4 rounded-xl border border-outline-variant/50 text-center">
-                        Belum ada catatan khusus dari recruiter untuk Anda.
+                        Belum ada pesan / catatan khusus dari recruiter untuk Anda.
                       </div>
                     )}
                   </div>
@@ -322,16 +143,14 @@ export default function CandidateHistoryPage() {
                     <h4 className="font-bold text-sm text-on-surface mb-4 border-b border-table-border pb-2">
                       Milestone History
                     </h4>
-                    <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-primary/50 before:to-transparent">
+                    <div className="space-y-4 relative before:absolute before:inset-0 before:ml-1 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-primary/50 before:to-transparent">
                       {milestones.map((ms: any, idx: number) => (
                         <div
                           key={idx}
                           className="relative flex items-start gap-4"
                         >
-                          <div className="w-10 h-10 rounded-full bg-white border-2 border-primary flex items-center justify-center shrink-0 z-10 shadow-sm text-primary">
-                            <Clock className="w-4 h-4" />
-                          </div>
-                          <div className="pt-1.5 flex-1 bg-surface-container-lowest p-3 rounded-xl border border-table-border shadow-sm">
+                          <div className="w-2 h-2 mt-1.5 rounded-full bg-primary shrink-0 z-10 shadow-sm" />
+                          <div className="flex-1 bg-surface-container-lowest p-3 rounded-xl border border-table-border shadow-sm">
                             <h5 className="font-bold text-sm text-black">
                               {ms.stageName}
                             </h5>

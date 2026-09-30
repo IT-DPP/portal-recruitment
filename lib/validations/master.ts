@@ -31,6 +31,13 @@ export const PositionSchema = z.object({
 });
 export type PositionInput = z.infer<typeof PositionSchema>;
 
+// Department Schema
+export const DepartmentSchema = z.object({
+  code: z.string().optional(),
+  name: z.string().min(1, 'Nama Departemen wajib diisi'),
+});
+export type DepartmentInput = z.infer<typeof DepartmentSchema>;
+
 // Institute Schema
 export const InstituteSchema = z.object({
   code: z.string().optional(),

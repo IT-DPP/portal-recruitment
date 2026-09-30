@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { UploadCloud, X, FileText, Image as ImageIcon, AlertCircle } from "lucide-react";
+import { UploadCloud, Trash2, FileText, Image as ImageIcon, AlertCircle, Eye, RefreshCw } from "lucide-react";
 
 interface FileUploadProps {
   label: string;
-  value: { base64: string; name: string; type: string } | null;
-  onChange: (fileData: { base64: string; name: string; type: string } | null) => void;
+  value: { url?: string; file?: File; preview?: string; name: string; type: string; objectKey?: string } | null;
+  onChange: (fileData: { url?: string; file?: File; preview?: string; name: string; type: string; objectKey?: string } | null) => void;
+  onDelete?: () => void;
+  onPreview?: () => void;
   accept?: string;
   maxSizeKB?: number;
 }
@@ -16,7 +18,9 @@ export default function FileUpload({
   value,
   onChange,
   accept = ".pdf,.png,.jpg,.jpeg",
-  maxSizeKB = 500, // For development. Prod will be 5MB
+  maxSizeKB = 5120, // 5MB
+  onDelete,
+  onPreview,
 }: FileUploadProps) {
   const [error, setError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
@@ -38,16 +42,13 @@ export default function FileUpload({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string;
-      onChange({
-        base64,
-        name: file.name,
-        type: file.type,
-      });
-    };
-    reader.readAsDataURL(file);
+    const preview = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
+    onChange({
+      file,
+      preview,
+      name: file.name,
+      type: file.type,
+    });
   };
 
   const onDragOver = (e: React.DragEvent) => {
@@ -68,10 +69,30 @@ export default function FileUpload({
   };
 
   const removeFile = () => {
+    if (onDelete) onDelete();
     onChange(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  const previewFile = () => {
+    if (onPreview) {
+      onPreview();
+      return;
+    }
+    
+    // Fallback if no onPreview provided
+    if (value?.preview || value?.url) {
+      window.open(value.preview || value.url, '_blank');
+    } else if (value?.file) {
+      const url = URL.createObjectURL(value.file);
+      window.open(url, '_blank');
+    }
+  };
+
+  const changeFile = () => {
+    fileInputRef.current?.click();
   };
 
   const isImage = value?.type.startsWith("image/");
@@ -112,22 +133,52 @@ export default function FileUpload({
           <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-surface-container flex items-center justify-center border border-table-border">
             {isImage ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={value.base64} alt={value.name} className="w-full h-full object-cover" />
+              <img src={value.preview || value.url || ""} alt={value.name} className="w-full h-full object-cover" />
             ) : (
               <FileText className="w-8 h-8 text-primary/60" />
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-on-surface truncate pr-6">{value.name}</p>
+          <div className="flex-1 min-w-0 pr-24">
+            <p className="text-sm font-semibold text-on-surface truncate">{value.name}</p>
             <p className="text-xs text-status-success font-bold mt-1">Uploaded successfully</p>
           </div>
-          <button
-            type="button"
-            onClick={removeFile}
-            className="absolute top-4 right-4 p-1 rounded-full bg-surface-container hover:bg-red-100 hover:text-red-600 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="absolute top-3 right-3 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={previewFile}
+              title="Preview Document"
+              className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={changeFile}
+              title="Change Document"
+              className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={removeFile}
+              title="Delete Document"
+              className="p-1.5 rounded-full text-on-surface-variant hover:bg-red-50 hover:text-red-600 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+            
+            {/* Hidden input for Change action */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={(e) => {
+                if (e.target.files?.[0]) handleFile(e.target.files[0]);
+              }}
+              accept={accept}
+              className="hidden"
+            />
+          </div>
         </div>
       )}
 

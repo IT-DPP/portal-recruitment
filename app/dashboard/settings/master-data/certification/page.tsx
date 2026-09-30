@@ -8,5 +8,6 @@ export default async function CertificationMasterPage() {
   const response = await getCertifications();
   const data = response.success && response.data ? response.data : [];
 
-  return <CertificationClient initialData={data} />;
+  return <CertificationClient initialData={
+data} />;
 }

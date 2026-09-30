@@ -8,5 +8,6 @@ export default async function CustomerMasterPage() {
   const response = await getCustomers();
   const data = response.success && response.data ? response.data : [];
 
-  return <CustomerClient initialData={data} />;
+  return <CustomerClient initialData={
+data} />;
 }

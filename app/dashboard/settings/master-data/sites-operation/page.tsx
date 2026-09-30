@@ -15,7 +15,8 @@ export default async function SiteMasterPage() {
 
   return (
     <SiteClient 
-      initialData={sitesRes.success && sitesRes.data ? (sitesRes.data as any) : []} 
+      initialData={
+sitesRes.success && sitesRes.data ? (sitesRes.data as any) : []} 
       customers={customersRes.success && customersRes.data ? customersRes.data : []}
       provinces={provincesRes.success && provincesRes.data ? provincesRes.data : []}
       cities={citiesRes.success && citiesRes.data ? citiesRes.data : []}

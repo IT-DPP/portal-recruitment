@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useModal } from '@/components/providers/ModalProvider';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { getDepartments } from '@/app/actions/master-data';
 
 export default function UsersMaster() {
   const router = useRouter();
@@ -52,11 +53,12 @@ export default function UsersMaster() {
     if ((session?.user as any)?.role === 'ADMIN') {
       setIsAuthorized(true);
       loadUsers();
-      // Load mockup departments if any
-      const savedDepts = localStorage.getItem('ugz_master_department');
-      if (savedDepts) {
-        setDepartments(JSON.parse(savedDepts));
-      }
+      // Load departments from DB
+      getDepartments().then(res => {
+        if (res.success && res.data) {
+          setDepartments(res.data);
+        }
+      });
       setIsLoading(false);
     } else {
       router.push('/dashboard');
@@ -244,9 +246,6 @@ export default function UsersMaster() {
                     {departments.map((dept: any) => (
                       <option key={dept.id} value={dept.name}>{dept.name}</option>
                     ))}
-                    <option value="Human Resources">Human Resources</option>
-                    <option value="IT">IT</option>
-                    <option value="Operations">Operations</option>
                   </select>
                 </div>
                 <div>

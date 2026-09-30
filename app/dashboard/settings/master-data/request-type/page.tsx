@@ -8,5 +8,6 @@ export default async function RequestTypeMasterPage() {
   const response = await getRequestTypes();
   const data = response.success && response.data ? response.data : [];
 
-  return <RequestTypeClient initialData={data} />;
+  return <RequestTypeClient initialData={
+data} />;
 }

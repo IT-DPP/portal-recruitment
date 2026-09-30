@@ -13,5 +13,6 @@ export default async function RejectionMessageMasterPage() {
   const data = resMsg.success && resMsg.data ? resMsg.data : [];
   const stages = resStages.success && resStages.data ? resStages.data : [];
 
-  return <RejectionMessageClient initialData={data} stages={stages} />;
+  return <RejectionMessageClient initialData={
+data} stages={stages} />;
 }

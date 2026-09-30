@@ -13,5 +13,6 @@ export default async function CityMasterPage() {
   const cities = citiesRes.success && citiesRes.data ? citiesRes.data : [];
   const provinces = provincesRes.success && provincesRes.data ? provincesRes.data : [];
 
-  return <CityClient initialData={cities as any} provinces={provinces} />;
+  return <CityClient initialData={
+cities as any} provinces={provinces} />;
 }

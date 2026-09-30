@@ -1,15 +1,24 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import Image from "next/image";
 import { LogIn } from "lucide-react";
-import PublicJobList from "@/components/PublicJobList";
+import PublicJobsClient from "@/app/jobs/PublicJobsClient";
+import { getPublicJobs } from "@/app/actions/job";
+import { getProvinces, getDepartments } from "@/app/actions/master-data";
 
-export default function Home() {
+export default async function Home() {
+  const [jobsRes, provincesRes, deptsRes] = await Promise.all([
+    getPublicJobs(),
+    getProvinces(),
+    getDepartments()
+  ]);
+
   return (
     <div className="min-h-screen bg-surface-bright font-sans">
       <div className="max-w-6xl mx-auto p-6 md:p-10">
         <header className="flex justify-between items-center mb-16">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12  bg-primary rounded-md p-1 flex items-center justify-center overflow-hidden">
+            <div className="w-12 h-12 bg-primary rounded-md p-1 flex items-center justify-center overflow-hidden">
               <Image
                 src="/icon.png"
                 alt="Logo"
@@ -50,7 +59,11 @@ export default function Home() {
           </div>
 
           <div className="w-full">
-            <PublicJobList />
+            <PublicJobsClient 
+              initialJobs={jobsRes.success ? (jobsRes.data || []) : []} 
+              provinces={provincesRes.success ? (provincesRes.data || []) : []}
+              departments={deptsRes.success ? (deptsRes.data || []) : []}
+            />
           </div>
         </main>
       </div>

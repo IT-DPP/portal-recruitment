@@ -8,5 +8,6 @@ export default async function ProvinceMasterPage() {
   const response = await getProvinces();
   const provinces = response.success && response.data ? response.data : [];
 
-  return <ProvinceClient initialData={provinces} />;
+  return <ProvinceClient initialData={
+provinces} />;
 }

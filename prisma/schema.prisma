@@ -179,14 +179,26 @@ model MasterCertification {
 
 model CandidateProfile {
   id                 String              @id @default(cuid())
-  userId             String              @unique
-  nik                String?             @unique
-  whatsapp           String?
-  latestEducation    String?
-  trainingCenterType String?
-  trainingCenterName String?
-  cityId             String?
-  provinceId         String?
+  userId               String              @unique
+  nik                  String?             @unique
+  kk                   String?
+  birthPlace           String?
+  birthDate            DateTime?
+  gender               String?
+  religion             String?
+  maritalStatus        String?
+  whatsapp             String?
+  emergencyContact     String?
+  domicileAddress      String?
+  currentAddress       String?
+  educationType        String?
+  latestEducation      String?
+  educationInstitution String?
+  trainingCenterType   String?
+  trainingCenterName   String?
+  cityId               String?
+  provinceId           String?
+  isProfileCompleted   Boolean             @default(false)
   isTalentPool       Boolean             @default(false)
   isBlacklisted      Boolean             @default(false)
   isArchived         Boolean             @default(false)

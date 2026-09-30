@@ -162,7 +162,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
             {creatable && searchTerm && !options.some(opt => opt.label.toLowerCase() === searchTerm.toLowerCase()) && (
               <div
                 className="px-3 py-2 text-sm cursor-pointer bg-blue-50 text-blue-700 hover:bg-blue-100 flex items-center border-t border-blue-100 font-medium"
-                onClick={() => handleSelect("0", searchTerm)}
+                onClick={() => handleSelect(searchTerm, searchTerm)}
               >
                 <Plus className="w-4 h-4 mr-2" /> Tambahkan "{searchTerm}"
               </div>
@@ -182,8 +182,8 @@ export default function SearchableSelect({ options, value, onChange, placeholder
         className={`flex items-center justify-between w-full px-3 py-2 border border-outline-variant rounded text-sm bg-white cursor-pointer transition-colors ${disabled ? 'bg-gray-100 opacity-70 cursor-not-allowed' : 'hover:border-primary'}`}
         onClick={toggleOpen}
       >
-        <span className={selectedOption ? 'text-black truncate' : (value === '0' ? 'text-black font-medium truncate' : 'text-on-surface-variant truncate')}>
-          {selectedOption ? selectedOption.label : (value === '0' ? 'Custom / Data Baru' : placeholder)}
+        <span className={selectedOption ? 'text-black truncate' : (value ? 'text-black font-medium truncate' : 'text-on-surface-variant truncate')}>
+          {selectedOption ? selectedOption.label : (value ? value : placeholder)}
         </span>
         <div className="flex items-center gap-1">
           {value && !disabled && (

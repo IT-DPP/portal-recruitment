@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
-import { ProvinceInput, ProvinceSchema, CityInput, CitySchema, CustomerInput, CustomerSchema, PositionInput, PositionSchema, SiteInput, SiteSchema, InstituteInput, InstituteSchema, RequestTypeInput, RequestTypeSchema, CertificationInput, CertificationSchema, RejectionMessageInput, RejectionMessageSchema } from "@/lib/validations/master"
+import { ProvinceInput, ProvinceSchema, CityInput, CitySchema, CustomerInput, CustomerSchema, PositionInput, PositionSchema, DepartmentInput, DepartmentSchema, SiteInput, SiteSchema, InstituteInput, InstituteSchema, RequestTypeInput, RequestTypeSchema, CertificationInput, CertificationSchema, RejectionMessageInput, RejectionMessageSchema } from "@/lib/validations/master"
 
 export async function getProvinces() {
   try {
@@ -199,6 +199,40 @@ export async function getDepartments() {
     return { success: true, data }
   } catch (error) {
     return { success: false, error: "Gagal mengambil data departemen" }
+  }
+}
+
+export async function createDepartment(data: DepartmentInput) {
+  try {
+    const parsed = DepartmentSchema.safeParse(data)
+    if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
+    const result = await prisma.masterDepartment.create({ data: parsed.data })
+    revalidatePath("/dashboard/settings/master-data/department")
+    return { success: true, data: result }
+  } catch (error) {
+    return { success: false, error: "Gagal menyimpan data departemen" }
+  }
+}
+
+export async function updateDepartment(id: string, data: DepartmentInput) {
+  try {
+    const parsed = DepartmentSchema.safeParse(data)
+    if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
+    const result = await prisma.masterDepartment.update({ where: { id }, data: parsed.data })
+    revalidatePath("/dashboard/settings/master-data/department")
+    return { success: true, data: result }
+  } catch (error) {
+    return { success: false, error: "Gagal mengupdate data departemen" }
+  }
+}
+
+export async function deleteDepartment(id: string) {
+  try {
+    await prisma.masterDepartment.delete({ where: { id } })
+    revalidatePath("/dashboard/settings/master-data/department")
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: "Gagal menghapus data departemen" }
   }
 }
 

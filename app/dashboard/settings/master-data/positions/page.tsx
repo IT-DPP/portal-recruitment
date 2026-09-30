@@ -8,5 +8,6 @@ export default async function PositionMasterPage() {
   const response = await getPositions();
   const data = response.success && response.data ? response.data : [];
 
-  return <PositionClient initialData={data} />;
+  return <PositionClient initialData={
+data} />;
 }

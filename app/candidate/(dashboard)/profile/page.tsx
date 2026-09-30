@@ -3,7 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { User, Mail, BookOpen, FileCheck, Save, Loader2, CheckCircle2, ShieldCheck } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
-import { MASTER_INSTITUTE, EDUCATION_TYPES, TRAINING_CENTER_TYPES, type Institute } from "@/lib/masterData";
+import { EDUCATION_TYPES, TRAINING_CENTER_TYPES } from "@/lib/masterData";
+import { getProvinces, getCities, getInstitutes } from "@/app/actions/master-data";
+import { getCandidateProfile, saveCandidateProfile, getUploadUrl, deleteCandidateDocument, getPreviewUrl } from "@/app/actions/candidate-profile";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 
 type TabValue = "pribadi" | "kontak" | "pendidikan" | "dokumen";
 
@@ -11,9 +14,12 @@ export default function CandidateProfilePage() {
   const [activeTab, setActiveTab] = useState<TabValue>("pribadi");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [selectedBlk, setSelectedBlk] = useState("");
-  const [masterInstitute, setMasterInstitute] = useState<Institute[]>([]);
-  
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // Master Data States
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [institutes, setInstitutes] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     // Data Pribadi
@@ -42,7 +48,7 @@ export default function CandidateProfilePage() {
     trainingCenterType: "",
     trainingCenter: "",
     
-    // Dokumen
+    // Dokumen (store the FileUpload value object here)
     fileCv: null as any,
     fileIjazah: null as any,
     fileKtp: null as any,
@@ -51,73 +57,172 @@ export default function CandidateProfilePage() {
     filePhoto: null as any,
   });
 
-
-
-
   useEffect(() => {
-    // Load Master Data
-    let currentMasterInst = MASTER_INSTITUTE;
-    const savedInst = localStorage.getItem('ugz_master_institute');
-    if (savedInst) {
-      currentMasterInst = JSON.parse(savedInst);
-    }
-    setMasterInstitute(currentMasterInst);
+    async function loadInitialData() {
+      // 1. Fetch Master Data concurrently
+      const [provRes, cityRes, instRes] = await Promise.all([
+        getProvinces(),
+        getCities(),
+        getInstitutes(),
+      ]);
 
-    // Load existing profile and email on mount
-    const sessionStr = localStorage.getItem("nexus_candidate_session");
-    if (sessionStr) {
-      const session = JSON.parse(sessionStr);
-      setFormData((prev) => ({ ...prev, email: session.email }));
-      
-      const allProfilesStr = localStorage.getItem("ugz_candidate_profiles");
-      if (allProfilesStr) {
-        const allProfiles = JSON.parse(allProfilesStr);
-        const myProfile = allProfiles[session.id];
-        if (myProfile) {
-          setFormData((prev) => ({ ...prev, ...myProfile }));
-          if (myProfile.trainingCenter) {
-            const isMaster = currentMasterInst.some((b: any) => b.name === myProfile.trainingCenter);
-            if (isMaster) {
-              setSelectedBlk(myProfile.trainingCenter);
-            } else {
-              setSelectedBlk("Other");
-            }
-          }
+      if (provRes.success) setProvinces(provRes.data || []);
+      if (cityRes.success) setCities(cityRes.data || []);
+      if (instRes.success) setInstitutes(instRes.data || []);
+
+      // 2. Fetch User Profile
+      const profRes = await getCandidateProfile();
+      if (profRes.success && profRes.data) {
+        const p = profRes.data as any;
+        const u = p.user || {};
+        
+        const docs: any = {};
+        if (p.documents) {
+           p.documents.forEach((d: any) => {
+             const key = `file${d.documentType.charAt(0).toUpperCase() + d.documentType.slice(1)}`;
+             // Ensure public URL is formed correctly or we can just pass the S3 URL. We'll pass the generic url to FileUpload
+             docs[key] = {
+               url: d.fileUrl,
+               name: d.fileUrl.split("/").pop() || "Document",
+               type: d.mimeType || "application/pdf",
+               objectKey: d.objectKey,
+             }
+           });
         }
+
+        setFormData(prev => ({
+          ...prev,
+          email: u.email || "",
+          fullName: u.name || "",
+          nik: p.nik || "",
+          kk: p.kk || "",
+          birthPlace: p.birthPlace || "",
+          birthDate: p.birthDate ? new Date(p.birthDate).toISOString().split('T')[0] : "",
+          gender: p.gender || "",
+          religion: p.religion || "",
+          maritalStatus: p.maritalStatus || "",
+          whatsapp: p.whatsapp || "",
+          emergencyContact: p.emergencyContact || "",
+          domicileAddress: p.domicileAddress || "",
+          currentAddress: p.currentAddress || "",
+          province: p.province?.name || p.provinceId || "",
+          city: p.city?.name || p.cityId || "",
+          educationType: p.educationType || "",
+          latestEducation: p.latestEducation || "",
+          educationInstitution: p.educationInstitution || "",
+          trainingCenterType: p.trainingCenterType || "",
+          trainingCenter: p.trainingCenterName || "",
+          ...docs
+        }));
       }
+      setIsLoadingData(false);
     }
+
+    loadInitialData();
   }, []);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const uploadFileToS3 = async (fileObj: any) => {
+    if (!fileObj || !fileObj.file) return fileObj; // Already uploaded or empty
+    
+    try {
+      const res = await getUploadUrl(fileObj.name, fileObj.type);
+      if (!res.success || !res.uploadUrl) throw new Error("Failed to get upload URL");
+      
+      const uploadRes = await fetch(res.uploadUrl, {
+        method: "PUT",
+        body: fileObj.file,
+        headers: {
+          "Content-Type": fileObj.type,
+        }
+      });
+      
+      if (!uploadRes.ok) throw new Error("S3 Upload failed");
+
+      return {
+        url: res.publicUrl,
+        objectKey: res.objectKey,
+        name: fileObj.name,
+        type: fileObj.type,
+        sizeBytes: fileObj.file.size
+      };
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  }
+
+  const handleDeleteDocument = async (field: string, type: string) => {
+    // Optimistically update UI
+    setFormData(prev => ({ ...prev, [field]: null }));
+    // Call server action to delete from DB and S3
+    await deleteCandidateDocument(type);
+  };
+
+  const handlePreviewDocument = async (field: string) => {
+    const docData = (formData as any)[field];
+    if (!docData) return;
+    
+    // If it's a local unsaved file, let the component handle it natively via fallback
+    if (docData.file) {
+      const url = URL.createObjectURL(docData.file);
+      window.open(url, '_blank');
+      return;
+    }
+    
+    // If it's stored in S3, get a fresh presigned URL
+    if (docData.objectKey) {
+      const res = await getPreviewUrl(docData.objectKey);
+      if (res.success && res.url) {
+        window.open(res.url, '_blank');
+      } else {
+        alert("Gagal memuat pratinjau dokumen.");
+      }
+    }
+  };
+
+  const handleSaveAction = async (isDraft: boolean) => {
+    setIsSaving(true);
+    setSaveSuccess(false);
+
+    try {
+      // 1. Upload new files if any
+      const updatedFormData = { ...formData };
+      const fileFields = ["fileCv", "fileIjazah", "fileKtp", "fileKk", "fileSertifikat", "filePhoto"];
+      
+      for (const field of fileFields) {
+        const fileData = (updatedFormData as any)[field];
+        if (fileData && fileData.file) {
+           (updatedFormData as any)[field] = await uploadFileToS3(fileData);
+        }
+      }
+
+      // 2. Save profile
+      const res = await saveCandidateProfile(updatedFormData, isDraft);
+      if (res.success) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        alert(res.error || "Failed to save profile");
+      }
+    } catch (e: any) {
+      alert("Error saving profile: " + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveDraft = (e: React.MouseEvent) => {
     e.preventDefault();
-    handleSave(e as unknown as React.FormEvent);
+    handleSaveAction(true);
   };
 
   const handleSave = (e: React.FormEvent) => {
-    if (e && e.preventDefault) e.preventDefault();
-    setIsSaving(true);
-    setSaveSuccess(false);
-    
-    setTimeout(() => {
-      const sessionStr = localStorage.getItem("nexus_candidate_session");
-      if (!sessionStr) return;
-      const session = JSON.parse(sessionStr);
-      
-      const allProfilesStr = localStorage.getItem("ugz_candidate_profiles");
-      const allProfiles = allProfilesStr ? JSON.parse(allProfilesStr) : {};
-      
-      allProfiles[session.id] = formData;
-      localStorage.setItem("ugz_candidate_profiles", JSON.stringify(allProfiles));
-      
-      setIsSaving(false);
-      setSaveSuccess(true);
-      
-      setTimeout(() => setSaveSuccess(false), 3000);
-    }, 800);
+    e.preventDefault();
+    handleSaveAction(false);
   };
 
   const tabs = [
@@ -126,6 +231,10 @@ export default function CandidateProfilePage() {
     { id: "pendidikan", label: "Pendidikan", icon: BookOpen },
     { id: "dokumen", label: "Dokumen", icon: FileCheck },
   ] as const;
+
+  if (isLoadingData) {
+    return <div className="flex justify-center py-20 text-primary"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
@@ -351,24 +460,27 @@ export default function CandidateProfilePage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Provinsi <span className="text-status-error">*</span></label>
-                <input
-                  type="text"
+                <SearchableSelect
+                  options={provinces.map(p => ({ label: p.name, value: p.name }))}
                   value={formData.province}
-                  onChange={(e) => handleInputChange("province", e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                  placeholder="Provinsi (Ketik manual)"
-                  required
+                  onChange={(val) => {
+                    handleInputChange("province", val)
+                    // Reset city when province changes to ensure consistency
+                    handleInputChange("city", "")
+                  }}
+                  placeholder="Pilih Provinsi"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Kota / Kabupaten <span className="text-status-error">*</span></label>
-                <input
-                  type="text"
+                <SearchableSelect
+                  // If province is selected, we can filter cities, but here cities have provinceId so we map accordingly
+                  options={cities
+                    .filter(c => !formData.province || c.province?.name === formData.province)
+                    .map(c => ({ label: c.name, value: c.name }))}
                   value={formData.city}
-                  onChange={(e) => handleInputChange("city", e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                  placeholder="Kota / Kabupaten (Ketik manual)"
-                  required
+                  onChange={(val) => handleInputChange("city", val)}
+                  placeholder="Pilih Kota / Kabupaten"
                 />
               </div>
             </div>
@@ -379,137 +491,79 @@ export default function CandidateProfilePage() {
             <div className="grid grid-cols-1 gap-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Jenis Pendidikan Terakhir <span className="text-status-error">*</span></label>
-                <select
+                <SearchableSelect
+                  options={EDUCATION_TYPES.map(type => ({ label: type, value: type }))}
                   value={formData.educationType}
-                  onChange={(e) => {
-                    handleInputChange("educationType", e.target.value);
+                  onChange={(val) => {
+                    handleInputChange("educationType", val);
                     handleInputChange("latestEducation", "");
                     handleInputChange("educationInstitution", "");
                   }}
-                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                  required
-                >
-                  <option value="">Pilih Jenis Pendidikan</option>
-                  {EDUCATION_TYPES.map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                  placeholder="Pilih Jenis Pendidikan"
+                />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Tingkat Pendidikan <span className="text-status-error">*</span></label>
-                <select
-                  value={formData.latestEducation}
-                  onChange={(e) => handleInputChange("latestEducation", e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                  required
+                <SearchableSelect
                   disabled={!formData.educationType}
-                >
-                  <option value="">Pilih Tingkat Pendidikan</option>
-                  {formData.educationType === "Perguruan Tinggi" && (
-                    <>
-                      <option value="D3">Diploma 3 (D3)</option>
-                      <option value="D4">Diploma 4 (D4)</option>
-                      <option value="S1">Sarjana (S1)</option>
-                      <option value="S2">Magister (S2)</option>
-                      <option value="S3">Doktor (S3)</option>
-                    </>
-                  )}
-                  {formData.educationType === "SLTA" && <option value="SMA/SMK">SMA/SMK/Sederajat</option>}
-                  {formData.educationType === "SLTP" && <option value="SMP">SMP/Sederajat</option>}
-                  {formData.educationType === "SD" && <option value="SD">SD/Sederajat</option>}
-                </select>
+                  options={[
+                    ...(formData.educationType === "Perguruan Tinggi" ? [
+                      { label: "Diploma 3 (D3)", value: "D3" },
+                      { label: "Diploma 4 (D4)", value: "D4" },
+                      { label: "Sarjana (S1)", value: "S1" },
+                      { label: "Magister (S2)", value: "S2" },
+                      { label: "Doktor (S3)", value: "S3" },
+                    ] : []),
+                    ...(formData.educationType === "SLTA" ? [{ label: "SMA/SMK/Sederajat", value: "SMA/SMK" }] : []),
+                    ...(formData.educationType === "SLTP" ? [{ label: "SMP/Sederajat", value: "SMP" }] : []),
+                    ...(formData.educationType === "SD" ? [{ label: "SD/Sederajat", value: "SD" }] : []),
+                  ]}
+                  value={formData.latestEducation}
+                  onChange={(val) => handleInputChange("latestEducation", val)}
+                  placeholder="Pilih Tingkat Pendidikan"
+                />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Nama Institusi Pendidikan <span className="text-status-error">*</span></label>
-                <select
-                  value={
-                    formData.educationInstitution && masterInstitute.some(i => i.name === formData.educationInstitution && i.type === formData.educationType) 
-                      ? formData.educationInstitution 
-                      : (formData.educationInstitution ? "Other" : "")
-                  }
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val !== "Other") {
-                      handleInputChange("educationInstitution", val);
-                    } else {
-                      handleInputChange("educationInstitution", "");
-                    }
-                  }}
-                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                  required
+                <SearchableSelect
                   disabled={!formData.educationType}
-                >
-                  <option value="">Pilih Nama Institusi</option>
-                  {masterInstitute.filter(i => i.type === formData.educationType).map((inst) => (
-                    <option key={inst.id} value={inst.name}>{inst.name}</option>
-                  ))}
-                  <option value="Other">Lainnya (Ketik Manual)</option>
-                </select>
-                
-                {formData.educationInstitution && !masterInstitute.some(i => i.name === formData.educationInstitution && i.type === formData.educationType) && (
-                  <input
-                    type="text"
-                    value={formData.educationInstitution}
-                    onChange={(e) => handleInputChange("educationInstitution", e.target.value)}
-                    className="w-full px-4 py-2.5 mt-2 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                    placeholder="Isi nama institusi pendidikan..."
-                    required
-                  />
-                )}
+                  creatable={true}
+                  options={institutes
+                    .filter(i => i.type === formData.educationType)
+                    .map(i => ({ label: i.name, value: i.name }))}
+                  value={formData.educationInstitution}
+                  onChange={(val) => handleInputChange("educationInstitution", val)}
+                  placeholder="Pilih Nama Institusi (Atau ketik dan tekan Enter untuk Add Baru)"
+                />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Jenis Training Center (Opsional)</label>
-                <select
+                <SearchableSelect
+                  options={TRAINING_CENTER_TYPES.map(type => ({ label: type, value: type }))}
                   value={formData.trainingCenterType}
-                  onChange={(e) => {
-                    handleInputChange("trainingCenterType", e.target.value);
+                  onChange={(val) => {
+                    handleInputChange("trainingCenterType", val);
                     handleInputChange("trainingCenter", "");
-                    setSelectedBlk("");
                   }}
-                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                >
-                  <option value="">Pilih Jenis Training Center</option>
-                  {TRAINING_CENTER_TYPES.map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                  placeholder="Pilih Jenis Training Center"
+                />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Nama Training Center</label>
-                <select
-                  value={selectedBlk}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setSelectedBlk(val);
-                    if (val !== "Other") {
-                      handleInputChange("trainingCenter", val);
-                    } else {
-                      handleInputChange("trainingCenter", "");
-                    }
-                  }}
-                  className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                <SearchableSelect
                   disabled={!formData.trainingCenterType}
-                >
-                  <option value="">Pilih Training Center</option>
-                  {masterInstitute.filter(i => i.type === formData.trainingCenterType).map((inst) => (
-                    <option key={inst.id} value={inst.name}>{inst.name}</option>
-                  ))}
-                  <option value="Other">Lainnya (Ketik Manual)</option>
-                </select>
-                
-                {selectedBlk === "Other" && (
-                  <input
-                    type="text"
-                    value={formData.trainingCenter}
-                    onChange={(e) => handleInputChange("trainingCenter", e.target.value)}
-                    className="w-full px-4 py-2.5 mt-2 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                    placeholder="Isi nama Training Center..."
-                  />
-                )}
+                  creatable={true}
+                  options={institutes
+                    .filter(i => i.type === formData.trainingCenterType)
+                    .map(i => ({ label: i.name, value: i.name }))}
+                  value={formData.trainingCenter}
+                  onChange={(val) => handleInputChange("trainingCenter", val)}
+                  placeholder="Pilih Training Center (Atau ketik dan tekan Enter untuk Add Baru)"
+                />
               </div>
             </div>
           )}
@@ -517,44 +571,48 @@ export default function CandidateProfilePage() {
           {/* Tab Content: Dokumen */}
           {activeTab === "dokumen" && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm text-blue-800 flex items-start gap-3">
-                <div className="w-5 h-5 shrink-0 bg-blue-200 text-blue-600 rounded-full flex items-center justify-center font-bold font-mono">i</div>
-                <p>
-                  <strong>Development Mode:</strong> File size is strictly limited to <strong>500KB per file</strong> to prevent browser storage overload. In production, this will be increased to 5MB. 
-                  Supported formats: PDF, PNG, JPG, JPEG.
-                </p>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <FileUpload
                   label="Curriculum Vitae (CV)"
                   value={formData.fileCv}
                   onChange={(file) => handleInputChange("fileCv", file)}
+                  onDelete={() => handleDeleteDocument("fileCv", "cv")}
+                  onPreview={() => handlePreviewDocument("fileCv")}
                 />
                 <FileUpload
                   label="Ijazah Terakhir"
                   value={formData.fileIjazah}
                   onChange={(file) => handleInputChange("fileIjazah", file)}
+                  onDelete={() => handleDeleteDocument("fileIjazah", "ijazah")}
+                  onPreview={() => handlePreviewDocument("fileIjazah")}
                 />
                 <FileUpload
                   label="Kartu Tanda Penduduk (KTP)"
                   value={formData.fileKtp}
                   onChange={(file) => handleInputChange("fileKtp", file)}
+                  onDelete={() => handleDeleteDocument("fileKtp", "ktp")}
+                  onPreview={() => handlePreviewDocument("fileKtp")}
                 />
                 <FileUpload
                   label="Kartu Keluarga (KK)"
                   value={formData.fileKk}
                   onChange={(file) => handleInputChange("fileKk", file)}
+                  onDelete={() => handleDeleteDocument("fileKk", "kk")}
+                  onPreview={() => handlePreviewDocument("fileKk")}
                 />
                 <FileUpload
                   label="Sertifikat / Dokumen Pendukung"
                   value={formData.fileSertifikat}
                   onChange={(file) => handleInputChange("fileSertifikat", file)}
+                  onDelete={() => handleDeleteDocument("fileSertifikat", "sertifikat")}
+                  onPreview={() => handlePreviewDocument("fileSertifikat")}
                 />
                 <FileUpload
                   label="Pas Photo"
                   value={formData.filePhoto}
                   onChange={(file) => handleInputChange("filePhoto", file)}
+                  onDelete={() => handleDeleteDocument("filePhoto", "photo")}
+                  onPreview={() => handlePreviewDocument("filePhoto")}
                   accept=".png,.jpg,.jpeg"
                 />
               </div>
