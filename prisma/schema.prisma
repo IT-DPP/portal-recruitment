@@ -278,6 +278,7 @@ model Application {
   currentStageId     String?
   status             ApplicationStatus    @default(ACTIVE)
   applicationDate    DateTime             @default(now())
+  stageData          Json?                @default("{}")
   candidateProfile   CandidateProfile     @relation(fields: [candidateProfileId], references: [id])
   currentStage       MasterPipelineStage? @relation("CurrentStage", fields: [currentStageId], references: [id])
   job                JobOpening           @relation(fields: [jobId], references: [id])

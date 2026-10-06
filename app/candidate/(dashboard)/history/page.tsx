@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCandidateProfile } from "@/app/actions/candidate-profile";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { MapPin, Briefcase, CheckCircle2, Clock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -72,51 +73,68 @@ export default async function HistoryPage() {
                 <div className="p-6 border-b border-table-border bg-surface-container-lowest">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-xl font-bold text-on-surface">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="px-3 py-1 bg-surface-container-low text-on-surface text-xs font-bold uppercase tracking-wider rounded-full">
+                          {job.department?.name || job.departmentName || "General"}
+                        </span>
+                        <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-200 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Applied: {new Date(app.applicationDate).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-bold text-on-surface mb-2">
                         {job.positionId === "0" ? job.positionName : job.position?.name || "Posisi Pekerjaan"}
                       </h3>
-                      <p className="text-xs font-mono text-on-surface-variant font-semibold mt-1">
-                        Ref: {job.noRegistrasi}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-on-surface-variant">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4 text-primary/60" />
+                          <span className="font-medium text-black">
+                            {job.site?.name || job.customer?.name || job.areaKerja || "Corporate"}
+                            {job.city?.name ? `, ${job.city.name}` : ''}
+                            {job.province?.name ? ` - ${job.province.name}` : ''}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Briefcase className="w-4 h-4 text-primary/60" />
+                          <span className="uppercase text-xs font-bold font-mono tracking-wider bg-surface-container-low px-2 py-0.5 rounded text-black">
+                            Ref: {job.noRegistrasi}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-200">
-                      Applied:{" "}
-                      {new Date(app.applicationDate).toLocaleDateString(
-                        "id-ID",
-                      )}
-                    </span>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                    <div className="bg-white p-3 rounded-xl border border-outline-variant/50">
+                    <div className="bg-white p-3 rounded-xl border border-outline-variant/50 hover:border-primary/30 transition-colors">
                       <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">
                         Current Stage
                       </p>
-                      <p className="font-bold text-primary text-sm">
-                        {displayStageName}
+                      <p className="font-bold text-primary text-sm flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span className="truncate" title={displayStageName}>{displayStageName}</span>
                       </p>
                     </div>
-                    <div className="bg-white p-3 rounded-xl border border-outline-variant/50">
+                    <div className="bg-white p-3 rounded-xl border border-outline-variant/50 hover:border-primary/30 transition-colors">
                       <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">
-                        Status Lowongan
+                        Departemen
                       </p>
-                      <p className="font-bold text-black text-sm">
-                        {job.statusPermintaan || "Active"}
+                      <p className="font-bold text-black text-sm truncate" title={job.department?.name || job.departmentName || "-"}>
+                        {job.department?.name || job.departmentName || "-"}
                       </p>
                     </div>
-                    <div className="bg-white p-3 rounded-xl border border-outline-variant/50">
+                    <div className="bg-white p-3 rounded-xl border border-outline-variant/50 hover:border-primary/30 transition-colors">
                       <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">
-                        Lokasi
+                        Lokasi Penempatan
                       </p>
-                      <p className="font-bold text-black text-sm truncate">
-                        {job.site?.name || job.areaKerja || job.siteId || "-"}
+                      <p className="font-bold text-black text-sm truncate" title={`${job.site?.name || job.customer?.name || job.areaKerja || "Corporate"} ${job.city?.name ? `, ${job.city.name}` : ''}`}>
+                        {job.city?.name ? job.city.name : (job.site?.name || job.customer?.name || job.areaKerja || "Corporate")}
                       </p>
                     </div>
-                    <div className="bg-white p-3 rounded-xl border border-outline-variant/50">
+                    <div className="bg-white p-3 rounded-xl border border-outline-variant/50 hover:border-primary/30 transition-colors">
                       <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">
                         Status Pelamaran
                       </p>
-                      <p className="font-bold text-emerald-600 text-sm flex items-center gap-1">
+                      <p className={`font-bold text-sm truncate flex items-center gap-1 ${app.status === 'ACTIVE' ? 'text-blue-600' : (['HIRED', 'ACCEPTED', 'PASSED'].includes(app.status) ? 'text-emerald-600' : 'text-amber-600')}`}>
                         {app.status === "ACTIVE" ? "Sedang Diproses" : app.status}
                       </p>
                     </div>

@@ -167,19 +167,25 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
   }
 }
 
-export async function getUploadUrl(fileName: string, contentType: string) {
+export async function getUploadUrl(fileName: string, contentType: string, folderPath?: string) {
   const session = await getServerSession(authOptions)
   if (!session || !session.user || !(session.user as any).id) {
     return { success: false, error: "Unauthorized" }
   }
 
   const extension = fileName.split('.').pop()
-  const safeName = (session.user.name || "Candidate").replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()
-  const objectKey = `candidates/${safeName}-${(session.user as any).id}/${uuidv4()}.${extension}`
+  const sanitizedFileName = fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
+  
+  let basePath = `candidates/${(session.user as any).id}/profile`;
+  if (folderPath) {
+    basePath = folderPath;
+  }
+  
+  const objectKey = `${basePath}/${sanitizedFileName}-${uuidv4()}.${extension}`;
 
   try {
     const url = await getPresignedUploadUrl(objectKey, contentType)
-    const publicUrl = `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET_NAME}/${objectKey}`
+    const publicUrl = `/api/file?key=${encodeURIComponent(objectKey)}`
     return { success: true, uploadUrl: url, objectKey, publicUrl }
   } catch (error) {
     console.error("Error generating presigned URL:", error)

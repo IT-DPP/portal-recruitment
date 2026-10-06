@@ -25,6 +25,16 @@ export default async function JobDetailPage({
         include: {
           stage: true
         }
+      },
+      applications: {
+        include: {
+          candidateProfile: {
+            include: {
+              user: true,
+              documents: true
+            }
+          }
+        }
       }
     },
   });

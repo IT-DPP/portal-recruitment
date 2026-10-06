@@ -82,13 +82,20 @@ export default function JobDetailClient({
     }
     setSlaConfig(config);
 
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const hired = allApps.filter((a: any) => a.jobId === initialJob.id && a.currentStage === "Hired");
-    const profiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
-    const hiredWithProfiles = hired.map((app: any) => ({
-      ...app,
-      profile: profiles[app.candidateId] || {}
-    }));
+    const hired = (initialJob.applications || []).filter((a: any) => a.currentStageId === "Hired");
+    const hiredWithProfiles = hired.map((app: any) => {
+      const p = app.candidateProfile || {};
+      const u = p.user || {};
+      return {
+        ...app,
+        profile: {
+          ...p,
+          fullName: u.name || "Unknown",
+          email: u.email || "-"
+        },
+        candidateId: app.candidateProfileId
+      };
+    });
     setHiredCandidates(hiredWithProfiles);
   }, [initialJob, siteSlas, pipelineStages]);
 
@@ -146,28 +153,12 @@ export default function JobDetailClient({
   };
 
   const handlePublish = async () => {
-    if (!slaConfig || Object.keys(slaConfig).length === 0) {
-      await modal.alert(
-        "SLA Belum Diatur",
-        "SLA Configuration belum diatur! Harap atur SLA di menu Settings terlebih dahulu.",
-      );
-      return;
-    }
-
-    const now = new Date().toISOString();
-    const generatedTimelines = calculateTimelines(now, job.needTestSkill);
-
     try {
-      const res = await publishJob(job.id, generatedTimelines);
+      const { publishJobOpening } = await import("@/app/actions/job");
+      const res = await publishJobOpening(job.id);
       if (res.success) {
-        const updatedJob = {
-          ...job,
-          globalStatus: "Active",
-          publishedDate: now,
-          timeline: generatedTimelines,
-        };
-        saveJobState(updatedJob);
-        modal.alert("Berhasil", "Lowongan berhasil dipublish dan aktif.");
+        modal.alert("Berhasil", "Lowongan berhasil dipublish dan aktif dengan SLA yang sesuai.");
+        window.location.reload(); // Reload to fetch fresh data from server
       } else {
         modal.alert("Error", res.error || "Gagal mempublish lowongan.");
       }
@@ -331,12 +322,20 @@ export default function JobDetailClient({
 
         <div className="flex gap-3">
           {job.globalStatus === "Draft" && (
-            <button
-              onClick={handlePublish}
-              className="px-4 py-2 bg-emerald-600 text-white rounded text-sm font-semibold hover:bg-emerald-700 transition-colors flex items-center gap-2"
-            >
-              <Play className="w-4 h-4" /> Publish Job
-            </button>
+            <>
+              <Link
+                href={`/dashboard/job-openings/${job.id}/edit`}
+                className="px-4 py-2 bg-white text-primary border border-primary rounded text-sm font-semibold hover:bg-surface-container-low transition-colors flex items-center gap-2"
+              >
+                Edit Job
+              </Link>
+              <button
+                onClick={handlePublish}
+                className="px-4 py-2 bg-emerald-600 text-white rounded text-sm font-semibold hover:bg-emerald-700 transition-colors flex items-center gap-2"
+              >
+                <Play className="w-4 h-4" /> Publish Job
+              </button>
+            </>
           )}
           {(job.globalStatus === "Active" ||
             job.globalStatus === "Overdue") && (
@@ -450,8 +449,14 @@ export default function JobDetailClient({
                       className="px-2 py-1 border border-outline-variant rounded text-sm font-mono text-black w-48 focus:outline-none focus:ring-1 focus:ring-primary"
                       placeholder="Input No Form B1"
                     />
-                    <button onClick={() => {
-                      saveJobState({ ...job, noFormB1: tempB1 });
+                    <button onClick={async () => {
+                      const { updateJobOpening } = await import("@/app/actions/job");
+                      const res = await updateJobOpening(job.id, { noFormB1: tempB1 });
+                      if (res.success) {
+                        saveJobState({ ...job, noFormB1: tempB1 });
+                      } else {
+                        modal.alert("Error", res.error || "Gagal menyimpan B1");
+                      }
                       setIsEditingB1(false);
                     }} className="text-xs font-semibold bg-primary text-white px-2.5 py-1.5 rounded hover:bg-primary-container transition-colors">Save</button>
                     <button onClick={() => setIsEditingB1(false)} className="text-xs font-semibold bg-surface-container-low text-on-surface-variant px-2.5 py-1.5 rounded hover:bg-surface-container transition-colors">Cancel</button>
@@ -645,7 +650,7 @@ export default function JobDetailClient({
         </div>
       </div>
       ) : activeTab === "pipeline" ? (
-        <PipelineBoard jobId={job.id} timeline={job.timeline} />
+        <PipelineBoard jobId={job.id} timeline={job.timeline} initialApplications={job.applications || []} pipelineStages={pipelineStages} />
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-table-border overflow-hidden">
           <div className="p-6 border-b border-table-border">

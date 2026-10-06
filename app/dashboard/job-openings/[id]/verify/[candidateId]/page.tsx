@@ -92,6 +92,8 @@ export default function AdvancedDocumentVerificationPage({
   const [showMoveJobModal, setShowMoveJobModal] = useState(false);
   const [selectedMoveJobId, setSelectedMoveJobId] = useState("");
   const [activeJobs, setActiveJobs] = useState<any[]>([]);
+  const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
   useEffect(() => {
     // Load Job
@@ -110,73 +112,119 @@ export default function AdvancedDocumentVerificationPage({
 
     // Load Application
     const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const foundApp = allApps.find(
+    let foundApp = allApps.find(
       (a: any) => a.jobId === unwrappedParams.id && a.candidateId === unwrappedParams.candidateId
     );
     
-    if (foundApp) {
-      setApplication(foundApp);
-      if (foundApp.bnspValidation) {
-        setSkema(foundApp.bnspValidation.skema || "");
-        setIssueDate(foundApp.bnspValidation.issueDate || "");
-        setExpiryDate(foundApp.bnspValidation.expiryDate || "");
-        setCertNumber(foundApp.bnspValidation.certNumber || "");
-        setIsApproved(foundApp.bnspValidation.isApproved || false);
-        setBnspFile(foundApp.bnspValidation.file || null);
+    const fetchDbApp = async () => {
+      const { getApplicationForVerify } = await import("@/app/actions/job");
+      const res = await getApplicationForVerify(unwrappedParams.id, unwrappedParams.candidateId);
+      if (res.success && res.data) {
+        if (!foundApp) foundApp = res.data;
+        if (res.data.stageData) {
+          foundApp = { ...foundApp, ...(res.data.stageData as any) };
+        }
+        // Use real DB data instead of local storage
+        if (res.data.job) setJob(res.data.job);
+        if (res.data.candidateProfile) {
+          const dbProfile: any = { ...res.data.candidateProfile };
+          if (dbProfile.user) {
+            dbProfile.fullName = dbProfile.user.name;
+            dbProfile.email = dbProfile.user.email;
+          }
+          if (dbProfile.trainingCenterName) {
+            dbProfile.trainingCenter = `${dbProfile.trainingCenterType ? dbProfile.trainingCenterType + ' - ' : ''}${dbProfile.trainingCenterName}`;
+          }
+          if (dbProfile.documents && Array.isArray(dbProfile.documents)) {
+            dbProfile.documents.forEach((doc: any) => {
+              const fileObj = { base64: `/api/file?key=${encodeURIComponent(doc.objectKey)}`, name: doc.documentType, type: doc.mimeType || "application/pdf", objectKey: doc.objectKey };
+              const t = (doc.documentType || "").toLowerCase();
+              if (t === "ktp") dbProfile.fileKtp = fileObj;
+              else if (t === "cv") dbProfile.fileCv = fileObj;
+              else if (t === "ijazah") dbProfile.fileIjazah = fileObj;
+              else if (t === "kk" || t === "kartu keluarga") dbProfile.fileKk = fileObj;
+              else if (t === "pas foto" || t === "photo") dbProfile.filePhoto = fileObj;
+              else if (t === "sertifikat bnsp" || t === "sertifikat" || t === "bnsp") dbProfile.fileSertifikat = fileObj;
+            });
+          }
+          setProfile(dbProfile);
+        }
       }
-      if (foundApp.hrInterview) {
-        setInterviewResult(foundApp.hrInterview.result || "");
-        setInterviewDate(foundApp.hrInterview.date || "");
-        setInterviewFeedback(foundApp.hrInterview.feedback || "");
-        setInterviewFile(foundApp.hrInterview.file || null);
-        setInterviewResultFile(foundApp.hrInterview.resultFile || null);
+      
+      if (foundApp) {
+        setApplication(foundApp);
+        const getSecureUrl = (fileObj: any) => {
+          if (!fileObj) return null;
+          if (fileObj.base64?.includes(process.env.NEXT_PUBLIC_S3_ENDPOINT || '9000')) {
+             if (fileObj.objectKey) return { ...fileObj, base64: `/api/file?key=${encodeURIComponent(fileObj.objectKey)}` };
+          }
+          return fileObj;
+        };
+
+        if (foundApp.bnspValidation) {
+          setSkema(foundApp.bnspValidation.skema || "");
+          setIssueDate(foundApp.bnspValidation.issueDate || "");
+          setExpiryDate(foundApp.bnspValidation.expiryDate || "");
+          setCertNumber(foundApp.bnspValidation.certNumber || "");
+          setIsApproved(foundApp.bnspValidation.isApproved || false);
+          setBnspFile(getSecureUrl(foundApp.bnspValidation.file) || null);
+        }
+        if (foundApp.hrInterview) {
+          setInterviewResult(foundApp.hrInterview.result || "");
+          setInterviewDate(foundApp.hrInterview.date || "");
+          setInterviewFeedback(foundApp.hrInterview.feedback || "");
+          setInterviewFile(getSecureUrl(foundApp.hrInterview.file) || null);
+          setInterviewResultFile(getSecureUrl(foundApp.hrInterview.resultFile) || null);
+        }
+        if (foundApp.psikotes) {
+          setPsikotesResult(foundApp.psikotes.result || "");
+          setPsikotesDate(foundApp.psikotes.date || "");
+          setPsikotesFile(getSecureUrl(foundApp.psikotes.file) || null);
+        }
+        if (foundApp.testSkill) {
+          setTestSkillDate(foundApp.testSkill.date || "");
+          setTestSkillVideoLink(foundApp.testSkill.videoLink || "");
+          setTestSkillProofs((foundApp.testSkill.proofs || [{ title: "", file: null }]).map((p: any) => ({ ...p, file: getSecureUrl(p.file) })));
+          setTestSkillResultFile(getSecureUrl(foundApp.testSkill.resultFile) || null);
+        }
+        if (foundApp.userInterview) {
+          setUserInterviewResult(foundApp.userInterview.result || "");
+          setUserInterviewDate(foundApp.userInterview.date || "");
+          setUserInterviewFeedback(foundApp.userInterview.feedback || "");
+          setUserInterviewFile(getSecureUrl(foundApp.userInterview.file) || null);
+        }
+        if (foundApp.offeringLetter) {
+          setOfferingDate(foundApp.offeringLetter.date || "");
+          setOfferingFile(getSecureUrl(foundApp.offeringLetter.file) || null);
+        }
+        if (foundApp.mcu) {
+          setMcuDate(foundApp.mcu.date || "");
+          setMcuPengantarFile(getSecureUrl(foundApp.mcu.pengantarFile) || null);
+          setMcuHasilFile(getSecureUrl(foundApp.mcu.hasilFile) || null);
+          setMcuFollowUpFile(getSecureUrl(foundApp.mcu.followUpFile) || null);
+        }
+        if (foundApp.trainingUser) {
+          setTrainingDate(foundApp.trainingUser.date || "");
+          setTrainingFile(getSecureUrl(foundApp.trainingUser.file) || null);
+          setTrainingHistory(foundApp.trainingUser.history || []);
+        }
+        if (foundApp.induction) {
+          setInductionDate(foundApp.induction.date || "");
+          setInductionFile(getSecureUrl(foundApp.induction.file) || null);
+          setInductionHistory(foundApp.induction.history || []);
+        }
+        if (foundApp.pkwt) {
+          setPkwtStartDate(foundApp.pkwt.startDate || "");
+          setPkwtEndDate(foundApp.pkwt.endDate || "");
+          setPkwtFile(getSecureUrl(foundApp.pkwt.file) || null);
+          setPkwtSafetyFile(getSecureUrl(foundApp.pkwt.safetyFile) || null);
+          setPkwtNeopFile(getSecureUrl(foundApp.pkwt.neopFile) || null);
+          setPkwtMcuFile(getSecureUrl(foundApp.pkwt.mcuFile) || null);
+        }
       }
-      if (foundApp.psikotes) {
-        setPsikotesResult(foundApp.psikotes.result || "");
-        setPsikotesDate(foundApp.psikotes.date || "");
-        setPsikotesFile(foundApp.psikotes.file || null);
-      }
-      if (foundApp.testSkill) {
-        setTestSkillDate(foundApp.testSkill.date || "");
-        setTestSkillVideoLink(foundApp.testSkill.videoLink || "");
-        setTestSkillProofs(foundApp.testSkill.proofs || [{ title: "", file: null }]);
-        setTestSkillResultFile(foundApp.testSkill.resultFile || null);
-      }
-      if (foundApp.userInterview) {
-        setUserInterviewResult(foundApp.userInterview.result || "");
-        setUserInterviewDate(foundApp.userInterview.date || "");
-        setUserInterviewFeedback(foundApp.userInterview.feedback || "");
-        setUserInterviewFile(foundApp.userInterview.file || null);
-      }
-      if (foundApp.offeringLetter) {
-        setOfferingDate(foundApp.offeringLetter.date || "");
-        setOfferingFile(foundApp.offeringLetter.file || null);
-      }
-      if (foundApp.mcu) {
-        setMcuDate(foundApp.mcu.date || "");
-        setMcuPengantarFile(foundApp.mcu.pengantarFile || null);
-        setMcuHasilFile(foundApp.mcu.hasilFile || null);
-        setMcuFollowUpFile(foundApp.mcu.followUpFile || null);
-      }
-      if (foundApp.trainingUser) {
-        setTrainingDate(foundApp.trainingUser.date || "");
-        setTrainingFile(foundApp.trainingUser.file || null);
-        setTrainingHistory(foundApp.trainingUser.history || []);
-      }
-      if (foundApp.induction) {
-        setInductionDate(foundApp.induction.date || "");
-        setInductionFile(foundApp.induction.file || null);
-        setInductionHistory(foundApp.induction.history || []);
-      }
-      if (foundApp.pkwt) {
-        setPkwtStartDate(foundApp.pkwt.startDate || "");
-        setPkwtEndDate(foundApp.pkwt.endDate || "");
-        setPkwtFile(foundApp.pkwt.file || null);
-        setPkwtSafetyFile(foundApp.pkwt.safetyFile || null);
-        setPkwtNeopFile(foundApp.pkwt.neopFile || null);
-        setPkwtMcuFile(foundApp.pkwt.mcuFile || null);
-      }
-    }
+    };
+    
+    fetchDbApp();
 
     // Load Master Skema
     const savedSkema = localStorage.getItem('ugz_master_skema_sertifikasi');
@@ -195,109 +243,173 @@ export default function AdvancedDocumentVerificationPage({
     }
   }, [unwrappedParams.id, unwrappedParams.candidateId]);
 
+  useEffect(() => {
+    if (!profile) return;
+    let fileData = null;
+    switch (activeDocTab) {
+      case "KTP": fileData = profile.fileKtp; break;
+      case "CV": fileData = profile.fileCv; break;
+      case "Ijazah": fileData = profile.fileIjazah; break;
+      case "KK": fileData = profile.fileKk; break;
+      case "Pas Foto": fileData = profile.filePhoto; break;
+      case "Sertifikat BNSP": fileData = profile.fileSertifikat; break;
+    }
+
+    if (fileData?.objectKey) {
+      setIsPreviewLoading(true);
+      setActivePreviewUrl(null);
+      import("@/app/actions/candidate-profile").then(({ getPreviewUrl }) => {
+        getPreviewUrl(fileData.objectKey).then(res => {
+          if (res.success && res.url) {
+            setActivePreviewUrl(res.url);
+          } else {
+            setActivePreviewUrl(fileData.base64);
+          }
+          setIsPreviewLoading(false);
+        }).catch(() => {
+          setActivePreviewUrl(fileData.base64);
+          setIsPreviewLoading(false);
+        });
+      });
+    } else if (fileData?.base64) {
+      setActivePreviewUrl(fileData.base64);
+    } else {
+      setActivePreviewUrl(null);
+    }
+  }, [activeDocTab, profile]);
+
   if (!job || !profile || !application) {
     return <div className="p-8 text-center">Loading verification data...</div>;
   }
 
-  const currentStageName = job.timeline?.find((t: any) => t.id === application.currentStage)?.title || application.currentStage;
-  const isAdministration = application.currentStage === "stage_1" || currentStageName.toLowerCase().includes("administration");
-  const isHrInterview = application.currentStage === "stage_2" || currentStageName.toLowerCase().includes("hr interview") || currentStageName.toLowerCase().includes("interview hr");
-  const isPsikotes = application.currentStage === "stage_3" || currentStageName.toLowerCase().includes("psikotes") || currentStageName.toLowerCase().includes("psychotest") || currentStageName.toLowerCase().includes("psychological");
-  const isTestSkill = application.currentStage === "stage_4" || currentStageName.toLowerCase().includes("test skill") || currentStageName.toLowerCase().includes("technical");
-  const isUserInterview = application.currentStage === "stage_5" || currentStageName.toLowerCase().includes("user interview") || currentStageName.toLowerCase().includes("interview user");
-  const isOfferingLetter = application.currentStage === "stage_6" || currentStageName.toLowerCase().includes("offering");
-  const isMcu = application.currentStage === "stage_7" || currentStageName.toLowerCase().includes("mcu") || currentStageName.toLowerCase().includes("medical");
-  const isTrainingUser = application.currentStage === "stage_8" || currentStageName.toLowerCase().includes("training");
-  const isInduction = application.currentStage === "stage_9" || currentStageName.toLowerCase().includes("induction");
-  const isPkwt = application.currentStage === "stage_10" || currentStageName.toLowerCase().includes("pkwt") || application.currentStage === "Hired";
+  const currentStageName = job.timeline?.find((t: any) => t.stageId === application.currentStageId)?.stage?.name || application.currentStageId || "";
+  const isAdministration = application.currentStageId === "stage_1" || currentStageName.toLowerCase().includes("administration") || currentStageName.toLowerCase().includes("cv screener");
+  const isHrInterview = application.currentStageId === "stage_2" || currentStageName.toLowerCase().includes("hr interview") || currentStageName.toLowerCase().includes("interview hr");
+  const isPsikotes = application.currentStageId === "stage_3" || currentStageName.toLowerCase().includes("psikotes") || currentStageName.toLowerCase().includes("psychotest") || currentStageName.toLowerCase().includes("psychological");
+  const isTestSkill = application.currentStageId === "stage_4" || currentStageName.toLowerCase().includes("test skill") || currentStageName.toLowerCase().includes("technical");
+  const isUserInterview = application.currentStageId === "stage_5" || currentStageName.toLowerCase().includes("user interview") || currentStageName.toLowerCase().includes("interview user");
+  const isOfferingLetter = application.currentStageId === "stage_6" || currentStageName.toLowerCase().includes("offering");
+  const isMcu = application.currentStageId === "stage_7" || currentStageName.toLowerCase().includes("mcu") || currentStageName.toLowerCase().includes("medical");
+  const isTrainingUser = application.currentStageId === "stage_8" || currentStageName.toLowerCase().includes("training");
+  const isInduction = application.currentStageId === "stage_9" || currentStageName.toLowerCase().includes("induction");
+  const isPkwt = application.currentStageId === "stage_10" || currentStageName.toLowerCase().includes("pkwt") || application.currentStageId === "Hired";
 
-  const safeSaveApplications = (allApps: any[], silent = false) => {
+  const safeSaveApplications = async (appData: any, silent = false) => {
     try {
-      localStorage.setItem("ugz_applications", JSON.stringify(allApps));
+      // Sync to Database for fullstack integration
+      const { updateApplicationStageData } = await import("@/app/actions/job");
+      // Extract stage data to save, wrapping in JSON.parse/stringify to strip raw File objects and their prototypes
+      const stageDataToSave = JSON.parse(JSON.stringify({
+        bnspValidation: appData.bnspValidation,
+        hrInterview: appData.hrInterview,
+        psikotes: appData.psikotes,
+        testSkill: appData.testSkill,
+        userInterview: appData.userInterview,
+        offeringLetter: appData.offeringLetter,
+        mcu: appData.mcu,
+        trainingUser: appData.trainingUser,
+        induction: appData.induction,
+        pkwt: appData.pkwt,
+        messages: appData.messages,
+        moveProposal: appData.moveProposal
+      }));
+      
+      const res = await updateApplicationStageData(appData.id, stageDataToSave);
+      
+      if (res.success) {
+        setApplication(appData);
+        // Fallback update in local storage for legacy components
+        try {
+          const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
+          const appIndex = allApps.findIndex((a: any) => a.id === appData.id);
+          if (appIndex !== -1) {
+             allApps[appIndex] = { ...allApps[appIndex], ...appData };
+             localStorage.setItem("ugz_applications", JSON.stringify(allApps));
+          }
+        } catch (e) {}
+      } else {
+        throw new Error(res.error || "Gagal menyimpan ke database");
+      }
+      
       return true;
     } catch (e: any) {
-      console.error("Storage quota exceeded", e);
+      console.error("Save Error:", e);
       if (!silent) {
-        window.alert("Gagal menyimpan: Kapasitas penyimpanan browser penuh. Harap unggah file dengan ukuran lebih kecil (maks. 1-2MB).");
+        window.alert(e.message || "Gagal menyimpan perubahan. Harap coba lagi.");
       }
       return false;
     }
   };
 
-  const handleSaveDraftSilent = () => {
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
-    if (appIndex !== -1) {
-      if (isAdministration) {
-        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved, file: bnspFile };
-      } else if (isHrInterview) {
-        allApps[appIndex].hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile, resultFile: interviewResultFile };
-      } else if (isPsikotes) {
-        allApps[appIndex].psikotes = { result: psikotesResult, date: psikotesDate, file: psikotesFile };
-      } else if (isTestSkill) {
-        allApps[appIndex].testSkill = { date: testSkillDate, videoLink: testSkillVideoLink, proofs: testSkillProofs, resultFile: testSkillResultFile };
-      } else if (isUserInterview) {
-        allApps[appIndex].userInterview = { result: userInterviewResult, date: userInterviewDate, feedback: userInterviewFeedback, file: userInterviewFile };
-      } else if (isOfferingLetter) {
-        allApps[appIndex].offeringLetter = { date: offeringDate, file: offeringFile };
-      } else if (isMcu) {
-        allApps[appIndex].mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
-      } else if (isTrainingUser) {
-        allApps[appIndex].trainingUser = { date: trainingDate, file: trainingFile, history: trainingHistory };
-      } else if (isInduction) {
-        allApps[appIndex].induction = { date: inductionDate, file: inductionFile, history: inductionHistory };
-      } else if (isPkwt) {
-        allApps[appIndex].pkwt = { startDate: pkwtStartDate, endDate: pkwtEndDate, file: pkwtFile, safetyFile: pkwtSafetyFile, neopFile: pkwtNeopFile, mcuFile: pkwtMcuFile };
-      }
-      safeSaveApplications(allApps, true);
+  const handleSaveDraftSilent = async () => {
+    let updatedApp = { ...application };
+    if (isAdministration) {
+      let finalBnspFile = bnspFile;
+      // File is already uploaded via processUploadedFile
+      updatedApp.bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved, file: finalBnspFile };
+    } else if (isHrInterview) {
+      updatedApp.hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile, resultFile: interviewResultFile };
+    } else if (isPsikotes) {
+      updatedApp.psikotes = { result: psikotesResult, date: psikotesDate, file: psikotesFile };
+    } else if (isTestSkill) {
+      updatedApp.testSkill = { date: testSkillDate, videoLink: testSkillVideoLink, proofs: testSkillProofs, resultFile: testSkillResultFile };
+    } else if (isUserInterview) {
+      updatedApp.userInterview = { result: userInterviewResult, date: userInterviewDate, feedback: userInterviewFeedback, file: userInterviewFile };
+    } else if (isOfferingLetter) {
+      updatedApp.offeringLetter = { date: offeringDate, file: offeringFile };
+    } else if (isMcu) {
+      updatedApp.mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
+    } else if (isTrainingUser) {
+      updatedApp.trainingUser = { date: trainingDate, file: trainingFile, history: trainingHistory };
+    } else if (isInduction) {
+      updatedApp.induction = { date: inductionDate, file: inductionFile, history: inductionHistory };
+    } else if (isPkwt) {
+      updatedApp.pkwt = { startDate: pkwtStartDate, endDate: pkwtEndDate, file: pkwtFile, safetyFile: pkwtSafetyFile, neopFile: pkwtNeopFile, mcuFile: pkwtMcuFile };
     }
+    
+    await safeSaveApplications(updatedApp, true);
   };
 
-  const handleToggleApprove = () => {
+  const handleToggleApprove = async () => {
     const newIsApproved = !isApproved;
     setIsApproved(newIsApproved);
 
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
-    
-    if (appIndex !== -1) {
-      if (isAdministration) {
-        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved: newIsApproved, file: bnspFile };
-      }
-      safeSaveApplications(allApps);
+    let updatedApp = { ...application };
+    if (isAdministration) {
+      updatedApp.bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved: newIsApproved, file: bnspFile };
     }
+    await safeSaveApplications(updatedApp);
   };
 
-  const handleDraftMark = () => {
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
-    if (appIndex !== -1) {
-      if (isAdministration) {
-        allApps[appIndex].bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved, file: bnspFile };
-      } else if (isHrInterview) {
-        allApps[appIndex].hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile, resultFile: interviewResultFile };
-      } else if (isPsikotes) {
-        allApps[appIndex].psikotes = { result: psikotesResult, date: psikotesDate, file: psikotesFile };
-      } else if (isTestSkill) {
-        allApps[appIndex].testSkill = { date: testSkillDate, videoLink: testSkillVideoLink, proofs: testSkillProofs, resultFile: testSkillResultFile };
-      } else if (isUserInterview) {
-        allApps[appIndex].userInterview = { result: userInterviewResult, date: userInterviewDate, feedback: userInterviewFeedback, file: userInterviewFile };
-      } else if (isOfferingLetter) {
-        allApps[appIndex].offeringLetter = { date: offeringDate, file: offeringFile };
-      } else if (isMcu) {
-        allApps[appIndex].mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
-      } else if (isTrainingUser) {
-        allApps[appIndex].trainingUser = { date: trainingDate, file: trainingFile, history: trainingHistory };
-      } else if (isInduction) {
-        allApps[appIndex].induction = { date: inductionDate, file: inductionFile, history: inductionHistory };
-      } else if (isPkwt) {
-        allApps[appIndex].pkwt = { startDate: pkwtStartDate, endDate: pkwtEndDate, file: pkwtFile, safetyFile: pkwtSafetyFile, neopFile: pkwtNeopFile, mcuFile: pkwtMcuFile };
-      }
-      allApps[appIndex].isDraft = true;
-      if (safeSaveApplications(allApps)) {
-        window.alert("Saved as Draft successfully.");
-        router.push(`/dashboard/job-openings/${job.id}`);
-      }
+  const handleDraftMark = async () => {
+    let updatedApp = { ...application };
+    if (isAdministration) {
+      updatedApp.bnspValidation = { skema, issueDate, expiryDate, certNumber, isApproved, file: bnspFile };
+    } else if (isHrInterview) {
+      updatedApp.hrInterview = { result: interviewResult, date: interviewDate, feedback: interviewFeedback, file: interviewFile, resultFile: interviewResultFile };
+    } else if (isPsikotes) {
+      updatedApp.psikotes = { result: psikotesResult, date: psikotesDate, file: psikotesFile };
+    } else if (isTestSkill) {
+      updatedApp.testSkill = { date: testSkillDate, videoLink: testSkillVideoLink, proofs: testSkillProofs, resultFile: testSkillResultFile };
+    } else if (isUserInterview) {
+      updatedApp.userInterview = { result: userInterviewResult, date: userInterviewDate, feedback: userInterviewFeedback, file: userInterviewFile };
+    } else if (isOfferingLetter) {
+      updatedApp.offeringLetter = { date: offeringDate, file: offeringFile };
+    } else if (isMcu) {
+      updatedApp.mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
+    } else if (isTrainingUser) {
+      updatedApp.trainingUser = { date: trainingDate, file: trainingFile, history: trainingHistory };
+    } else if (isInduction) {
+      updatedApp.induction = { date: inductionDate, file: inductionFile, history: inductionHistory };
+    } else if (isPkwt) {
+      updatedApp.pkwt = { startDate: pkwtStartDate, endDate: pkwtEndDate, file: pkwtFile, safetyFile: pkwtSafetyFile, neopFile: pkwtNeopFile, mcuFile: pkwtMcuFile };
+    }
+    updatedApp.isDraft = true;
+    
+    const success = await safeSaveApplications(updatedApp);
+    if (success) {
+      window.alert("Saved as Draft successfully.");
+      router.push(`/dashboard/job-openings/${job.id}`);
     }
   };
 
@@ -315,199 +427,132 @@ export default function AdvancedDocumentVerificationPage({
     return { actor, actorEmail };
   };
 
-  const handleApproveNextStage = () => {
-    handleSaveDraftSilent();
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
-    if (appIndex !== -1) {
-      const app = allApps[appIndex];
-      const currentIndex = job.timeline.findIndex((t: any) => t.id === app.currentStage);
-      
-      if (currentIndex !== -1 && currentIndex + 1 < job.timeline.length) {
-        const nextStage = job.timeline[currentIndex + 1];
-        app.currentStage = nextStage.id;
-        app.isDraft = false; // Remove draft if approved
-        if (!app.history) app.history = [];
-        const actorInfo = getActorInfo();
-        app.history.push({
-          stageId: nextStage.id,
-          stageName: nextStage.title,
-          date: new Date().toISOString(),
-          note: "Approved to next stage",
-          ...actorInfo
-        });
-        if (safeSaveApplications(allApps)) {
-          window.alert(`Candidate approved and moved to ${nextStage.title}.`);
+  const handleApproveNextStage = async () => {
+    if (isAdministration && !isApproved) {
+      window.alert("Anda harus menandai validasi sertifikat BNSP sebagai 'Approved' sebelum melanjutkan ke tahap berikutnya.");
+      return;
+    }
+    
+    await handleSaveDraftSilent();
+    const currentIndex = job.timeline?.findIndex((t: any) => t.stageId === application.currentStageId);
+    if (currentIndex !== -1 && currentIndex + 1 < job.timeline.length) {
+       const nextStage = job.timeline[currentIndex + 1];
+       const { updateApplicationStage } = await import("@/app/actions/job");
+       const res = await updateApplicationStage(application.id, nextStage.stageId, "Approved to next stage");
+       if (res.success) {
+         window.alert(`Candidate approved and moved to ${(nextStage.stage?.name || nextStage.stageId)}.`);
+         router.push(`/dashboard/job-openings/${job.id}`);
+       } else {
+         window.alert("Gagal menyetujui kandidat.");
+       }
+    } else if (isPkwt) {
+       const { updateApplicationStage } = await import("@/app/actions/job");
+       const res = await updateApplicationStage(application.id, "Hired", "Candidate successfully hired.");
+       if (res.success) {
+          window.alert(`Candidate successfully hired and marked as Employee!`);
           router.push(`/dashboard/job-openings/${job.id}`);
-        }
-      } else {
-        if (isPkwt) {
-          app.currentStage = "Hired";
-          app.isDraft = false;
-          if (!app.history) app.history = [];
-          const actorInfo = getActorInfo();
-          app.history.push({
-            stageId: "Hired",
-            stageName: "Hired / Employee",
-            date: new Date().toISOString(),
-            note: "Candidate successfully hired.",
-            ...actorInfo
-          });
-          if (safeSaveApplications(allApps)) {
-            window.alert(`Candidate successfully hired and marked as Employee!`);
-            router.push(`/dashboard/job-openings/${job.id}`);
-          }
-        } else {
-          window.alert("Candidate is already at the last stage.");
-        }
-      }
+       } else {
+          window.alert("Gagal menyetujui kandidat.");
+       }
+    } else {
+       window.alert("Candidate is already at the last stage.");
     }
   };
 
-  const handleRejectCandidate = () => {
+  const handleRejectCandidate = async () => {
     if (!failureReason) return;
     
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
-    
-    if (appIndex !== -1) {
-      const app = allApps[appIndex];
-      const stageName = job.timeline.find((t: any) => t.id === app.currentStage)?.title || app.currentStage;
-      
-      app.currentStage = "Rejected";
-      app.isDraft = false;
-      if (!app.history) app.history = [];
-      const actorInfo = getActorInfo();
-      app.history.push({
-        stageId: "Rejected",
-        stageName: `Rejected at ${stageName}`,
-        date: new Date().toISOString(),
-        note: `Reason: ${failureReason}`,
-        ...actorInfo
-      });
-      
-      if (safeSaveApplications(allApps)) {
-        window.alert("Kandidat berhasil ditolak (Rejected) dan diarsipkan.");
-        router.push(`/dashboard/job-openings/${job.id}`);
-      }
+    const { updateApplicationStage } = await import("@/app/actions/job");
+    const res = await updateApplicationStage(application.id, "Rejected", `Reason: ${failureReason}`);
+    if (res.success) {
+      window.alert("Kandidat berhasil ditolak (Rejected) dan diarsipkan.");
+      setShowRejectModal(false);
+      router.push(`/dashboard/job-openings/${job.id}`);
+    } else {
+      window.alert("Gagal menolak kandidat.");
     }
   };
 
-  const handleBlacklistCandidate = () => {
+  const handleBlacklistCandidate = async () => {
     if (!blacklistNote.trim()) {
       window.alert("Please provide a note for blacklisting.");
       return;
     }
     
-    // Update Profile
-    const profiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
-    const candidateProfile = profiles[unwrappedParams.candidateId];
-    if (candidateProfile) {
-      candidateProfile.isBlacklisted = true;
-      candidateProfile.blacklistNote = blacklistNote;
-      candidateProfile.blacklistedDate = new Date().toISOString();
-      localStorage.setItem("ugz_candidate_profiles", JSON.stringify(profiles));
-      
-      setProfile(candidateProfile);
-    }
+    const { blacklistCandidate, updateApplicationStage } = await import("@/app/actions/job");
+    const res = await blacklistCandidate(profile.id, blacklistNote);
     
-    // Set application status to Rejected (Blacklisted)
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
-    
-    if (appIndex !== -1) {
-      const app = allApps[appIndex];
-      const stageName = job.timeline?.find((t: any) => t.id === app.currentStage)?.title || app.currentStage;
-      
-      app.currentStage = "Rejected";
-      app.isDraft = false;
-      if (!app.history) app.history = [];
-      const actorInfo = getActorInfo();
-      app.history.push({
-        stageId: "Rejected",
-        stageName: `Rejected (Blacklisted) at ${stageName}`,
-        date: new Date().toISOString(),
-        note: `Blacklisted: ${blacklistNote}`,
-        ...actorInfo
-      });
-      
-      if (safeSaveApplications(allApps)) {
-        setShowBlacklistModal(false);
-        window.alert("Candidate has been blacklisted.");
-        router.push(`/dashboard/blacklist`);
-      }
+    if (res.success) {
+      await updateApplicationStage(application.id, "Rejected", `Blacklisted: ${blacklistNote}`);
+      setShowBlacklistModal(false);
+      window.alert("Candidate has been blacklisted.");
+      router.push(`/dashboard/job-openings/${job.id}`);
+    } else {
+      window.alert("Gagal mem-blacklist kandidat.");
     }
   };
 
-  const handleMoveCandidateRequest = () => {
+  const handleMoveCandidateRequest = async () => {
     if (!selectedMoveJobId) {
       window.alert("Please select a target job opening.");
       return;
     }
 
-    const proposals = JSON.parse(localStorage.getItem("ugz_job_move_proposals") || "[]");
-    
-    // Check if there's already a pending proposal for this candidate and this source job
-    const existingPending = proposals.find((p: any) => 
-      p.candidateId === unwrappedParams.candidateId && 
-      p.fromJobId === job.id && 
-      p.status === "Pending"
-    );
-
-    if (existingPending) {
+    if (application.moveProposal?.status === "Pending") {
       window.alert("There is already a pending job move proposal for this candidate.");
       return;
     }
 
-    const newProposal = {
-      id: `jmp-${Math.random().toString(36).substr(2, 9)}`,
-      candidateId: unwrappedParams.candidateId,
-      fromJobId: job.id,
-      toJobId: selectedMoveJobId,
-      status: "Pending",
-      createdAt: new Date().toISOString()
+    const updatedApp = {
+      ...application,
+      moveProposal: {
+        toJobId: selectedMoveJobId,
+        status: "Pending",
+        createdAt: new Date().toISOString()
+      }
     };
 
-    proposals.push(newProposal);
-    try {
-      localStorage.setItem("ugz_job_move_proposals", JSON.stringify(proposals));
+    const success = await safeSaveApplications(updatedApp);
+    if (success) {
       window.alert("Move request sent successfully. Waiting for candidate approval.");
       setShowMoveJobModal(false);
       setSelectedMoveJobId("");
       setShowActionModal(false);
-    } catch (e) {
-      console.error("Failed to save proposal", e);
-      window.alert("Failed to send move request.");
     }
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!messageText.trim()) return;
 
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const appIndex = allApps.findIndex((a: any) => a.id === application.id);
+    const newMessage = {
+      stage: application.currentStageId,
+      text: messageText,
+      date: new Date().toISOString()
+    };
+    
+    const updatedApp = {
+      ...application,
+      messages: [...(application.messages || []), newMessage]
+    };
 
-    if (appIndex !== -1) {
-      const app = allApps[appIndex];
-      if (!app.messages) app.messages = [];
-      app.messages.push({
-        stage: app.currentStage,
-        text: messageText,
-        date: new Date().toISOString()
-      });
-
-      if (safeSaveApplications(allApps)) {
-        window.alert("Pesan berhasil dikirim ke kandidat.");
-        setShowMessageModal(false);
-        setMessageText("");
-      }
+    const success = await safeSaveApplications(updatedApp);
+    if (success) {
+      window.alert("Pesan berhasil dikirim ke kandidat.");
+      setShowMessageModal(false);
+      setMessageText("");
     }
   };
 
-  const handleApproveAll = () => {
-    handleSaveDraftSilent();
-    window.alert("All verification approved. Returning to Pipeline.");
-    router.push(`/dashboard/job-openings/${job.id}`);
+  const handleApproveAll = async () => {
+    await handleSaveDraftSilent();
+    const { updateApplicationStage } = await import("@/app/actions/job");
+    const res = await updateApplicationStage(application.id, "Hired", "All verification approved by recruiter.");
+    if (res.success) {
+      window.alert("All verification approved. Returning to Pipeline.");
+      router.push(`/dashboard/job-openings/${job.id}`);
+    } else {
+      window.alert("Gagal menyetujui semua tahap.");
+    }
   };
 
   const handleInterviewFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -574,17 +619,52 @@ export default function AdvancedDocumentVerificationPage({
     }
   };
 
-  const processUploadedFile = (file: File, callback: (data: {name: string, base64: string, type: string}) => void) => {
+  const processUploadedFile = async (file: File, callback: (data: {name: string, base64: string, type: string, file?: any, objectKey?: string}) => void) => {
     const validTypes = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
     if (!validTypes.includes(file.type)) {
       window.alert("Format file tidak didukung. Harap unggah PDF, PNG, atau JPG.");
       return;
     }
+    if (file.size > 5 * 1024 * 1024) {
+      window.alert("Ukuran file melebihi batas 5MB.");
+      return;
+    }
+
+    // Immediate preview
+    const localPreviewUrl = URL.createObjectURL(file);
+    callback({
+      name: file.name,
+      base64: localPreviewUrl,
+      type: file.type,
+      file: file
+    });
+
+    try {
+      const { getUploadUrl } = await import("@/app/actions/candidate-profile");
+      const folderPath = `applications/${job.id}/${profile.id}/${application.currentStageId}`;
+      const { uploadUrl, objectKey, publicUrl } = await getUploadUrl(file.name, file.type, folderPath);
+      if (uploadUrl) {
+        const res = await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+        if (res.ok) {
+          callback({
+            name: file.name,
+            base64: publicUrl,
+            type: file.type,
+            objectKey: objectKey,
+          });
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Upload error", err);
+    }
+
+    // Fallback if S3 fails
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = (e) => {
       callback({
         name: file.name,
-        base64: event.target?.result as string,
+        base64: e.target?.result as string,
         type: file.type
       });
     };
@@ -852,7 +932,7 @@ export default function AdvancedDocumentVerificationPage({
       case "Sertifikat BNSP": fileData = profile.fileSertifikat; fileName = "Sertifikat"; break;
     }
 
-    if (!fileData || !fileData.base64) {
+    if (!fileData || (!fileData.base64 && !fileData.objectKey)) {
       return (
         <div className="h-64 flex flex-col items-center justify-center text-on-surface-variant bg-surface-container-lowest rounded-xl border-2 border-dashed border-outline-variant mt-4">
           <AlertCircle className="w-8 h-8 mb-2 opacity-50" />
@@ -861,23 +941,32 @@ export default function AdvancedDocumentVerificationPage({
       );
     }
 
-    const isPdf = fileData.base64.startsWith("data:application/pdf");
-    const isImage = fileData.base64.startsWith("data:image/");
+    if (isPreviewLoading) {
+      return (
+        <div className="mt-4 border border-table-border rounded-xl bg-surface-container-lowest overflow-hidden h-[500px] flex items-center justify-center">
+          <p className="text-sm font-medium text-on-surface-variant animate-pulse">Memuat pratinjau dokumen...</p>
+        </div>
+      );
+    }
+
+    const previewSrc = activePreviewUrl || fileData.base64;
+    const isPdf = previewSrc.startsWith("data:application/pdf") || fileData.type === "application/pdf" || previewSrc.toLowerCase().includes(".pdf");
+    const isImage = previewSrc.startsWith("data:image/") || fileData.type?.startsWith("image/") || previewSrc.match(/\.(jpeg|jpg|gif|png)/i) != null;
 
     return (
       <div className="mt-4 border border-table-border rounded-xl bg-surface-container-lowest overflow-hidden h-[500px] flex flex-col relative">
         <div className="absolute top-4 right-4 flex gap-2 z-10 bg-white/80 p-1.5 rounded-lg backdrop-blur-sm border border-outline-variant/30 shadow-sm">
           <button className="p-1.5 hover:bg-surface-container-low rounded"><Search className="w-4 h-4 text-black" /></button>
-          <button className="p-1.5 hover:bg-surface-container-low rounded"><Download className="w-4 h-4 text-black" /></button>
+          <a href={previewSrc} download={fileName} target="_blank" rel="noreferrer" className="p-1.5 hover:bg-surface-container-low rounded inline-block"><Download className="w-4 h-4 text-black" /></a>
           <button className="p-1.5 hover:bg-surface-container-low rounded"><Printer className="w-4 h-4 text-black" /></button>
         </div>
         
         {isPdf ? (
-          <iframe src={fileData.base64} className="w-full h-full border-none bg-white" title={fileName} />
+          <iframe src={previewSrc} className="w-full h-full border-none bg-white" title={fileName} />
         ) : isImage ? (
           <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={fileData.base64} alt={fileName} className="max-w-full max-h-full object-contain shadow-sm border border-outline-variant/30 rounded" />
+            <img src={previewSrc} alt={fileName} className="max-w-full max-h-full object-contain shadow-sm border border-outline-variant/30 rounded" />
           </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-4">
@@ -903,8 +992,8 @@ export default function AdvancedDocumentVerificationPage({
           <div>
             <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Reviewing Candidate</p>
             <h2 className="text-xl font-bold text-black flex items-center gap-2">
-              {profile.fullName} <span className="text-on-surface-variant font-normal">—</span> {job.posisi}
-              {application.currentStage === "Hired" && (
+              {profile.fullName} <span className="text-on-surface-variant font-normal">—</span> {job.positionName || job.position?.name}
+              {application.currentStageId === "Hired" && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 uppercase tracking-wide">Employee</span>
               )}
               {profile?.isBlacklisted && (
@@ -2060,7 +2149,7 @@ export default function AdvancedDocumentVerificationPage({
               >
                 <option value="">-- Pilih Alasan Penolakan --</option>
                 {masterRejection
-                  .filter((r) => r.stageId === application.currentStage)
+                  .filter((r) => r.stageId === application.currentStageId)
                   .map((r) => (
                     <option key={r.id} value={r.message}>
                       {r.message}
@@ -2248,7 +2337,7 @@ export default function AdvancedDocumentVerificationPage({
                 <option value="">-- Select Job --</option>
                 {activeJobs.map((j) => (
                   <option key={j.id} value={j.id}>
-                    {j.posisi} (Ref: {j.noRegistrasi})
+                    {j.positionName || j.position?.name} (Ref: {j.noRegistrasi})
                   </option>
                 ))}
               </select>

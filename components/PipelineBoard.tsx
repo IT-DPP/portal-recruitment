@@ -6,10 +6,12 @@ import { AlertCircle, Clock, Search, User as UserIcon, CalendarClock, Ban } from
 interface PipelineBoardProps {
   jobId: string;
   timeline: any[]; // The active stages for this job
+  initialApplications?: any[];
+  pipelineStages?: any[];
 }
 
-export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
-  const [applications, setApplications] = useState<any[]>([]);
+export default function PipelineBoard({ jobId, timeline, initialApplications = [], pipelineStages = [] }: PipelineBoardProps) {
+  const [applications, setApplications] = useState<any[]>(initialApplications);
   const [candidateProfiles, setCandidateProfiles] = useState<Record<string, any>>({});
   const [slaConfig, setSlaConfig] = useState<Record<string, { totalDays: number; reminderDays: number }>>({});
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,22 +22,26 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
   const [overdueNote, setOverdueNote] = useState("");
   const [errorModal, setErrorModal] = useState<string | null>(null);
 
-  const loadData = () => {
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    setApplications(allApps.filter((a: any) => a.jobId === jobId));
+  useEffect(() => {
+    setApplications(initialApplications);
 
-    const profiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
+    const profiles: Record<string, any> = {};
+    initialApplications.forEach((app: any) => {
+       if (app.candidateProfile) {
+         const photoDoc = app.candidateProfile.documents?.find((d: any) => (d.documentType || "").toLowerCase() === "photo" || (d.documentType || "").toLowerCase() === "pas foto");
+         profiles[app.candidateProfileId] = {
+           ...app.candidateProfile,
+           fullName: app.candidateProfile.user?.name || "Unknown",
+           nik: app.candidateProfile.nik,
+           filePhoto: photoDoc ? { base64: `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}` } : null
+         };
+       }
+    });
     setCandidateProfiles(profiles);
 
-    const sla = JSON.parse(localStorage.getItem("ugz_master_sla") || "{}");
-    setSlaConfig(sla);
-  };
-
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 5000);
-    return () => clearInterval(interval);
-  }, [jobId]);
+    // Timeline handles SLA internally
+    setSlaConfig({});
+  }, [initialApplications]);
 
   const handleDragStart = (e: React.DragEvent, appId: string) => {
     setDraggedAppId(appId);
@@ -48,62 +54,49 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
     e.dataTransfer.dropEffect = "move";
   };
 
-  const handleDrop = (e: React.DragEvent, targetStageId: string) => {
+  const handleDrop = async (e: React.DragEvent, targetStageId: string) => {
     e.preventDefault();
     if (!draggedAppId) return;
 
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const appIndex = allApps.findIndex((a: any) => a.id === draggedAppId);
+    const appIndex = applications.findIndex((a: any) => a.id === draggedAppId);
     
     if (appIndex !== -1) {
-      const app = allApps[appIndex];
+      const app = applications[appIndex];
       
       // If dropped in the same stage, do nothing to prevent duplicate history
-      if (app.currentStage === targetStageId) {
+      if (app.currentStageId === targetStageId) {
         setDraggedAppId(null);
         return;
       }
 
       // Validation: Prevent skipping stages
-      const currentIndex = timeline.findIndex(t => t.id === app.currentStage);
-      const targetIndex = timeline.findIndex(t => t.id === targetStageId);
+      const currentIndex = timeline.findIndex(t => t.stageId === app.currentStageId);
+      const targetIndex = timeline.findIndex(t => t.stageId === targetStageId);
       
       if (targetIndex > currentIndex + 1) {
         setErrorModal("Tidak dapat melewati (skip) stage! Harap pindahkan kandidat secara berurutan sesuai timeline.");
         setDraggedAppId(null);
         return;
       }
-
-      // Allow move
-      app.currentStage = targetStageId;
-      app.isDraft = false; // Remove draft status when moved to another stage
       
-      // Getting current user
-      let actor = "System";
-      let actorEmail = "";
-      const loggedUserStr = localStorage.getItem("nexus_logged_user");
-      if (loggedUserStr) {
-        try {
-          const userObj = JSON.parse(loggedUserStr);
-          actor = userObj.fullName || userObj.username || "System";
-          actorEmail = userObj.email || "";
-        } catch (e) {}
+      // Validation: BNSP must be approved before leaving Administration stage (stage_1)
+      if (app.currentStageId === "stage_1") {
+         if (!app.bnspValidation?.isApproved) {
+           setErrorModal("Validasi BNSP (Administration) belum ditandai sebagai 'Approved'. Harap lakukan verifikasi detail pada kandidat ini terlebih dahulu.");
+           setDraggedAppId(null);
+           return;
+         }
       }
 
-      // Update history milestone
-      if (!app.history) app.history = [];
-      const stageName = timeline.find(t => t.id === targetStageId)?.title || targetStageId;
-      app.history.push({
-        stageId: targetStageId,
-        stageName,
-        date: new Date().toISOString(),
-        actor,
-        actorEmail
-      });
-
-      allApps[appIndex] = app;
-      localStorage.setItem("ugz_applications", JSON.stringify(allApps));
-      loadData();
+      const { updateApplicationStage } = await import("@/app/actions/job");
+      const res = await updateApplicationStage(draggedAppId, targetStageId, "Moved via Kanban Board");
+      
+      if (res.success) {
+        // We need router.refresh() to refetch applications. We will use window.location.reload() temporarily or if router is unavailable.
+        window.location.reload();
+      } else {
+        setErrorModal(res.error || "Gagal memindahkan kandidat.");
+      }
     }
     
     setDraggedAppId(null);
@@ -112,12 +105,11 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
   const submitOverdueNote = () => {
     if (!overdueNote.trim() || !showOverdueModal) return;
 
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const appToUpdate = allApps.find((a: any) => a.id === showOverdueModal);
+    const appToUpdate = applications.find((a: any) => a.id === showOverdueModal);
     
     if (appToUpdate) {
       if (!appToUpdate.stageNotes) appToUpdate.stageNotes = {};
-      appToUpdate.stageNotes[appToUpdate.currentStage] = overdueNote;
+      appToUpdate.stageNotes[appToUpdate.currentStageId] = overdueNote;
       
       // Getting current user
       let actor = "System";
@@ -133,9 +125,9 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
 
       // Also record this in candidate history
       if (!appToUpdate.history) appToUpdate.history = [];
-      const stageName = timeline.find((t: any) => t.id === appToUpdate.currentStage)?.title || appToUpdate.currentStage;
+      const stageName = timeline.find((t: any) => t.stageId === appToUpdate.currentStageId)?.title || appToUpdate.currentStageId;
       appToUpdate.history.push({
-        stageId: appToUpdate.currentStage,
+        stageId: appToUpdate.currentStageId,
         stageName: `${stageName} (Overdue Note Added)`,
         date: new Date().toISOString(),
         note: overdueNote,
@@ -143,11 +135,12 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
         actorEmail
       });
       
-      const updatedApps = allApps.map((app: any) => 
+      const updatedApps = applications.map((app: any) => 
         app.id === showOverdueModal ? appToUpdate : app
       );
-      localStorage.setItem("ugz_applications", JSON.stringify(updatedApps));
-      loadData();
+      
+      // Temporarily use local state, should be migrated to DB
+      setApplications(updatedApps);
     }
     
     setShowOverdueModal(null);
@@ -180,8 +173,9 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
   };
 
   const filteredApps = applications.filter((app) => {
-    const profile = candidateProfiles[app.candidateId];
+    const profile = candidateProfiles[app.candidateProfileId];
     if (!profile) return false;
+    if (!searchQuery) return true;
     return profile.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
            profile.nik?.includes(searchQuery);
   });
@@ -223,7 +217,7 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
       {/* Kanban Board */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden flex gap-4 pb-4">
         {timeline.map((stage) => {
-          const stageApps = filteredApps.filter(a => a.currentStage === stage.id);
+          const stageApps = filteredApps.filter(a => a.currentStageId === (stage.stageId || stage.id));
           const stageStatus = getStageStatus(stage.id);
           
           return (
@@ -268,9 +262,9 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
               
               <div className="p-3 overflow-y-auto flex-1 space-y-3 custom-scrollbar bg-surface-container-lowest">
                 {stageApps.map((app) => {
-                  const profile = candidateProfiles[app.candidateId] || {};
+                  const profile = candidateProfiles[app.candidateProfileId] || {};
                   const isAppOverdue = stageStatus.type === "overdue";
-                  const hasNote = app.stageNotes && app.stageNotes[app.currentStage];
+                  const hasNote = app.stageNotes && app.stageNotes[app.currentStageId];
 
                   return (
                     <div
@@ -302,7 +296,7 @@ export default function PipelineBoard({ jobId, timeline }: PipelineBoardProps) {
                           </div>
                           
                           <a 
-                            href={`/dashboard/job-openings/${jobId}/verify/${app.candidateId}`}
+                            href={`/dashboard/job-openings/${jobId}/verify/${app.candidateProfileId}`}
                             className="inline-block w-full text-center px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded hover:bg-primary/20 transition-colors"
                           >
                             Detail Verification

@@ -54,6 +54,12 @@ export async function getJobById(id: string) {
         customer: true,
         city: true,
         province: true,
+        site: true,
+        timeline: {
+          include: {
+            stage: true
+          }
+        }
       },
     });
     if (!job) return { success: false, error: "Job tidak ditemukan" };
@@ -61,6 +67,112 @@ export async function getJobById(id: string) {
   } catch (error) {
     console.error("getJobById Error:", error);
     return { success: false, error: "Gagal mengambil data lowongan pekerjaan" };
+  }
+}
+
+export async function updateJobOpening(id: string, data: Partial<JobOpeningInput>) {
+  try {
+    const existingJob = await prisma.jobOpening.findUnique({ where: { id } });
+    if (!existingJob) {
+      return { success: false, error: "Lowongan tidak ditemukan" };
+    }
+
+    if (existingJob.status !== "DRAFT") {
+      // If it's already active/published, only allow editing noFormB1
+      const updatedJob = await prisma.jobOpening.update({
+        where: { id },
+        data: {
+          noFormB1: data.noFormB1
+        }
+      });
+      revalidatePath("/dashboard/job-openings");
+      revalidatePath(`/dashboard/job-openings/${id}`);
+      return { success: true, data: updatedJob };
+    }
+
+    // If DRAFT, allow editing all fields
+    const updatedJob = await prisma.jobOpening.update({
+      where: { id },
+      data,
+    });
+    revalidatePath("/dashboard/job-openings");
+    revalidatePath(`/dashboard/job-openings/${id}`);
+    return { success: true, data: updatedJob };
+  } catch (error) {
+    console.error("updateJobOpening Error:", error);
+    return { success: false, error: "Gagal mengubah data lowongan pekerjaan" };
+  }
+}
+
+export async function publishJobOpening(id: string) {
+  try {
+    const job = await prisma.jobOpening.findUnique({
+      where: { id },
+      include: { site: true },
+    });
+    if (!job) return { success: false, error: "Lowongan tidak ditemukan" };
+    if (job.status !== "DRAFT") return { success: false, error: "Hanya lowongan Draft yang bisa dipublish" };
+
+    const stages = await prisma.masterPipelineStage.findMany({ orderBy: { orderIndex: 'asc' } });
+    
+    // Determine which SLA to use
+    let useSiteSla = false;
+    if (job.site && job.site.useSpecificSla) {
+      useSiteSla = true;
+    }
+
+    let siteSlas: any[] = [];
+    if (useSiteSla) {
+      siteSlas = await prisma.siteSla.findMany({ where: { siteId: job.siteId } });
+    }
+
+    const today = new Date();
+    let currentStartDate = new Date(today);
+
+    const timelineData = stages.map(stage => {
+      let slaDays = stage.slaDays;
+      if (useSiteSla) {
+        const specificSla = siteSlas.find(s => s.stageId === stage.id);
+        if (specificSla) {
+          slaDays = specificSla.slaDays;
+        }
+      }
+
+      const deadlineDate = new Date(currentStartDate);
+      deadlineDate.setDate(deadlineDate.getDate() + slaDays);
+
+      const tData = {
+        stageId: stage.id,
+        status: "Pending",
+        startDate: new Date(currentStartDate),
+        deadlineDate: new Date(deadlineDate),
+      };
+
+      currentStartDate = new Date(deadlineDate); // next stage starts when this one ends
+
+      return tData;
+    });
+
+    const updatedJob = await prisma.jobOpening.update({
+      where: { id },
+      data: {
+        status: "ACTIVE",
+        publishedDate: today,
+        timeline: {
+          create: timelineData
+        }
+      },
+      include: {
+        timeline: true
+      }
+    });
+
+    revalidatePath("/dashboard/job-openings");
+    revalidatePath(`/dashboard/job-openings/${id}`);
+    return { success: true, data: updatedJob };
+  } catch (error) {
+    console.error("publishJobOpening Error:", error);
+    return { success: false, error: "Gagal publish lowongan pekerjaan" };
   }
 }
 
@@ -166,6 +278,116 @@ export async function publishJob(jobId: string, timelines: any[]) {
   }
 }
 
+export async function updateApplicationStage(appId: string, targetStageId: string, note?: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    const app = await prisma.application.findUnique({
+      where: { id: appId },
+      include: { job: true }
+    });
+
+    if (!app) {
+      return { success: false, error: "Application not found" };
+    }
+
+    let targetStageName = targetStageId;
+    if (targetStageId !== "Rejected" && targetStageId !== "Hired") {
+      const stage = await prisma.masterPipelineStage.findUnique({
+        where: { id: targetStageId }
+      });
+      targetStageName = stage?.name || targetStageId;
+    }
+
+    const updatedApp = await prisma.application.update({
+      where: { id: appId },
+      data: {
+        currentStageId: targetStageId === "Rejected" || targetStageId === "Hired" ? app.currentStageId : targetStageId,
+        status: targetStageId === "Rejected" ? "REJECTED" : targetStageId === "Hired" ? "HIRED" : "ACTIVE",
+        history: {
+          create: {
+            stageId: targetStageId === "Rejected" || targetStageId === "Hired" ? undefined : targetStageId,
+            stageName: targetStageId === "Rejected" ? "Rejected" : targetStageId === "Hired" ? "Hired" : targetStageName,
+            note: note || `Moved to ${targetStageName}`,
+          }
+        }
+      }
+    });
+
+    revalidatePath(`/dashboard/pipeline`);
+    revalidatePath(`/dashboard/job-openings/${app.jobId}`);
+    
+    return { success: true, data: updatedApp };
+  } catch (error) {
+    console.error("updateApplicationStage Error:", error);
+    return { success: false, error: "Gagal memindahkan kandidat" };
+  }
+}
+
+export async function updateApplicationStageData(appId: string, stageData: any) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    const updatedApp = await prisma.application.update({
+      where: { id: appId },
+      data: {
+        stageData
+      }
+    });
+
+    revalidatePath(`/dashboard/pipeline`);
+    revalidatePath(`/dashboard/job-openings/${updatedApp.jobId}`);
+    
+    return { success: true, data: updatedApp };
+  } catch (error) {
+    console.error("updateApplicationStageData Error:", error);
+    return { success: false, error: "Gagal menyimpan data stage kandidat" };
+  }
+}
+
+export async function getApplicationForVerify(jobId: string, candidateProfileId: string) {
+  try {
+    const app = await prisma.application.findFirst({
+      where: {
+        jobId,
+        candidateProfileId,
+      },
+      include: {
+        job: {
+          include: {
+            timeline: {
+              include: {
+                stage: true
+              }
+            },
+            position: true
+          }
+        },
+        candidateProfile: {
+          include: {
+            documents: true,
+            user: true,
+          }
+        },
+        history: true
+      }
+    });
+
+    if (!app) return { success: false, error: "Application not found" };
+
+    return { success: true, data: app };
+  } catch (error) {
+    console.error("getApplicationForVerify Error:", error);
+    return { success: false, error: "Failed to fetch application" };
+  }
+}
+
 export async function applyToJob(jobId: string) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user || !(session.user as any).id) {
@@ -226,5 +448,29 @@ export async function applyToJob(jobId: string) {
   } catch (error: any) {
     console.error("applyToJob Error:", error);
     return { success: false, error: "Gagal mengirim lamaran. Silakan coba lagi." };
+  }
+}
+
+export async function blacklistCandidate(candidateProfileId: string, note: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    const updatedProfile = await prisma.candidateProfile.update({
+      where: { id: candidateProfileId },
+      data: {
+        isBlacklisted: true,
+      }
+    });
+
+    // Option to also mark active apps as rejected could go here
+    revalidatePath(`/dashboard/blacklist`);
+    revalidatePath(`/dashboard/pipeline`);
+    return { success: true, data: updatedProfile };
+  } catch (error) {
+    console.error("blacklistCandidate Error:", error);
+    return { success: false, error: "Gagal mem-blacklist kandidat" };
   }
 }
