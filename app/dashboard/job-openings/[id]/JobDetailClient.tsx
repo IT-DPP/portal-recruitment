@@ -491,7 +491,7 @@ export default function JobDetailClient({
                   Membutuhkan Test Skill?
                 </p>
                 <p className="font-medium text-black">
-                  {job.needTestSkill ? "Ya" : "Tidak"}
+                  {job.requiresSkillTest ? "Ya" : "Tidak"}
                 </p>
               </div>
               <div>
@@ -499,7 +499,7 @@ export default function JobDetailClient({
                   Mewajibkan BNSP?
                 </p>
                 <p className="font-medium text-black flex items-center h-[24px]">
-                  {job.needBnsp ? (
+                  {job.requiresBnsp ? (
                     <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[11px] font-bold uppercase tracking-wider border border-blue-200">
                       BNSP Required
                     </span>

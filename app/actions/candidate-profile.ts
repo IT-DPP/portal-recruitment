@@ -24,6 +24,12 @@ export async function getCandidateProfile() {
             job: {
               include: {
                 timeline: true,
+                position: true,
+                department: true,
+                customer: true,
+                site: true,
+                city: true,
+                province: true,
               }
             },
             history: {

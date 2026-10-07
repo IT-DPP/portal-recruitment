@@ -104,11 +104,16 @@ export default function JobEditClient({
     }
     
     startTransition(async () => {
+      const isNewPosition = !positionOptions.some(opt => opt.value === formData.positionId);
+      const isNewDepartment = !departmentOptions.some(opt => opt.value === formData.departmentId);
+
       const payload = {
         ...formData,
         jumlahPermintaan: parseInt(formData.jumlahPermintaan) || 0,
-        positionName: formData.positionId === "0" ? formData.positionName : undefined,
-        departmentName: formData.departmentId === "0" ? formData.departmentName : undefined,
+        positionName: isNewPosition ? formData.positionId : undefined,
+        positionId: isNewPosition ? "0" : formData.positionId,
+        departmentName: isNewDepartment ? formData.departmentId : undefined,
+        departmentId: isNewDepartment ? "0" : formData.departmentId,
       };
 
       const res = await updateJobOpening(job.id, payload);
@@ -196,16 +201,16 @@ export default function JobEditClient({
                 <SearchableSelect
                   options={positionOptions}
                   value={formData.positionId}
-                  onChange={(val, label) => {
-                    setFormData({ ...formData, positionId: val, positionName: val === "0" ? label || "" : "" });
+                  onChange={(val) => {
+                    setFormData({ ...formData, positionId: val });
                   }}
                   creatable
                   placeholder="Pilih atau tambah posisi..."
                   disabled={isPending}
                 />
-                {formData.positionId === "0" && (
+                {formData.positionId && !positionOptions.some(opt => opt.value === formData.positionId) && (
                   <p className="text-[10px] text-blue-600 mt-1 font-semibold">
-                    Akan didaftarkan sebagai data baru: "{formData.positionName}"
+                    Akan didaftarkan sebagai data baru: "{formData.positionId}"
                   </p>
                 )}
               </div>
@@ -217,16 +222,16 @@ export default function JobEditClient({
                 <SearchableSelect
                   options={departmentOptions}
                   value={formData.departmentId}
-                  onChange={(val, label) => {
-                    setFormData({ ...formData, departmentId: val, departmentName: val === "0" ? label || "" : "" });
+                  onChange={(val) => {
+                    setFormData({ ...formData, departmentId: val });
                   }}
                   creatable
                   placeholder="Pilih atau tambah departemen..."
                   disabled={isPending}
                 />
-                {formData.departmentId === "0" && (
+                {formData.departmentId && !departmentOptions.some(opt => opt.value === formData.departmentId) && (
                   <p className="text-[10px] text-blue-600 mt-1 font-semibold">
-                    Akan didaftarkan sebagai data baru: "{formData.departmentName}"
+                    Akan didaftarkan sebagai data baru: "{formData.departmentId}"
                   </p>
                 )}
               </div>

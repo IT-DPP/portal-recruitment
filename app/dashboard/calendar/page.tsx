@@ -12,7 +12,7 @@ interface Job {
   id: string;
   noRegistrasi: string;
   posisi: string;
-  siteId: string;
+  siteId?: string;
   globalStatus: string;
   publishedDate?: string;
   tanggalMasuk?: string;
@@ -23,12 +23,12 @@ interface Application {
   jobId: string;
   candidateId: string;
   applicationDate: string;
-  currentStage: string;
+  currentStage?: string | null;
   history: {
-    stageId: string;
+    stageId?: string | null;
     stageName: string;
     date: string;
-    note: string;
+    note?: string | null;
   }[];
 }
 
@@ -55,17 +55,18 @@ export default function CalendarPage() {
     candidateName: ""
   });
 
-  const loadData = () => {
+  const loadData = async () => {
     setIsLoading(true);
     try {
-      const savedJobs = localStorage.getItem("ugz_jobs");
-      const savedApps = localStorage.getItem("ugz_applications");
-      const savedCands = localStorage.getItem("ugz_candidate_profiles");
-
-      if (savedJobs) setJobs(JSON.parse(savedJobs));
-      if (savedApps) setApplications(JSON.parse(savedApps));
-      if (savedCands) setCandidates(JSON.parse(savedCands));
-      
+      const { getCalendarData } = await import("@/app/actions/job");
+      const res = await getCalendarData();
+      if (res.success) {
+        setJobs(res.jobs || []);
+        setApplications(res.applications || []);
+        setCandidates(res.candidates || {});
+      } else {
+        console.error("Failed to fetch calendar data:", res.error);
+      }
     } catch (err) {
       console.error("Failed to load calendar data:", err);
     } finally {

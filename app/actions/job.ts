@@ -25,6 +25,102 @@ export async function getJobOpenings() {
   }
 }
 
+export async function getCalendarData() {
+  try {
+    const jobs = await prisma.jobOpening.findMany({
+      select: {
+        id: true,
+        noRegistrasi: true,
+        positionName: true,
+        position: { select: { name: true } },
+        status: true,
+        createdAt: true,
+      }
+    });
+
+    const mappedJobs = jobs.map((j) => ({
+      id: j.id,
+      noRegistrasi: j.noRegistrasi,
+      posisi: j.positionName || j.position?.name || "-",
+      globalStatus: j.status === 'ACTIVE' ? 'Active' : j.status === 'CLOSED' ? 'Closed' : j.status,
+      publishedDate: j.createdAt.toISOString()
+    }));
+
+    const apps = await prisma.application.findMany({
+      include: {
+        candidateProfile: {
+          include: {
+            user: { select: { name: true } }
+          }
+        },
+        history: true
+      }
+    });
+
+    const mappedApps = apps.map((a) => {
+      let historyEvents = a.history.map((h) => ({
+        stageId: h.stageId,
+        stageName: h.stageName,
+        date: h.date.toISOString(),
+        note: h.note
+      }));
+
+      // Merge in scheduled dates from stageData
+      if (a.stageData) {
+        let sd: any = typeof a.stageData === "string" ? JSON.parse(a.stageData) : a.stageData;
+        if (sd.hrInterview && sd.hrInterview.date) {
+           historyEvents.push({
+             stageId: 'stage_2',
+             stageName: 'Interview HR (Scheduled)',
+             date: sd.hrInterview.date,
+             note: 'Jadwal Interview HR'
+           });
+        }
+        if (sd.userInterview && sd.userInterview.date) {
+           historyEvents.push({
+             stageId: 'stage_5',
+             stageName: 'Interview User (Scheduled)',
+             date: sd.userInterview.date,
+             note: 'Jadwal Interview User'
+           });
+        }
+        if (sd.testSkill && sd.testSkill.date) {
+           historyEvents.push({
+             stageId: 'stage_4',
+             stageName: 'Test Skill (Scheduled)',
+             date: sd.testSkill.date,
+             note: 'Jadwal Test Skill'
+           });
+        }
+      }
+
+      return {
+        id: a.id,
+        jobId: a.jobId,
+        candidateId: a.candidateProfileId,
+        applicationDate: a.applicationDate.toISOString(),
+        currentStage: a.currentStageId,
+        history: historyEvents
+      };
+    });
+
+    const mappedCandidates: any = {};
+    apps.forEach((a) => {
+      if (a.candidateProfile) {
+        mappedCandidates[a.candidateProfileId] = {
+          ...a.candidateProfile,
+          fullName: a.candidateProfile.user?.name || "Unknown",
+        };
+      }
+    });
+
+    return { success: true, jobs: mappedJobs, applications: mappedApps, candidates: mappedCandidates };
+  } catch (error: any) {
+    console.error("getCalendarData Error:", error);
+    return { success: false, error: "Gagal mengambil data kalender: " + (error?.message || String(error)) };
+  }
+}
+
 export async function createJobOpening(data: JobOpeningInput) {
   try {
     const parsed = JobOpeningSchema.safeParse(data);
@@ -32,8 +128,30 @@ export async function createJobOpening(data: JobOpeningInput) {
       return { success: false, error: "Validasi gagal: " + parsed.error.message };
     }
 
+    let { positionId, departmentId, positionName, departmentName, ...restData } = parsed.data;
+
+    if (positionId === "0" && positionName) {
+      const newPos = await prisma.masterPosition.create({
+        data: { name: positionName }
+      });
+      positionId = newPos.id;
+    }
+
+    if (departmentId === "0" && departmentName) {
+      const newDept = await prisma.masterDepartment.create({
+        data: { name: departmentName }
+      });
+      departmentId = newDept.id;
+    }
+
     const result = await prisma.jobOpening.create({
-      data: parsed.data,
+      data: {
+        ...restData,
+        positionId,
+        departmentId,
+        positionName,
+        departmentName,
+      },
     });
     
     revalidatePath("/dashboard/job-openings");
@@ -90,10 +208,32 @@ export async function updateJobOpening(id: string, data: Partial<JobOpeningInput
       return { success: true, data: updatedJob };
     }
 
+    let { positionId, departmentId, positionName, departmentName, ...restData } = data;
+
+    if (positionId === "0" && positionName) {
+      const newPos = await prisma.masterPosition.create({
+        data: { name: positionName }
+      });
+      positionId = newPos.id;
+    }
+
+    if (departmentId === "0" && departmentName) {
+      const newDept = await prisma.masterDepartment.create({
+        data: { name: departmentName }
+      });
+      departmentId = newDept.id;
+    }
+
     // If DRAFT, allow editing all fields
     const updatedJob = await prisma.jobOpening.update({
       where: { id },
-      data,
+      data: {
+        ...restData,
+        positionId,
+        departmentId,
+        positionName,
+        departmentName,
+      },
     });
     revalidatePath("/dashboard/job-openings");
     revalidatePath(`/dashboard/job-openings/${id}`);

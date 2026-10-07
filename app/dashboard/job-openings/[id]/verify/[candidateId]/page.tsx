@@ -111,16 +111,13 @@ export default function AdvancedDocumentVerificationPage({
     if (foundProfile) setProfile(foundProfile);
 
     // Load Application
-    const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    let foundApp = allApps.find(
-      (a: any) => a.jobId === unwrappedParams.id && a.candidateId === unwrappedParams.candidateId
-    );
+    let foundApp: any = null;
     
     const fetchDbApp = async () => {
       const { getApplicationForVerify } = await import("@/app/actions/job");
       const res = await getApplicationForVerify(unwrappedParams.id, unwrappedParams.candidateId);
       if (res.success && res.data) {
-        if (!foundApp) foundApp = res.data;
+        foundApp = res.data;
         if (res.data.stageData) {
           foundApp = { ...foundApp, ...(res.data.stageData as any) };
         }
@@ -294,39 +291,91 @@ export default function AdvancedDocumentVerificationPage({
   const isInduction = application.currentStageId === "stage_9" || currentStageName.toLowerCase().includes("induction");
   const isPkwt = application.currentStageId === "stage_10" || currentStageName.toLowerCase().includes("pkwt") || application.currentStageId === "Hired";
 
+  const uploadPendingFile = async (fileObj: any) => {
+    if (fileObj && fileObj.file instanceof File && !fileObj.objectKey) {
+      try {
+        const file = fileObj.file;
+        const { getUploadUrl } = await import("@/app/actions/candidate-profile");
+        const folderPath = `applications/${job.id}/${profile.id}/${application.currentStageId}`;
+        const { uploadUrl, objectKey, publicUrl } = await getUploadUrl(file.name, file.type, folderPath);
+        if (uploadUrl) {
+          const res = await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+          if (res.ok) {
+            return {
+              name: file.name,
+              base64: publicUrl,
+              type: file.type,
+              objectKey: objectKey,
+            };
+          }
+        }
+      } catch (err) {
+        console.error("Upload error", err);
+      }
+      
+      // Fallback if S3 fails, convert to base64
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve({ name: fileObj.name, base64: e.target?.result, type: fileObj.type });
+        reader.readAsDataURL(fileObj.file);
+      });
+    }
+    return fileObj;
+  };
+
+  const uploadAllPendingFiles = async (obj: any): Promise<any> => {
+    if (!obj) return obj;
+    if (obj instanceof File) return obj; // do not traverse raw File objects
+    
+    if (Array.isArray(obj)) {
+      return Promise.all(obj.map(item => uploadAllPendingFiles(item)));
+    }
+    
+    if (typeof obj === 'object') {
+      if (obj.file instanceof File) {
+        return await uploadPendingFile(obj);
+      }
+      const newObj: any = {};
+      for (const key in obj) {
+        if (obj[key] && obj[key].file instanceof File) {
+           newObj[key] = await uploadPendingFile(obj[key]);
+        } else {
+           newObj[key] = await uploadAllPendingFiles(obj[key]);
+        }
+      }
+      return newObj;
+    }
+    
+    return obj;
+  };
+
   const safeSaveApplications = async (appData: any, silent = false) => {
     try {
+      // 1. Process all pending uploads in appData before saving to database
+      const uploadedAppData = await uploadAllPendingFiles(appData);
+
       // Sync to Database for fullstack integration
       const { updateApplicationStageData } = await import("@/app/actions/job");
       // Extract stage data to save, wrapping in JSON.parse/stringify to strip raw File objects and their prototypes
       const stageDataToSave = JSON.parse(JSON.stringify({
-        bnspValidation: appData.bnspValidation,
-        hrInterview: appData.hrInterview,
-        psikotes: appData.psikotes,
-        testSkill: appData.testSkill,
-        userInterview: appData.userInterview,
-        offeringLetter: appData.offeringLetter,
-        mcu: appData.mcu,
-        trainingUser: appData.trainingUser,
-        induction: appData.induction,
-        pkwt: appData.pkwt,
-        messages: appData.messages,
-        moveProposal: appData.moveProposal
+        bnspValidation: uploadedAppData.bnspValidation,
+        hrInterview: uploadedAppData.hrInterview,
+        psikotes: uploadedAppData.psikotes,
+        testSkill: uploadedAppData.testSkill,
+        userInterview: uploadedAppData.userInterview,
+        offeringLetter: uploadedAppData.offeringLetter,
+        mcu: uploadedAppData.mcu,
+        trainingUser: uploadedAppData.trainingUser,
+        induction: uploadedAppData.induction,
+        pkwt: uploadedAppData.pkwt,
+        messages: uploadedAppData.messages,
+        moveProposal: uploadedAppData.moveProposal
       }));
       
-      const res = await updateApplicationStageData(appData.id, stageDataToSave);
+      const res = await updateApplicationStageData(uploadedAppData.id, stageDataToSave);
       
       if (res.success) {
-        setApplication(appData);
-        // Fallback update in local storage for legacy components
-        try {
-          const allApps = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-          const appIndex = allApps.findIndex((a: any) => a.id === appData.id);
-          if (appIndex !== -1) {
-             allApps[appIndex] = { ...allApps[appIndex], ...appData };
-             localStorage.setItem("ugz_applications", JSON.stringify(allApps));
-          }
-        } catch (e) {}
+        setApplication(uploadedAppData);
       } else {
         throw new Error(res.error || "Gagal menyimpan ke database");
       }
@@ -431,6 +480,13 @@ export default function AdvancedDocumentVerificationPage({
     if (isAdministration && !isApproved) {
       window.alert("Anda harus menandai validasi sertifikat BNSP sebagai 'Approved' sebelum melanjutkan ke tahap berikutnya.");
       return;
+    }
+    
+    if (isHrInterview) {
+      if (!interviewResult || !interviewDate || !interviewFeedback || !interviewFile || !interviewResultFile) {
+        window.alert("Anda harus melengkapi seluruh form pada stage Interview HR (Hasil, Tanggal, Feedback, Bukti Wawancara, dan Hasil Wawancara) sebelum melanjutkan ke tahap berikutnya.");
+        return;
+      }
     }
     
     await handleSaveDraftSilent();
@@ -619,7 +675,7 @@ export default function AdvancedDocumentVerificationPage({
     }
   };
 
-  const processUploadedFile = async (file: File, callback: (data: {name: string, base64: string, type: string, file?: any, objectKey?: string}) => void) => {
+  const processUploadedFile = (file: File, callback: (data: {name: string, base64: string, type: string, file?: any, objectKey?: string}) => void) => {
     const validTypes = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
     if (!validTypes.includes(file.type)) {
       window.alert("Format file tidak didukung. Harap unggah PDF, PNG, atau JPG.");
@@ -630,7 +686,6 @@ export default function AdvancedDocumentVerificationPage({
       return;
     }
 
-    // Immediate preview
     const localPreviewUrl = URL.createObjectURL(file);
     callback({
       name: file.name,
@@ -638,37 +693,6 @@ export default function AdvancedDocumentVerificationPage({
       type: file.type,
       file: file
     });
-
-    try {
-      const { getUploadUrl } = await import("@/app/actions/candidate-profile");
-      const folderPath = `applications/${job.id}/${profile.id}/${application.currentStageId}`;
-      const { uploadUrl, objectKey, publicUrl } = await getUploadUrl(file.name, file.type, folderPath);
-      if (uploadUrl) {
-        const res = await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-        if (res.ok) {
-          callback({
-            name: file.name,
-            base64: publicUrl,
-            type: file.type,
-            objectKey: objectKey,
-          });
-          return;
-        }
-      }
-    } catch (err) {
-      console.error("Upload error", err);
-    }
-
-    // Fallback if S3 fails
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      callback({
-        name: file.name,
-        base64: e.target?.result as string,
-        type: file.type
-      });
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleTestSkillResultFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
