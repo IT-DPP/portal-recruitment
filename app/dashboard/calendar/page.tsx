@@ -29,6 +29,7 @@ interface Application {
     stageName: string;
     date: string;
     note?: string | null;
+    isSchedule?: boolean;
   }[];
 }
 
@@ -189,6 +190,8 @@ export default function CalendarPage() {
         const job = jobs.find(j => j.id === app.jobId);
         
         app.history.forEach((hist: any) => {
+          if (!hist.isSchedule) return;
+
           const dateKey = hist.date.split('T')[0];
           if (!eventsMap[dateKey]) eventsMap[dateKey] = { hr: [], user: [], skill: [] };
           

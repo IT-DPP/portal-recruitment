@@ -62,7 +62,8 @@ export async function getCalendarData() {
         stageId: h.stageId,
         stageName: h.stageName,
         date: h.date.toISOString(),
-        note: h.note
+        note: h.note,
+        isSchedule: false
       }));
 
       // Merge in scheduled dates from stageData
@@ -73,7 +74,8 @@ export async function getCalendarData() {
              stageId: 'stage_2',
              stageName: 'Interview HR (Scheduled)',
              date: sd.hrInterview.date,
-             note: 'Jadwal Interview HR'
+             note: 'Jadwal Interview HR',
+             isSchedule: true
            });
         }
         if (sd.userInterview && sd.userInterview.date) {
@@ -81,7 +83,8 @@ export async function getCalendarData() {
              stageId: 'stage_5',
              stageName: 'Interview User (Scheduled)',
              date: sd.userInterview.date,
-             note: 'Jadwal Interview User'
+             note: 'Jadwal Interview User',
+             isSchedule: true
            });
         }
         if (sd.testSkill && sd.testSkill.date) {
@@ -89,7 +92,8 @@ export async function getCalendarData() {
              stageId: 'stage_4',
              stageName: 'Test Skill (Scheduled)',
              date: sd.testSkill.date,
-             note: 'Jadwal Test Skill'
+             note: 'Jadwal Test Skill',
+             isSchedule: true
            });
         }
       }

@@ -291,6 +291,9 @@ export default function AdvancedDocumentVerificationPage({
   const isInduction = application.currentStageId === "stage_9" || currentStageName.toLowerCase().includes("induction");
   const isPkwt = application.currentStageId === "stage_10" || currentStageName.toLowerCase().includes("pkwt") || application.currentStageId === "Hired";
 
+  const currentIndex = job.timeline?.findIndex((t: any) => t.stageId === application.currentStageId) ?? -1;
+  const isLastStage = currentIndex !== -1 && currentIndex + 1 >= (job.timeline?.length || 0);
+
   const uploadPendingFile = async (fileObj: any) => {
     if (fileObj && fileObj.file instanceof File && !fileObj.objectKey) {
       try {
@@ -488,6 +491,63 @@ export default function AdvancedDocumentVerificationPage({
         return;
       }
     }
+
+    if (isPsikotes) {
+      if (!psikotesResult || !psikotesDate || !psikotesFile) {
+        window.alert("Anda harus melengkapi seluruh form pada stage Psikotes (Hasil, Tanggal, dan Bukti Psikotes) sebelum melanjutkan ke tahap berikutnya.");
+        return;
+      }
+    }
+
+    if (isTestSkill) {
+      if (!testSkillDate || !testSkillVideoLink || testSkillProofs.length === 0 || !testSkillProofs.every(p => p.title && p.file) || !testSkillResultFile) {
+        window.alert("Anda harus melengkapi seluruh form pada stage Test Skill (Tanggal, Link Video, Bukti, dan Hasil Penilaian) sebelum melanjutkan ke tahap berikutnya.");
+        return;
+      }
+    }
+
+    if (isUserInterview) {
+      if (!userInterviewResult || !userInterviewDate || !userInterviewFeedback || !userInterviewFile) {
+        window.alert("Anda harus melengkapi seluruh form pada stage Interview User (Hasil, Tanggal, Feedback, dan Bukti Wawancara) sebelum melanjutkan ke tahap berikutnya.");
+        return;
+      }
+    }
+
+    if (isOfferingLetter) {
+      if (!offeringDate || !offeringFile) {
+        window.alert("Anda harus melengkapi seluruh form pada stage Offering Letter (Tanggal dan File Offering) sebelum melanjutkan ke tahap berikutnya.");
+        return;
+      }
+    }
+
+    if (isMcu) {
+      if (!mcuDate || !mcuPengantarFile || !mcuHasilFile) {
+        window.alert("Anda harus melengkapi seluruh form pada stage MCU (Tanggal, Surat Pengantar, dan Hasil MCU) sebelum melanjutkan ke tahap berikutnya.");
+        return;
+      }
+    }
+
+    if (isTrainingUser) {
+      if (!trainingDate || !trainingFile) {
+        window.alert("Anda harus melengkapi seluruh form pada stage Training User (Tanggal dan File Bukti) sebelum melanjutkan ke tahap berikutnya.");
+        return;
+      }
+    }
+
+    if (isInduction) {
+      if (!inductionDate || !inductionFile) {
+        window.alert("Anda harus melengkapi seluruh form pada stage Induction (Tanggal dan File Bukti) sebelum melanjutkan ke tahap berikutnya.");
+        return;
+      }
+    }
+
+    if (isPkwt) {
+      if (!pkwtStartDate || !pkwtEndDate || !pkwtFile || !pkwtSafetyFile || !pkwtNeopFile || !pkwtMcuFile) {
+        window.alert("Anda harus melengkapi seluruh form pada stage PKWT (Tanggal Mulai/Selesai dan Semua Dokumen Kontrak/Safety) sebelum melanjutkan ke tahap berikutnya.");
+        return;
+      }
+    }
+
     
     await handleSaveDraftSilent();
     const currentIndex = job.timeline?.findIndex((t: any) => t.stageId === application.currentStageId);
@@ -501,7 +561,7 @@ export default function AdvancedDocumentVerificationPage({
        } else {
          window.alert("Gagal menyetujui kandidat.");
        }
-    } else if (isPkwt) {
+    } else {
        const { updateApplicationStage } = await import("@/app/actions/job");
        const res = await updateApplicationStage(application.id, "Hired", "Candidate successfully hired.");
        if (res.success) {
@@ -510,8 +570,6 @@ export default function AdvancedDocumentVerificationPage({
        } else {
           window.alert("Gagal menyetujui kandidat.");
        }
-    } else {
-       window.alert("Candidate is already at the last stage.");
     }
   };
 
@@ -2261,7 +2319,7 @@ export default function AdvancedDocumentVerificationPage({
             </div>
             <div className="p-6 flex flex-col gap-4">
               <button onClick={() => { setShowActionModal(false); handleApproveNextStage(); }} className="w-full px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm">
-                <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5" /> Approve to Next Stage</span>
+                <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5" /> {isLastStage ? "Hire Candidate" : "Approve to Next Stage"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button onClick={() => { setShowActionModal(false); handleApproveAll(); }} className="w-full px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm">

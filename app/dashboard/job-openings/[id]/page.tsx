@@ -28,6 +28,7 @@ export default async function JobDetailPage({
       },
       applications: {
         include: {
+          history: true,
           candidateProfile: {
             include: {
               user: true,

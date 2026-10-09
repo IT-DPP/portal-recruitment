@@ -82,7 +82,7 @@ export default function JobDetailClient({
     }
     setSlaConfig(config);
 
-    const hired = (initialJob.applications || []).filter((a: any) => a.currentStageId === "Hired");
+    const hired = (initialJob.applications || []).filter((a: any) => a.status === "HIRED");
     const hiredWithProfiles = hired.map((app: any) => {
       const p = app.candidateProfile || {};
       const u = p.user || {};
@@ -674,7 +674,7 @@ export default function JobDetailClient({
                 </thead>
                 <tbody className="divide-y divide-table-border">
                   {hiredCandidates.map((hc, idx) => {
-                    const hiredHistory = hc.history?.find((h: any) => h.stageId === "Hired");
+                    const hiredHistory = hc.history?.find((h: any) => h.stageName === "Hired");
                     const hiredDate = hiredHistory ? new Date(hiredHistory.date).toLocaleDateString("id-ID") : "-";
                     return (
                       <tr key={idx} className="bg-white hover:bg-surface-container-lowest transition-colors">

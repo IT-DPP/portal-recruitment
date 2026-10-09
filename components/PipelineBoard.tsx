@@ -79,10 +79,76 @@ export default function PipelineBoard({ jobId, timeline, initialApplications = [
         return;
       }
       
-      // Validation: BNSP must be approved before leaving Administration stage (stage_1)
+      // Validations
+      const stageDataStr = app.stageData;
+      const stageData = stageDataStr ? (typeof stageDataStr === 'string' ? JSON.parse(stageDataStr) : stageDataStr) : {};
+
       if (app.currentStageId === "stage_1") {
-         if (!app.bnspValidation?.isApproved) {
+         if (!stageData.bnspValidation?.isApproved) {
            setErrorModal("Validasi BNSP (Administration) belum ditandai sebagai 'Approved'. Harap lakukan verifikasi detail pada kandidat ini terlebih dahulu.");
+           setDraggedAppId(null);
+           return;
+         }
+      } else if (app.currentStageId === "stage_2") {
+         const d = stageData.hrInterview || {};
+         if (!d.result || !d.date || !d.feedback || !d.file || !d.resultFile) {
+           setErrorModal("Anda harus melengkapi seluruh form pada stage Interview HR sebelum melanjutkan ke tahap berikutnya.");
+           setDraggedAppId(null);
+           return;
+         }
+      } else if (app.currentStageId === "stage_3") {
+         const d = stageData.psikotes || {};
+         if (!d.result || !d.date || !d.file) {
+           setErrorModal("Anda harus melengkapi seluruh form pada stage Psikotes sebelum melanjutkan ke tahap berikutnya.");
+           setDraggedAppId(null);
+           return;
+         }
+      } else if (app.currentStageId === "stage_4") {
+         const d = stageData.testSkill || {};
+         if (!d.date || !d.videoLink || !d.proofs || d.proofs.length === 0 || !d.proofs.every((p:any) => p.title && p.file) || !d.resultFile) {
+           setErrorModal("Anda harus melengkapi seluruh form pada stage Test Skill (Tanggal, Link Video, Bukti, dan Hasil Penilaian) sebelum melanjutkan ke tahap berikutnya.");
+           setDraggedAppId(null);
+           return;
+         }
+      } else if (app.currentStageId === "stage_5") {
+         const d = stageData.userInterview || {};
+         if (!d.result || !d.date || !d.feedback || !d.file) {
+           setErrorModal("Anda harus melengkapi seluruh form pada stage Interview User sebelum melanjutkan ke tahap berikutnya.");
+           setDraggedAppId(null);
+           return;
+         }
+      } else if (app.currentStageId === "stage_6") {
+         const d = stageData.offeringLetter || {};
+         if (!d.date || !d.file) {
+           setErrorModal("Anda harus melengkapi seluruh form pada stage Offering Letter sebelum melanjutkan ke tahap berikutnya.");
+           setDraggedAppId(null);
+           return;
+         }
+      } else if (app.currentStageId === "stage_7") {
+         const d = stageData.mcu || {};
+         if (!d.date || !d.pengantarFile || !d.hasilFile) {
+           setErrorModal("Anda harus melengkapi seluruh form pada stage MCU sebelum melanjutkan ke tahap berikutnya.");
+           setDraggedAppId(null);
+           return;
+         }
+      } else if (app.currentStageId === "stage_8") {
+         const d = stageData.trainingUser || {};
+         if (!d.date || !d.file) {
+           setErrorModal("Anda harus melengkapi seluruh form pada stage Training User sebelum melanjutkan ke tahap berikutnya.");
+           setDraggedAppId(null);
+           return;
+         }
+      } else if (app.currentStageId === "stage_9") {
+         const d = stageData.induction || {};
+         if (!d.date || !d.file) {
+           setErrorModal("Anda harus melengkapi seluruh form pada stage Induction sebelum melanjutkan ke tahap berikutnya.");
+           setDraggedAppId(null);
+           return;
+         }
+      } else if (app.currentStageId === "stage_10") {
+         const d = stageData.pkwt || {};
+         if (!d.startDate || !d.endDate || !d.file || !d.safetyFile || !d.neopFile || !d.mcuFile) {
+           setErrorModal("Anda harus melengkapi seluruh form pada stage PKWT sebelum melanjutkan ke tahap berikutnya.");
            setDraggedAppId(null);
            return;
          }
@@ -173,6 +239,7 @@ export default function PipelineBoard({ jobId, timeline, initialApplications = [
   };
 
   const filteredApps = applications.filter((app) => {
+    if (app.status !== "ACTIVE") return false;
     const profile = candidateProfiles[app.candidateProfileId];
     if (!profile) return false;
     if (!searchQuery) return true;
