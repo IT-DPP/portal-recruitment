@@ -110,9 +110,10 @@ interface Props {
     sites: any[];
     stages: any[];
   };
+  initialError?: string;
 }
 
-export default function GenerateDocumentsClient({ initialData }: Props) {
+export default function GenerateDocumentsClient({ initialData, initialError }: Props) {
   // Database States
   const [jobs, setJobs] = useState<any[]>(initialData?.jobs || []);
   const [applications, setApplications] = useState<any[]>(initialData?.applications || []);
@@ -120,7 +121,9 @@ export default function GenerateDocumentsClient({ initialData }: Props) {
   const [sites, setSites] = useState<any[]>(initialData?.sites || []);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [feedbackMsg, setFeedbackMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ type: "success" | "error"; text: string } | null>(
+    initialError ? { type: "error", text: initialError } : null
+  );
 
   // Active Document Tab
   const [documentType, setDocumentType] = useState<"offering" | "bast" | "mcu">("offering");
@@ -150,6 +153,7 @@ export default function GenerateDocumentsClient({ initialData }: Props) {
   const tugasEditor = useEditor({
     extensions: [StarterKit],
     content: tugasHtml,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => setTugasHtml(editor.getHTML()),
     editorProps: {
       attributes: {
@@ -162,6 +166,7 @@ export default function GenerateDocumentsClient({ initialData }: Props) {
   const hakEditor = useEditor({
     extensions: [StarterKit],
     content: hakHtml,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => setHakHtml(editor.getHTML()),
     editorProps: {
       attributes: {

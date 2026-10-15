@@ -13,8 +13,48 @@ import {
   User as UserIcon
 } from "lucide-react";
 
+function formatCandidates(initialList: any[]) {
+  const sorted = [...initialList].sort((a, b) => {
+    const nameA = a.user?.name || a.fullName || "";
+    const nameB = b.user?.name || b.fullName || "";
+    return nameA.localeCompare(nameB);
+  });
+
+  return sorted.map(c => {
+    const photoDoc = c.documents?.find((d: any) => (d.documentType || "").toLowerCase() === "photo" || (d.documentType || "").toLowerCase() === "pas foto");
+    const photoUrl = photoDoc?.objectKey 
+      ? `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}`
+      : photoDoc?.fileUrl || c.user?.image || null;
+
+    const lastApp = c.applications?.[0];
+    const lastJobApplied = lastApp?.job?.positionName || lastApp?.job?.position?.name || null;
+    let lastStage = null;
+    if (lastApp) {
+      if (lastApp.status === "HIRED") {
+        lastStage = "Hired";
+      } else if (lastApp.status === "REJECTED") {
+        lastStage = `Ditolak (${lastApp.currentStage?.name || "Seleksi"})`;
+      } else {
+        lastStage = lastApp.currentStage?.name || "Active Screening";
+      }
+    }
+
+    return {
+      ...c,
+      fullName: c.user?.name || c.fullName || "Unknown",
+      email: c.user?.email || c.email || "-",
+      whatsapp: c.whatsapp || "-",
+      city: c.domicileAddress || c.city || "-",
+      lastJobApplied: lastJobApplied || "Belum Ada Lamaran",
+      lastStage: lastStage || "Belum Melamar",
+      hasApplied: !!lastApp,
+      filePhoto: photoUrl ? { base64: photoUrl } : null
+    };
+  });
+}
+
 export default function TalentPoolClient({ initialCandidates = [] }: { initialCandidates?: any[] }) {
-  const [candidates, setCandidates] = useState<any[]>(initialCandidates);
+  const [candidates, setCandidates] = useState<any[]>(() => formatCandidates(initialCandidates));
   
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,27 +70,7 @@ export default function TalentPoolClient({ initialCandidates = [] }: { initialCa
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
-    // Candidates are now passed as props, we just need to ensure they are sorted
-    const sorted = [...initialCandidates].sort((a, b) => {
-      const nameA = a.user?.name || a.fullName || "";
-      const nameB = b.user?.name || b.fullName || "";
-      return nameA.localeCompare(nameB);
-    });
-
-    // Map Prisma schema to what UI expects
-    const mapped = sorted.map(c => {
-      const photoDoc = c.documents?.find((d: any) => (d.documentType || "").toLowerCase() === "photo" || (d.documentType || "").toLowerCase() === "pas foto");
-      return {
-        ...c,
-        fullName: c.user?.name || c.fullName,
-        email: c.user?.email || c.email,
-        whatsapp: c.whatsapp,
-        city: c.domicileAddress || c.city,
-        filePhoto: photoDoc ? { base64: `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}` } : null
-      };
-    });
-
-    setCandidates(mapped);
+    setCandidates(formatCandidates(initialCandidates));
   }, [initialCandidates]);
 
   const handleApplyFilter = () => {
@@ -77,7 +97,10 @@ export default function TalentPoolClient({ initialCandidates = [] }: { initialCa
       const q = searchQuery.toLowerCase();
       const name = (candidate.fullName || "").toLowerCase();
       const nik = candidate.nik || "";
-      if (!name.includes(q) && !nik.includes(q)) {
+      const email = (candidate.email || "").toLowerCase();
+      const phone = candidate.whatsapp || "";
+      const job = (candidate.lastJobApplied || "").toLowerCase();
+      if (!name.includes(q) && !nik.includes(q) && !email.includes(q) && !phone.includes(q) && !job.includes(q)) {
         match = false;
       }
     }
@@ -156,6 +179,8 @@ export default function TalentPoolClient({ initialCandidates = [] }: { initialCa
               <tr>
                 <th className="px-6 py-4 whitespace-nowrap">Kandidat</th>
                 <th className="px-6 py-4 whitespace-nowrap">Kontak</th>
+                <th className="px-6 py-4 whitespace-nowrap">Lowongan Terakhir</th>
+                <th className="px-6 py-4 whitespace-nowrap">Tahapan Terakhir</th>
                 <th className="px-6 py-4 whitespace-nowrap">Pendidikan</th>
                 <th className="px-6 py-4 whitespace-nowrap">Asal Kota</th>
                 <th className="px-6 py-4 text-center whitespace-nowrap">Status Data</th>
@@ -183,7 +208,22 @@ export default function TalentPoolClient({ initialCandidates = [] }: { initialCa
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-medium text-black text-sm">{candidate.email || "-"}</p>
-                      <p className="text-xs text-on-surface-variant mt-0.5">{candidate.whatsapp || "-"}</p>
+                      <p className="text-xs text-on-surface-variant font-mono mt-0.5">{candidate.whatsapp || "-"}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`font-semibold ${candidate.hasApplied ? 'text-primary' : 'text-slate-400 italic text-xs'}`}>
+                        {candidate.lastJobApplied}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                        candidate.lastStage === "Hired" ? "bg-green-50 text-green-700 border-green-200" :
+                        candidate.lastStage?.startsWith("Ditolak") ? "bg-red-50 text-red-700 border-red-200" :
+                        candidate.hasApplied ? "bg-blue-50 text-blue-700 border-blue-200" :
+                        "bg-slate-100 text-slate-500 border-slate-200"
+                      }`}>
+                        {candidate.lastStage || "Belum Melamar"}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       {candidate.latestEducation ? (
@@ -221,7 +261,7 @@ export default function TalentPoolClient({ initialCandidates = [] }: { initialCa
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center text-on-surface-variant">
+                  <td colSpan={7} className="px-6 py-16 text-center text-on-surface-variant">
                     <div className="flex flex-col items-center justify-center space-y-3">
                       <Users className="w-12 h-12 opacity-20" />
                       <p className="text-base font-semibold text-black">Tidak Ada Kandidat</p>

@@ -83,7 +83,7 @@ export default function LoginPage() {
           <div className="flex flex-col items-center mb-10">
             <h1 className="text-2xl font-bold text-on-surface">Sign In</h1>
             <p className="text-sm text-on-surface-variant mt-2 text-center">
-              Welcome to the Recruitment Portal
+              Welcome to E-Recruitment Portal
             </p>
           </div>
 

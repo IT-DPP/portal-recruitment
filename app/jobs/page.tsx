@@ -4,8 +4,8 @@ import { getProvinces, getDepartments } from "@/app/actions/master-data";
 import PublicJobsClient from "./PublicJobsClient";
 
 export const metadata = {
-  title: "Lowongan Pekerjaan | Recruitment Portal",
-  description: "Temukan karir impian Anda bersama kami.",
+  title: "Lowongan Pekerjaan | E-Recruitment",
+  description: "Temukan karir impian Anda bersama kami di E-Recruitment Portal.",
 };
 
 export default async function PublicJobsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {

@@ -12,7 +12,11 @@ export default async function HistoryPage() {
   
   const profileRes = await getCandidateProfile();
   const profile = profileRes.success ? profileRes.data as any : null;
-  const applications = profile?.applications?.filter((app: any) => app.status !== "REJECTED") || [];
+  const applications = profile?.applications?.filter((app: any) => 
+    app.status === "ACTIVE" && 
+    app.job?.status !== "CLOSED" && 
+    !profile?.isBlacklisted
+  ) || [];
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
@@ -83,7 +87,7 @@ export default async function HistoryPage() {
                         </span>
                       </div>
                       <h3 className="text-xl font-bold text-on-surface mb-2">
-                        {job.positionId === "0" ? job.positionName : job.position?.name || "Posisi Pekerjaan"}
+                        {job.positionName || job.position?.name || "Posisi Pekerjaan"}
                       </h3>
                       <div className="flex flex-wrap items-center gap-4 text-sm text-on-surface-variant">
                         <div className="flex items-center gap-1.5">

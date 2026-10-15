@@ -35,11 +35,17 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
     initialApplications.forEach((app: any) => {
       if (app.candidateProfile) {
         const photoDoc = app.candidateProfile.documents?.find((d: any) => (d.documentType || "").toLowerCase() === "photo" || (d.documentType || "").toLowerCase() === "pas foto");
+        const photoUrl = photoDoc?.objectKey 
+          ? `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}`
+          : photoDoc?.fileUrl || app.candidateProfile.user?.image || null;
+
         profiles[app.candidateProfileId] = {
           ...app.candidateProfile,
           fullName: app.candidateProfile.user?.name || "Unknown",
+          email: app.candidateProfile.user?.email || "-",
+          phone: app.candidateProfile.whatsapp || app.candidateProfile.phone || "-",
           nik: app.candidateProfile.nik,
-          filePhoto: photoDoc ? { base64: `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}` } : null
+          filePhoto: photoUrl ? { base64: photoUrl } : null
         };
       }
     });
@@ -71,16 +77,19 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
 
   // Helper to extract rejection details from history
   const getRejectionDetails = (app: any) => {
-    if (!app.history) return { date: null, reason: "Tidak ada data" };
-    const rejectHistory = app.history.find((h: any) => h.stageId === "Rejected");
+    const nonRejectHistory = app.history?.find((h: any) => h.stageName !== "Rejected");
+    const lastStage = app.currentStage?.name || nonRejectHistory?.stageName || "Tahap Awal";
+
+    if (!app.history) return { date: null, reason: "Tidak ada data", lastStage };
+    const rejectHistory = app.history.find((h: any) => h.stageId === "Rejected" || h.stageName === "Rejected");
     if (rejectHistory) {
       let reason = rejectHistory.note || "-";
       if (reason.startsWith("Reason: ")) {
         reason = reason.substring(8);
       }
-      return { date: rejectHistory.date, reason };
+      return { date: rejectHistory.date, reason, lastStage };
     }
-    return { date: app.applicationDate, reason: "Ditolak (Tanpa Catatan)" };
+    return { date: app.applicationDate, reason: "Ditolak (Tanpa Catatan)", lastStage };
   };
 
   const getJobName = (jobId: string) => {
@@ -101,7 +110,11 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
     if (searchQuery) {
       if (!profile) return false;
       const q = searchQuery.toLowerCase();
-      if (!profile.fullName?.toLowerCase().includes(q) && !profile.nik?.includes(q)) {
+      const name = (profile.fullName || "").toLowerCase();
+      const nik = profile.nik || "";
+      const email = (profile.email || "").toLowerCase();
+      const phone = profile.phone || "";
+      if (!name.includes(q) && !nik.includes(q) && !email.includes(q) && !phone.includes(q)) {
         match = false;
       }
     }
@@ -205,7 +218,9 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
             <thead className="bg-surface-container-lowest sticky top-0 z-10 text-xs uppercase font-bold text-on-surface-variant border-b border-table-border">
               <tr>
                 <th className="px-6 py-4 whitespace-nowrap">Kandidat</th>
+                <th className="px-6 py-4 whitespace-nowrap">Kontak</th>
                 <th className="px-6 py-4 whitespace-nowrap">Posisi Job</th>
+                <th className="px-6 py-4 whitespace-nowrap">Tahapan Terakhir</th>
                 <th className="px-6 py-4 whitespace-nowrap">Tanggal Ditolak</th>
                 <th className="px-6 py-4">Alasan Penolakan</th>
                 <th className="px-6 py-4 text-center whitespace-nowrap">Aksi</th>
@@ -215,13 +230,13 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
               {paginatedApps.length > 0 ? (
                 paginatedApps.map((app) => {
                   const profile = candidateProfiles[app.candidateProfileId] || {};
-                  const { date, reason } = getRejectionDetails(app);
+                  const { date, reason, lastStage } = getRejectionDetails(app);
                   
                   return (
                     <tr key={app.id} className="hover:bg-surface-container-lowest transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0 overflow-hidden">
+                          <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0 overflow-hidden border border-slate-200">
                             {profile.filePhoto?.base64 ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={profile.filePhoto.base64} alt="avatar" className="w-full h-full object-cover" />
@@ -236,7 +251,16 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
                         </div>
                       </td>
                       <td className="px-6 py-4">
+                        <p className="font-medium text-black text-sm">{profile.email || "-"}</p>
+                        <p className="text-xs text-on-surface-variant font-mono mt-0.5">{profile.phone || "-"}</p>
+                      </td>
+                      <td className="px-6 py-4">
                         <span className="font-semibold text-primary">{getJobName(app.jobId)}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-bold border border-slate-200">
+                          {lastStage || "-"}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-xs font-mono bg-surface-container px-2 py-1 rounded text-on-surface">
@@ -261,7 +285,7 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-on-surface-variant">
+                  <td colSpan={7} className="px-6 py-12 text-center text-on-surface-variant">
                     <div className="flex flex-col items-center justify-center space-y-3">
                       <Archive className="w-10 h-10 opacity-20" />
                       <p>Tidak ada data kandidat yang diarsipkan atau ditolak.</p>

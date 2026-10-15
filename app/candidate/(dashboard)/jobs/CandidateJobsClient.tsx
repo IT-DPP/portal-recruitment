@@ -88,7 +88,18 @@ export default function CandidateJobsClient({
       return;
     }
 
-    // Active application check could be added here if needed
+    if (selectedJob.requiresBnsp) {
+      const hasBnsp = candidateProfile.documents?.some((doc: any) => {
+        const type = (doc.documentType || "").toLowerCase();
+        return type.includes("bnsp") || type.includes("sertifikat");
+      });
+      if (!hasBnsp) {
+        setErrorModalMessage(
+          "Lowongan ini mewajibkan sertifikasi kompetensi BNSP. Harap unggah sertifikat BNSP Anda pada tab Dokumen di menu My Profile terlebih dahulu sebelum melamar lowongan ini."
+        );
+        return;
+      }
+    }
 
     setIsApplying(true);
     const res = await applyToJob(selectedJob.id);
@@ -200,9 +211,7 @@ export default function CandidateJobsClient({
                 </div>
 
                 <h3 className="text-xl font-bold text-black mb-2 group-hover:text-primary transition-colors flex items-center gap-2 line-clamp-2">
-                  {job.positionId === "0"
-                    ? job.positionName
-                    : job.position?.name}
+                  {job.positionName || job.position?.name || "Posisi Umum"}
                 </h3>
 
                 <div className="space-y-3 mb-6 flex-1">
@@ -257,9 +266,7 @@ export default function CandidateJobsClient({
                     "General"}
                 </span>
                 <h3 className="text-2xl font-bold text-black flex items-center gap-2">
-                  {selectedJob.positionId === "0"
-                    ? selectedJob.positionName
-                    : selectedJob.position?.name}
+                  {selectedJob.positionName || selectedJob.position?.name || "Posisi Umum"}
                 </h3>
                 <div className="flex items-center text-sm text-on-surface-variant mt-2 gap-4">
                   <div className="flex items-center">

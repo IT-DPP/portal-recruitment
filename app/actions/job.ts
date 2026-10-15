@@ -134,18 +134,12 @@ export async function createJobOpening(data: JobOpeningInput) {
 
     let { positionId, departmentId, positionName, departmentName, ...restData } = parsed.data;
 
-    if (positionId === "0" && positionName) {
-      const newPos = await prisma.masterPosition.create({
-        data: { name: positionName }
-      });
-      positionId = newPos.id;
+    if (positionId === "0" || !positionId) {
+      positionId = null;
     }
 
-    if (departmentId === "0" && departmentName) {
-      const newDept = await prisma.masterDepartment.create({
-        data: { name: departmentName }
-      });
-      departmentId = newDept.id;
+    if (departmentId === "0" || !departmentId) {
+      departmentId = null;
     }
 
     const result = await prisma.jobOpening.create({
@@ -214,18 +208,12 @@ export async function updateJobOpening(id: string, data: Partial<JobOpeningInput
 
     let { positionId, departmentId, positionName, departmentName, ...restData } = data;
 
-    if (positionId === "0" && positionName) {
-      const newPos = await prisma.masterPosition.create({
-        data: { name: positionName }
-      });
-      positionId = newPos.id;
+    if (positionId === "0" || !positionId) {
+      positionId = null;
     }
 
-    if (departmentId === "0" && departmentName) {
-      const newDept = await prisma.masterDepartment.create({
-        data: { name: departmentName }
-      });
-      departmentId = newDept.id;
+    if (departmentId === "0" || !departmentId) {
+      departmentId = null;
     }
 
     // If DRAFT, allow editing all fields
@@ -541,7 +529,7 @@ export async function applyToJob(jobId: string) {
   try {
     const profile = await prisma.candidateProfile.findUnique({
       where: { userId: (session.user as any).id },
-      include: { applications: true }
+      include: { applications: true, documents: true }
     });
 
     if (!profile) {
@@ -562,6 +550,20 @@ export async function applyToJob(jobId: string) {
     const job = await prisma.jobOpening.findUnique({ where: { id: jobId } });
     if (!job || job.status !== "ACTIVE") {
       return { success: false, error: "Lowongan sudah tidak aktif atau ditutup." };
+    }
+
+    // Check BNSP requirement
+    if (job.requiresBnsp) {
+      const hasBnsp = profile.documents?.some(doc => {
+        const type = (doc.documentType || "").toLowerCase();
+        return type.includes("bnsp") || type.includes("sertifikat");
+      });
+      if (!hasBnsp) {
+        return {
+          success: false,
+          error: "Lowongan ini mewajibkan sertifikasi kompetensi BNSP. Harap unggah sertifikat BNSP Anda di menu My Profile terlebih dahulu."
+        };
+      }
     }
 
     // Get the first stage (Screening/Administration)
@@ -606,15 +608,197 @@ export async function blacklistCandidate(candidateProfileId: string, note: strin
       where: { id: candidateProfileId },
       data: {
         isBlacklisted: true,
+        blacklistReason: note,
+        blacklistedAt: new Date(),
       }
     });
 
-    // Option to also mark active apps as rejected could go here
     revalidatePath(`/dashboard/blacklist`);
     revalidatePath(`/dashboard/pipeline`);
+    revalidatePath(`/dashboard/archived-candidates`);
     return { success: true, data: updatedProfile };
   } catch (error) {
     console.error("blacklistCandidate Error:", error);
     return { success: false, error: "Gagal mem-blacklist kandidat" };
+  }
+}
+
+export async function getBlacklistedCandidates() {
+  try {
+    const profiles = await prisma.candidateProfile.findMany({
+      where: { isBlacklisted: true },
+      include: {
+        user: true,
+        documents: true,
+        applications: {
+          orderBy: { applicationDate: "desc" },
+          take: 1,
+          include: {
+            job: {
+              include: {
+                position: true
+              }
+            },
+            currentStage: true,
+            history: {
+              orderBy: { date: "desc" }
+            }
+          }
+        }
+      },
+      orderBy: { blacklistedAt: "desc" }
+    });
+
+    const mapped = profiles.map(p => {
+      const photoDoc = p.documents?.find(d => {
+        const dt = (d.documentType || "").toLowerCase();
+        return dt === "photo" || dt === "pas foto" || dt.includes("photo") || dt.includes("pas foto");
+      });
+
+      const photoUrl = photoDoc?.objectKey
+        ? `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}`
+        : photoDoc?.fileUrl || p.user?.image || null;
+
+      const lastApp = p.applications?.[0];
+      const lastJobApplied = lastApp?.job?.positionName || lastApp?.job?.position?.name || "-";
+      const lastStage = lastApp?.currentStage?.name || lastApp?.history?.find(h => h.stageName !== "Rejected")?.stageName || lastApp?.history?.[0]?.stageName || "-";
+
+      return {
+        id: p.id,
+        fullName: p.user?.name || "Unknown",
+        nik: p.nik || "-",
+        email: p.user?.email || "-",
+        phone: p.whatsapp || "-",
+        lastJobApplied,
+        lastStage,
+        blacklistedDate: p.blacklistedAt ? p.blacklistedAt.toISOString() : p.updatedAt.toISOString(),
+        blacklistNote: p.blacklistReason || "Tidak ada catatan.",
+        filePhoto: photoUrl ? { base64: photoUrl } : null
+      };
+    });
+
+    return { success: true, data: mapped };
+  } catch (error: any) {
+    console.error("getBlacklistedCandidates Error:", error);
+    return { success: false, error: "Gagal mengambil data blacklist" };
+  }
+}
+
+export async function getInterviewsDashboardData() {
+  try {
+    const stages = await prisma.masterPipelineStage.findMany({
+      orderBy: { orderIndex: "asc" }
+    });
+
+    const interviewStages = stages.filter(s => 
+      s.name.toLowerCase().includes("interview") || s.id === "stage_2" || s.id === "stage_5"
+    );
+    const interviewStageIds = interviewStages.map(s => s.id);
+
+    const [applications, customers] = await Promise.all([
+      prisma.application.findMany({
+        where: {
+          status: "ACTIVE",
+          currentStageId: {
+            in: interviewStageIds
+          }
+        },
+        include: {
+          job: {
+            include: {
+              customer: true,
+              site: true,
+              position: true,
+              timeline: {
+                include: { stage: true }
+              }
+            }
+          },
+          candidateProfile: {
+            include: {
+              user: true,
+              documents: true
+            }
+          },
+          currentStage: true,
+          interviews: {
+            orderBy: { scheduledAt: "desc" }
+          }
+        },
+        orderBy: {
+          applicationDate: "desc"
+        }
+      }),
+      prisma.masterCustomer.findMany({
+        orderBy: { name: "asc" }
+      })
+    ]);
+
+    const positionsSet = new Set<string>();
+    const interviewList = applications.map(app => {
+      const job = app.job;
+      const jobPosition = job.positionName || job.position?.name || "General";
+      if (jobPosition) positionsSet.add(jobPosition);
+
+      const customerName = job.customer?.name || "-";
+      const siteName = job.site?.name || "-";
+      const candidateName = app.candidateProfile.user?.name || "Unknown";
+      const stageTitle = app.currentStage?.name || "Interview";
+
+      const timelineStage = job.timeline?.find(t => t.stageId === app.currentStageId);
+      const deadlineDate = timelineStage ? timelineStage.deadlineDate.toISOString() : app.applicationDate.toISOString();
+
+      const deadline = new Date(deadlineDate);
+      const now = new Date();
+      const diffTime = deadline.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      let slaStatus = "On Track";
+      if (diffDays < 0) slaStatus = "Overdue";
+      else if (diffDays <= 2) slaStatus = "Reminder";
+
+      const sd = app.stageData ? (typeof app.stageData === "string" ? JSON.parse(app.stageData) : app.stageData) : {};
+      const scheduledDate = sd.hrInterview?.date || sd.userInterview?.date || (app.interviews?.[0]?.scheduledAt ? app.interviews[0].scheduledAt.toISOString() : null);
+
+      const photoDoc = app.candidateProfile.documents?.find(d => {
+        const dt = (d.documentType || "").toLowerCase();
+        return dt === "photo" || dt === "pas foto" || dt.includes("photo") || dt.includes("pas foto");
+      });
+      const photoUrl = photoDoc?.objectKey 
+        ? `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}`
+        : photoDoc?.fileUrl || app.candidateProfile.user?.image || null;
+
+      return {
+        id: `${app.jobId}-${app.candidateProfileId}`,
+        applicationId: app.id,
+        jobId: app.jobId,
+        candidateId: app.candidateProfileId,
+        jobPosition,
+        customerId: job.customerId,
+        customerName,
+        siteName,
+        candidateName,
+        stageTitle,
+        scheduledDate,
+        deadlineDate,
+        slaStatus,
+        diffDays,
+        filePhoto: photoUrl ? { base64: photoUrl } : null
+      };
+    });
+
+    interviewList.sort((a, b) => new Date(a.deadlineDate).getTime() - new Date(b.deadlineDate).getTime());
+
+    return {
+      success: true,
+      data: {
+        interviews: interviewList,
+        customers: customers.map(c => ({ id: c.id, name: c.name })),
+        allPositions: Array.from(positionsSet).sort()
+      }
+    };
+  } catch (error: any) {
+    console.error("getInterviewsDashboardData Error:", error);
+    return { success: false, error: "Gagal mengambil jadwal interview dari database" };
   }
 }

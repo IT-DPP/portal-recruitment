@@ -105,8 +105,8 @@ export default function CandidateProfilePage() {
           emergencyContact: p.emergencyContact || "",
           domicileAddress: p.domicileAddress || "",
           currentAddress: p.currentAddress || "",
-          province: p.province?.name || p.provinceId || "",
-          city: p.city?.name || p.cityId || "",
+          province: p.province?.name || (provRes.data || []).find((pr: any) => pr.id === p.provinceId)?.name || p.provinceId || "",
+          city: p.city?.name || (cityRes.data || []).find((ci: any) => ci.id === p.cityId)?.name || p.cityId || "",
           educationType: p.educationType || "",
           latestEducation: p.latestEducation || "",
           educationInstitution: p.educationInstitution || "",
@@ -474,9 +474,13 @@ export default function CandidateProfilePage() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider">Kota / Kabupaten <span className="text-status-error">*</span></label>
                 <SearchableSelect
-                  // If province is selected, we can filter cities, but here cities have provinceId so we map accordingly
+                  // If province is selected, filter cities by province name or provinceId
                   options={cities
-                    .filter(c => !formData.province || c.province?.name === formData.province)
+                    .filter(c => {
+                      if (!formData.province) return true;
+                      const selectedProv = provinces.find(p => p.name === formData.province || p.id === formData.province);
+                      return c.province?.name === formData.province || c.provinceId === selectedProv?.id || c.province?.id === formData.province;
+                    })
                     .map(c => ({ label: c.name, value: c.name }))}
                   value={formData.city}
                   onChange={(val) => handleInputChange("city", val)}
@@ -602,6 +606,7 @@ export default function CandidateProfilePage() {
                 />
                 <FileUpload
                   label="Sertifikat / Dokumen Pendukung"
+                  required={false}
                   value={formData.fileSertifikat}
                   onChange={(file) => handleInputChange("fileSertifikat", file)}
                   onDelete={() => handleDeleteDocument("fileSertifikat", "sertifikat")}

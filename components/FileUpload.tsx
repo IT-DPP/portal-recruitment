@@ -11,6 +11,7 @@ interface FileUploadProps {
   onPreview?: () => void;
   accept?: string;
   maxSizeKB?: number;
+  required?: boolean;
 }
 
 export default function FileUpload({
@@ -21,6 +22,7 @@ export default function FileUpload({
   maxSizeKB = 5120, // 5MB
   onDelete,
   onPreview,
+  required = true,
 }: FileUploadProps) {
   const [error, setError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
@@ -100,7 +102,7 @@ export default function FileUpload({
   return (
     <div className="space-y-2">
       <label className="block text-xs font-bold text-on-surface uppercase tracking-wider">
-        {label} <span className="text-status-error">*</span>
+        {label} {required ? <span className="text-status-error">*</span> : <span className="text-on-surface-variant font-medium text-[11px] normal-case">(opsional)</span>}
       </label>
       
       {!value ? (

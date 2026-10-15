@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Search, User as UserIcon, UserX, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, User as UserIcon, UserX, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { getBlacklistedCandidates } from "@/app/actions/job";
 
 export default function BlacklistedCandidatesPage() {
   const [blacklistedProfiles, setBlacklistedProfiles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -14,12 +16,15 @@ export default function BlacklistedCandidatesPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
-    const profiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
-    const blacklisted = Object.keys(profiles)
-      .map(key => ({ id: key, ...profiles[key] }))
-      .filter(profile => profile.isBlacklisted === true);
-    
-    setBlacklistedProfiles(blacklisted);
+    async function fetchBlacklisted() {
+      setLoading(true);
+      const res = await getBlacklistedCandidates();
+      if (res.success && res.data) {
+        setBlacklistedProfiles(res.data);
+      }
+      setLoading(false);
+    }
+    fetchBlacklisted();
   }, []);
 
   // Apply Search
@@ -28,7 +33,11 @@ export default function BlacklistedCandidatesPage() {
     
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      if (!profile.fullName?.toLowerCase().includes(q) && !profile.nik?.includes(q)) {
+      const name = (profile.fullName || "").toLowerCase();
+      const nik = profile.nik || "";
+      const email = (profile.email || "").toLowerCase();
+      const phone = profile.phone || "";
+      if (!name.includes(q) && !nik.includes(q) && !email.includes(q) && !phone.includes(q)) {
         match = false;
       }
     }
@@ -60,7 +69,7 @@ export default function BlacklistedCandidatesPage() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0">
         <div className="shrink-0">
           <h2 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-            <UserX className="w-6 h-6" /> Blacklisted Candidates
+            <UserX className="w-6 h-6 text-red-600" /> Blacklisted Candidates
           </h2>
           <p className="text-sm text-on-surface-variant font-medium">
             Daftar kandidat yang telah masuk ke dalam daftar hitam (blacklist).
@@ -72,7 +81,7 @@ export default function BlacklistedCandidatesPage() {
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
             <input
               type="text"
-              placeholder="Cari nama / NIK..."
+              placeholder="Cari nama, NIK, email, no hp..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -91,17 +100,29 @@ export default function BlacklistedCandidatesPage() {
             <thead className="bg-surface-container-lowest sticky top-0 z-10 text-xs uppercase font-bold text-on-surface-variant border-b border-table-border">
               <tr>
                 <th className="px-6 py-4 whitespace-nowrap">Kandidat</th>
+                <th className="px-6 py-4 whitespace-nowrap">Kontak</th>
+                <th className="px-6 py-4 whitespace-nowrap">Lowongan Terakhir</th>
+                <th className="px-6 py-4 whitespace-nowrap">Tahapan Terakhir</th>
                 <th className="px-6 py-4 whitespace-nowrap">Tanggal Blacklist</th>
                 <th className="px-6 py-4">Catatan (Reason)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-table-border">
-              {paginatedProfiles.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                      <p>Memuat data blacklist...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedProfiles.length > 0 ? (
                 paginatedProfiles.map((profile) => (
                   <tr key={profile.id} className="hover:bg-surface-container-lowest transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0 overflow-hidden">
+                        <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0 overflow-hidden border border-slate-200">
                           {profile.filePhoto?.base64 ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={profile.filePhoto.base64} alt="avatar" className="w-full h-full object-cover" />
@@ -115,8 +136,20 @@ export default function BlacklistedCandidatesPage() {
                         </div>
                       </div>
                     </td>
+                    <td className="px-6 py-4">
+                      <p className="font-medium text-black text-sm">{profile.email || "-"}</p>
+                      <p className="text-xs text-on-surface-variant font-mono mt-0.5">{profile.phone || "-"}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-semibold text-primary">{profile.lastJobApplied || "-"}</span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-800 font-semibold border border-slate-200">
+                      <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-bold border border-slate-200">
+                        {profile.lastStage || "-"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-xs font-mono bg-red-50 text-red-700 px-2.5 py-1 rounded-md font-semibold border border-red-200">
                         {profile.blacklistedDate ? new Date(profile.blacklistedDate).toLocaleDateString("id-ID") : "-"}
                       </span>
                     </td>
@@ -129,7 +162,7 @@ export default function BlacklistedCandidatesPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3} className="px-6 py-12 text-center text-on-surface-variant">
+                  <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant">
                     <div className="flex flex-col items-center justify-center space-y-3">
                       <UserX className="w-10 h-10 opacity-20" />
                       <p>Tidak ada data kandidat yang di-blacklist.</p>

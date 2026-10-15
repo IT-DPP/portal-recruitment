@@ -79,10 +79,10 @@ export default function CandidateSidebar() {
           {!isCollapsed && (
             <div className="ml-3 overflow-hidden">
               <h1 className="font-bold text-primary text-sm whitespace-nowrap">
-                Candidate Portal
+                E-Recruitment
               </h1>
               <p className="text-[10px] text-on-surface-variant truncate">
-                {userEmail}
+                Candidate Portal
               </p>
             </div>
           )}

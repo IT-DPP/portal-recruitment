@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight, Clock, AlertCircle, Search, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { getInterviewsDashboardData } from "@/app/actions/job";
 
 export default function InterviewsPage() {
   const [interviews, setInterviews] = useState<any[]>([]);
@@ -28,72 +29,83 @@ export default function InterviewsPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
-    // Load local storage data
-    const jobs = JSON.parse(localStorage.getItem("ugz_jobs") || "[]");
-    const applications = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
-    const profiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
-    const sites = JSON.parse(localStorage.getItem("ugz_master_sites_operation") || "[]");
-    const cust = JSON.parse(localStorage.getItem("ugz_master_customer") || "[]");
-    
-    setCustomers(cust);
+    async function loadData() {
+      setLoading(true);
+      try {
+        const res = await getInterviewsDashboardData();
+        if (res.success && res.data) {
+          setInterviews(res.data.interviews);
+          setCustomers(res.data.customers);
+          setAllPositions(res.data.allPositions);
+        } else {
+          // Fallback to localStorage if any
+          const jobs = JSON.parse(localStorage.getItem("ugz_jobs") || "[]");
+          const applications = JSON.parse(localStorage.getItem("ugz_applications") || "[]");
+          const profiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
+          const sites = JSON.parse(localStorage.getItem("ugz_master_sites_operation") || "[]");
+          const cust = JSON.parse(localStorage.getItem("ugz_master_customer") || "[]");
+          setCustomers(cust);
 
-    const getSiteName = (siteId: string) => sites.find((s: any) => s.id === siteId)?.siteName || siteId || "-";
-    const getCustomerName = (cId: string) => cust.find((c: any) => c.id === cId)?.name || cId || "-";
+          const getSiteName = (siteId: string) => sites.find((s: any) => s.id === siteId)?.siteName || siteId || "-";
+          const getCustomerName = (cId: string) => cust.find((c: any) => c.id === cId)?.name || cId || "-";
 
-    const interviewList: any[] = [];
-    const positionsSet = new Set<string>();
+          const interviewList: any[] = [];
+          const positionsSet = new Set<string>();
 
-    applications.forEach((app: any) => {
-      // Find the corresponding job
-      const job = jobs.find((j: any) => j.id === app.jobId);
-      if (!job) return;
+          applications.forEach((app: any) => {
+            const job = jobs.find((j: any) => j.id === app.jobId);
+            if (!job) return;
 
-      // Find the current stage in the job's timeline
-      const currentTimelineStage = job.timeline?.find((t: any) => t.id === app.currentStage);
-      if (!currentTimelineStage) return;
+            const currentTimelineStage = job.timeline?.find((t: any) => t.id === app.currentStage);
+            if (!currentTimelineStage) return;
 
-      const stageTitle = currentTimelineStage.title || "";
-      const isInterviewStage = stageTitle.toLowerCase().includes("interview") || app.currentStage === "stage_2" || app.currentStage === "stage_5";
+            const stageTitle = currentTimelineStage.title || "";
+            const isInterviewStage = stageTitle.toLowerCase().includes("interview") || app.currentStage === "stage_2" || app.currentStage === "stage_5";
 
-      if (isInterviewStage) {
-        const candidateProfile = profiles[app.candidateId] || {};
-        
-        // SLA Calculation based on job timeline deadline
-        const deadlineDate = new Date(currentTimelineStage.deadlineDate);
-        const now = new Date();
-        const diffTime = deadlineDate.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        let slaStatus = "";
-        if (diffDays < 0) slaStatus = "Overdue";
-        else if (diffDays <= 2) slaStatus = "Reminder";
-        else slaStatus = "On Track";
+            if (isInterviewStage) {
+              const candidateProfile = profiles[app.candidateId] || {};
+              const deadlineDate = new Date(currentTimelineStage.deadlineDate);
+              const now = new Date();
+              const diffTime = deadlineDate.getTime() - now.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              
+              let slaStatus = "";
+              if (diffDays < 0) slaStatus = "Overdue";
+              else if (diffDays <= 2) slaStatus = "Reminder";
+              else slaStatus = "On Track";
 
-        interviewList.push({
-          id: `${app.jobId}-${app.candidateId}`,
-          jobId: app.jobId,
-          candidateId: app.candidateId,
-          jobPosition: job.posisi,
-          customerId: job.customerId,
-          customerName: getCustomerName(job.customerId),
-          siteName: getSiteName(job.siteId || job.areaKerja),
-          candidateName: candidateProfile.fullName || "Unknown",
-          stageTitle: stageTitle,
-          deadlineDate: deadlineDate.toISOString(),
-          slaStatus: slaStatus,
-          diffDays: diffDays
-        });
-        
-        if (job.posisi) positionsSet.add(job.posisi);
+              interviewList.push({
+                id: `${app.jobId}-${app.candidateId}`,
+                jobId: app.jobId,
+                candidateId: app.candidateId,
+                jobPosition: job.posisi,
+                customerId: job.customerId,
+                customerName: getCustomerName(job.customerId),
+                siteName: getSiteName(job.siteId || job.areaKerja),
+                candidateName: candidateProfile.fullName || "Unknown",
+                stageTitle: stageTitle,
+                deadlineDate: deadlineDate.toISOString(),
+                slaStatus: slaStatus,
+                diffDays: diffDays,
+                filePhoto: candidateProfile.filePhoto || null
+              });
+              
+              if (job.posisi) positionsSet.add(job.posisi);
+            }
+          });
+
+          interviewList.sort((a, b) => new Date(a.deadlineDate).getTime() - new Date(b.deadlineDate).getTime());
+          setAllPositions(Array.from(positionsSet).sort());
+          setInterviews(interviewList);
+        }
+      } catch (err) {
+        console.error("Error loading interviews dashboard data:", err);
+      } finally {
+        setLoading(false);
       }
-    });
+    }
 
-    // Sort by deadline ascending (most urgent first)
-    interviewList.sort((a, b) => new Date(a.deadlineDate).getTime() - new Date(b.deadlineDate).getTime());
-
-    setAllPositions(Array.from(positionsSet).sort());
-    setInterviews(interviewList);
-    setLoading(false);
+    loadData();
   }, []);
 
   const handleApplyFilter = () => {
@@ -218,7 +230,29 @@ export default function InterviewsPage() {
                       </p>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="font-bold text-primary">{item.candidateName}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center shrink-0 border border-slate-200">
+                          {item.filePhoto?.base64 ? (
+                            <img 
+                              src={item.filePhoto.base64} 
+                              alt={item.candidateName} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs font-bold text-primary">
+                              {item.candidateName?.charAt(0)?.toUpperCase() || "C"}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold text-primary">{item.candidateName}</p>
+                          {item.scheduledDate && (
+                            <p className="text-[11px] text-slate-500 font-medium">
+                              Jadwal: {new Date(item.scheduledDate).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-200 uppercase tracking-wider">

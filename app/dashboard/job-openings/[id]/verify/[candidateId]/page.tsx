@@ -1123,7 +1123,7 @@ export default function AdvancedDocumentVerificationPage({
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {/* Upload Bukti File Validasi BNSP */}
                 <div className="space-y-4">
-                  <label className="block text-sm font-bold text-black mb-3">Upload Bukti File Validasi BNSP</label>
+                  <label className="block text-sm font-bold text-black mb-3">Upload Bukti File Validasi BNSP <span className="text-red-500">*</span></label>
                   <div 
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onDrop={handleBnspFileDrop}
@@ -1156,7 +1156,7 @@ export default function AdvancedDocumentVerificationPage({
                 {/* BNSP Form */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Skema Sertifikasi (Certification Scheme)</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Skema Sertifikasi (Certification Scheme) <span className="text-red-500">*</span></label>
                     <select 
                       value={skema}
                       onChange={(e) => setSkema(e.target.value)}
@@ -1171,7 +1171,7 @@ export default function AdvancedDocumentVerificationPage({
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Issue Date (Tanggal Keluar)</label>
+                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Issue Date (Tanggal Keluar) <span className="text-red-500">*</span></label>
                       <input 
                         type="date" 
                         value={issueDate}
@@ -1180,7 +1180,7 @@ export default function AdvancedDocumentVerificationPage({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Expiry Date (Tanggal Habis)</label>
+                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Expiry Date (Tanggal Habis) <span className="text-red-500">*</span></label>
                       <input 
                         type="date" 
                         value={expiryDate}
@@ -1191,7 +1191,7 @@ export default function AdvancedDocumentVerificationPage({
                   </div>
                   
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Certificate Number</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Certificate Number <span className="text-red-500">*</span></label>
                     <input 
                       type="text" 
                       value={certNumber}
@@ -1232,7 +1232,7 @@ export default function AdvancedDocumentVerificationPage({
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Result Status</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Result Status <span className="text-red-500">*</span></label>
                     <select 
                       value={interviewResult}
                       onChange={(e) => setInterviewResult(e.target.value)}
@@ -1244,7 +1244,7 @@ export default function AdvancedDocumentVerificationPage({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Interview</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Interview <span className="text-red-500">*</span></label>
                     <input 
                       type="date" 
                       value={interviewDate}
@@ -1255,7 +1255,7 @@ export default function AdvancedDocumentVerificationPage({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Interviewer Feedback</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Interviewer Feedback <span className="text-red-500">*</span></label>
                   <textarea 
                     value={interviewFeedback}
                     onChange={(e) => setInterviewFeedback(e.target.value)}
@@ -1266,7 +1266,7 @@ export default function AdvancedDocumentVerificationPage({
                 </div>
 
                 <div className="border-t border-table-border pt-4 mt-4">
-                  <label className="block text-sm font-bold text-black mb-3">Upload Bukti Interview HR</label>
+                  <label className="block text-sm font-bold text-black mb-3">Upload Bukti Interview HR <span className="text-red-500">*</span></label>
                   <div 
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onDrop={handleInterviewFileDrop}
@@ -1297,7 +1297,7 @@ export default function AdvancedDocumentVerificationPage({
                 </div>
 
                 <div className="border-t border-table-border pt-4 mt-4">
-                  <label className="block text-sm font-bold text-black mb-3">Upload Hasil Penilaian Interview</label>
+                  <label className="block text-sm font-bold text-black mb-3">Upload Hasil Penilaian Interview <span className="text-red-500">*</span></label>
                   <div 
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onDrop={handleInterviewResultFileDrop}
@@ -1337,7 +1337,7 @@ export default function AdvancedDocumentVerificationPage({
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Hasil Psikotes</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Hasil Psikotes <span className="text-red-500">*</span></label>
                     <select 
                       value={psikotesResult}
                       onChange={(e) => setPsikotesResult(e.target.value)}
@@ -1349,7 +1349,7 @@ export default function AdvancedDocumentVerificationPage({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Psikotes</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Psikotes <span className="text-red-500">*</span></label>
                     <input 
                       type="date" 
                       value={psikotesDate}
@@ -1360,7 +1360,7 @@ export default function AdvancedDocumentVerificationPage({
                 </div>
 
                 <div className="border-t border-table-border pt-4 mt-4">
-                  <label className="block text-sm font-bold text-black mb-3">Upload Bukti Hasil Psikotes</label>
+                  <label className="block text-sm font-bold text-black mb-3">Upload Bukti Hasil Psikotes <span className="text-red-500">*</span></label>
                   <div 
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onDrop={handlePsikotesFileDrop}
@@ -1400,7 +1400,7 @@ export default function AdvancedDocumentVerificationPage({
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Test Skill</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Test Skill <span className="text-red-500">*</span></label>
                     <input 
                       type="date" 
                       value={testSkillDate}
@@ -1518,7 +1518,7 @@ export default function AdvancedDocumentVerificationPage({
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Result Status</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Result Status <span className="text-red-500">*</span></label>
                     <select 
                       value={userInterviewResult}
                       onChange={(e) => setUserInterviewResult(e.target.value)}
@@ -1530,7 +1530,7 @@ export default function AdvancedDocumentVerificationPage({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Interview</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Interview <span className="text-red-500">*</span></label>
                     <input 
                       type="date" 
                       value={userInterviewDate}
@@ -1541,7 +1541,7 @@ export default function AdvancedDocumentVerificationPage({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Interviewer Notes</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Interviewer Notes <span className="text-red-500">*</span></label>
                   <textarea 
                     value={userInterviewFeedback}
                     onChange={(e) => setUserInterviewFeedback(e.target.value)}
@@ -1552,7 +1552,7 @@ export default function AdvancedDocumentVerificationPage({
                 </div>
 
                 <div className="border-t border-table-border pt-4 mt-4">
-                  <label className="block text-sm font-bold text-black mb-3">Upload File Hasil Penilaian Interview</label>
+                  <label className="block text-sm font-bold text-black mb-3">Upload File Hasil Penilaian Interview <span className="text-red-500">*</span></label>
                   <div 
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onDrop={handleUserInterviewFileDrop}
@@ -1591,7 +1591,7 @@ export default function AdvancedDocumentVerificationPage({
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Offering Letter</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Offering Letter <span className="text-red-500">*</span></label>
                   <input 
                     type="date" 
                     value={offeringDate}
@@ -1601,7 +1601,7 @@ export default function AdvancedDocumentVerificationPage({
                 </div>
 
                 <div className="border-t border-table-border pt-4 mt-4">
-                  <label className="block text-sm font-bold text-black mb-3">Upload Dokumen Offering Letter</label>
+                  <label className="block text-sm font-bold text-black mb-3">Upload Dokumen Offering Letter <span className="text-red-500">*</span></label>
                   <div 
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onDrop={handleOfferingFileDrop}
@@ -1640,7 +1640,7 @@ export default function AdvancedDocumentVerificationPage({
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Pelaksanaan MCU</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Pelaksanaan MCU <span className="text-red-500">*</span></label>
                   <input 
                     type="date" 
                     value={mcuDate}
@@ -1652,7 +1652,7 @@ export default function AdvancedDocumentVerificationPage({
                 <div className="border-t border-table-border pt-4 mt-4 flex flex-col gap-6">
                   {/* Pengantar MCU */}
                   <div>
-                    <label className="block text-xs font-bold text-black mb-3">Surat Pengantar MCU</label>
+                    <label className="block text-xs font-bold text-black mb-3">Surat Pengantar MCU <span className="text-red-500">*</span></label>
                     <div 
                       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                       onDrop={handleMcuPengantarFileDrop}
@@ -1753,7 +1753,7 @@ export default function AdvancedDocumentVerificationPage({
               
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Pelaksanaan Training</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Pelaksanaan Training <span className="text-red-500">*</span></label>
                   <div className="flex gap-3 items-end">
                     <div className="flex-1">
                       <input 
@@ -1852,7 +1852,7 @@ export default function AdvancedDocumentVerificationPage({
               
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Pelaksanaan Induksi</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Pelaksanaan Induksi <span className="text-red-500">*</span></label>
                   <div className="flex gap-3 items-end">
                     <div className="flex-1">
                       <input 
@@ -1952,7 +1952,7 @@ export default function AdvancedDocumentVerificationPage({
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Awal Kontrak</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Awal Kontrak <span className="text-red-500">*</span></label>
                     <input 
                       type="date" 
                       value={pkwtStartDate}
@@ -1961,7 +1961,7 @@ export default function AdvancedDocumentVerificationPage({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Akhir Kontrak</label>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Tanggal Akhir Kontrak <span className="text-red-500">*</span></label>
                     <input 
                       type="date" 
                       value={pkwtEndDate}
@@ -1979,7 +1979,7 @@ export default function AdvancedDocumentVerificationPage({
                   <div className="grid grid-cols-2 gap-6">
                     {/* Berkas PKWT */}
                     <div>
-                      <label className="block text-xs font-bold text-black mb-2">Berkas PKWT (Signed)</label>
+                      <label className="block text-xs font-bold text-black mb-2">Berkas PKWT (Signed) <span className="text-red-500">*</span></label>
                       <div 
                         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                         onDrop={handlePkwtFileDrop}

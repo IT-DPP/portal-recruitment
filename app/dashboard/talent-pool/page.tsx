@@ -8,7 +8,22 @@ export default async function TalentPoolPage() {
   const candidates = await prisma.candidateProfile.findMany({
     include: {
       user: true,
-      documents: true
+      documents: true,
+      applications: {
+        orderBy: { applicationDate: "desc" },
+        take: 1,
+        include: {
+          job: {
+            include: {
+              position: true
+            }
+          },
+          currentStage: true,
+          history: {
+            orderBy: { date: "desc" }
+          }
+        }
+      }
     },
     orderBy: {
       createdAt: "desc"

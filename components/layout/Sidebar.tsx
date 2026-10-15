@@ -75,10 +75,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         {!isCollapsed && (
           <div>
             <h1 className="font-sans text-lg font-bold text-primary leading-none">
-              DPP Console
+              E-Recruitment
             </h1>
             <p className="font-mono text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mt-1">
-              Admin Console
+              Recruitment Portal
             </p>
           </div>
         )}

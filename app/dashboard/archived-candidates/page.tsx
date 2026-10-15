@@ -7,17 +7,27 @@ export const dynamic = "force-dynamic";
 export default async function ArchivedCandidatesPage() {
   const rejectedApps = await prisma.application.findMany({
     where: {
-      status: "REJECTED"
+      status: "REJECTED",
+      candidateProfile: {
+        isBlacklisted: false
+      }
     },
     include: {
-      job: true,
+      job: {
+        include: {
+          position: true
+        }
+      },
+      currentStage: true,
       candidateProfile: {
         include: {
           user: true,
           documents: true
         }
       },
-      history: true
+      history: {
+        orderBy: { date: "desc" }
+      }
     },
     orderBy: {
       applicationDate: "desc"

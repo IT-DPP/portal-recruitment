@@ -23,5 +23,10 @@ export default async function GenerateDocumentsPage() {
         stages: [],
       };
 
-  return <GenerateDocumentsClient initialData={initialData} />;
+  return (
+    <GenerateDocumentsClient
+      initialData={initialData}
+      initialError={result.success ? undefined : result.error}
+    />
+  );
 }

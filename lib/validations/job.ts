@@ -2,9 +2,9 @@ import { z } from "zod";
 
 export const JobOpeningSchema = z.object({
   noRegistrasi: z.string().min(1, "No Registrasi is required"),
-  positionId: z.string().min(1, "Position is required"),
+  positionId: z.string().nullable().optional(),
   positionName: z.string().optional(),
-  departmentId: z.string().min(1, "Department is required"),
+  departmentId: z.string().nullable().optional(),
   departmentName: z.string().optional(),
   customerId: z.string().min(1, "Customer is required"),
   provinceId: z.string().min(1, "Province is required"),

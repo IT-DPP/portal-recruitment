@@ -116,7 +116,7 @@ export default function PublicJobsClient({
                   {job.department?.name || job.departmentName || "General"}
                 </span>
                 <h3 className="text-xl font-bold text-primary group-hover:text-primary-container transition-colors line-clamp-2">
-                  {job.positionId === "0" ? job.positionName : job.position?.name}
+                  {job.positionName || job.position?.name || "Posisi Umum"}
                 </h3>
               </div>
               

@@ -13,10 +13,14 @@ export default async function PipelinePage() {
       }
     }),
     prisma.application.findMany({
+      where: {
+        status: "ACTIVE"
+      },
       include: {
         candidateProfile: {
           include: {
-            user: true
+            user: true,
+            documents: true
           }
         },
         job: true

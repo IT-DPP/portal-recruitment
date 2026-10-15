@@ -205,7 +205,7 @@ export default function JobClient({ initialData, customers }: { initialData: any
                             {job.noRegistrasi}
                           </td>
                           <td className="px-6 py-4 font-semibold text-black">
-                            {job.positionId === "0" ? job.positionName : job.position?.name}
+                            {job.positionName || job.position?.name || "Posisi Umum"}
                             {job.isPriority && (
                               <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-red-100 text-red-700 border border-red-200">Priority</span>
                             )}
@@ -250,7 +250,7 @@ export default function JobClient({ initialData, customers }: { initialData: any
                           {job.noRegistrasi}
                         </p>
                         <h3 className="text-lg font-bold text-primary leading-tight flex items-center gap-2">
-                          {job.positionId === "0" ? job.positionName : job.position?.name}
+                          {job.positionName || job.position?.name || "Posisi Umum"}
                           {job.isPriority && (
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-100 text-red-700 border border-red-200">Priority</span>
                           )}

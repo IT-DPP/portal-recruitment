@@ -29,7 +29,7 @@ export default async function Home() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-primary leading-tight">
-                DPP Portal Career
+                E-Recruitment Portal
               </h1>
               <p className="text-xs text-on-surface-variant font-medium">
                 Discover Your Next Journey

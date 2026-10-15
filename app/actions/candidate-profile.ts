@@ -19,8 +19,11 @@ export async function getCandidateProfile() {
       include: {
         documents: true,
         user: true,
+        province: true,
+        city: true,
         applications: {
           include: {
+            currentStage: true,
             job: {
               include: {
                 timeline: true,
@@ -79,6 +82,37 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
       })
     }
 
+    // Lookup provinceId and cityId
+    let provinceId: string | null = null
+    let cityId: string | null = null
+
+    if (data.province) {
+      const prov = await prisma.masterProvince.findFirst({
+        where: {
+          OR: [
+            { id: data.province },
+            { name: { equals: data.province, mode: "insensitive" } },
+            { code: { equals: data.province, mode: "insensitive" } }
+          ]
+        }
+      })
+      if (prov) provinceId = prov.id
+    }
+
+    if (data.city) {
+      const c = await prisma.masterCity.findFirst({
+        where: {
+          OR: [
+            { id: data.city },
+            { name: { equals: data.city, mode: "insensitive" } },
+            { code: { equals: data.city, mode: "insensitive" } }
+          ],
+          ...(provinceId ? { provinceId } : {})
+        }
+      })
+      if (c) cityId = c.id
+    }
+
     // Upsert CandidateProfile
     const profile = await prisma.candidateProfile.upsert({
       where: { userId: (session.user as any).id },
@@ -99,8 +133,8 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
         educationInstitution: data.educationInstitution || null,
         trainingCenterType: data.trainingCenterType || null,
         trainingCenterName: data.trainingCenter || null,
-        // cityId and provinceId can be linked later if we match strings, for now store as strings? 
-        // Wait, schema has cityId and provinceId, we need to map names to IDs or use String fields
+        provinceId: provinceId || null,
+        cityId: cityId || null,
         isProfileCompleted: !isDraft,
       },
       create: {
@@ -121,6 +155,8 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
         educationInstitution: data.educationInstitution || null,
         trainingCenterType: data.trainingCenterType || null,
         trainingCenterName: data.trainingCenter || null,
+        provinceId: provinceId || null,
+        cityId: cityId || null,
         isProfileCompleted: !isDraft,
       }
     })

@@ -76,22 +76,38 @@ export default function JobDetailClient({
         completionDate: t.completionDate,
         overdueNotes: t.overdueNotes
       }));
-      setJob({ ...initialJob, timeline: formattedTimeline, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionId === "0" ? initialJob.positionName : initialJob.position?.name });
+      setJob({ ...initialJob, timeline: formattedTimeline, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionName || initialJob.position?.name || "Posisi Umum" });
     } else {
-      setJob({ ...initialJob, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionId === "0" ? initialJob.positionName : initialJob.position?.name });
+      setJob({ ...initialJob, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionName || initialJob.position?.name || "Posisi Umum" });
     }
     setSlaConfig(config);
 
-    const hired = (initialJob.applications || []).filter((a: any) => a.status === "HIRED");
+    const hired = (initialJob.applications || []).filter((a: any) => 
+      a.status === "HIRED" || 
+      a.currentStageId === "Hired" || 
+      a.history?.some((h: any) => h.stageName?.toLowerCase() === "hired")
+    );
     const hiredWithProfiles = hired.map((app: any) => {
       const p = app.candidateProfile || {};
       const u = p.user || {};
+      const photoDoc = p.documents?.find((d: any) => {
+        const dt = (d.documentType || "").toLowerCase();
+        return dt === "photo" || dt === "pas foto" || dt.includes("photo") || dt.includes("pas foto");
+      });
+      const photoUrl = photoDoc?.objectKey 
+        ? `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}`
+        : photoDoc?.fileUrl || u.image || null;
+
       return {
         ...app,
         profile: {
           ...p,
-          fullName: u.name || "Unknown",
-          email: u.email || "-"
+          fullName: u.name || p.fullName || "Unknown",
+          email: u.email || p.email || "-",
+          whatsapp: p.whatsapp || p.phone || "-",
+          domicileAddress: p.domicileAddress || p.address || "-",
+          latestEducation: p.latestEducation || "-",
+          photoUrl
         },
         candidateId: app.candidateProfileId
       };
@@ -388,6 +404,11 @@ export default function JobDetailClient({
           }`}
         >
           Hired Candidates
+          {hiredCandidates.length > 0 && (
+            <span className="px-2 py-0.5 text-xs font-bold bg-green-100 text-green-700 rounded-full">
+              {hiredCandidates.length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -674,13 +695,32 @@ export default function JobDetailClient({
                 </thead>
                 <tbody className="divide-y divide-table-border">
                   {hiredCandidates.map((hc, idx) => {
-                    const hiredHistory = hc.history?.find((h: any) => h.stageName === "Hired");
-                    const hiredDate = hiredHistory ? new Date(hiredHistory.date).toLocaleDateString("id-ID") : "-";
+                    const hiredHistory = hc.history?.find((h: any) => h.stageName?.toLowerCase() === "hired");
+                    const hiredDate = hiredHistory 
+                      ? new Date(hiredHistory.date || hiredHistory.createdAt).toLocaleDateString("id-ID") 
+                      : (hc.updatedAt ? new Date(hc.updatedAt).toLocaleDateString("id-ID") : "-");
                     return (
                       <tr key={idx} className="bg-white hover:bg-surface-container-lowest transition-colors">
                         <td className="px-6 py-4">
-                          <p className="font-bold text-black">{hc.profile.fullName || "Unknown"}</p>
-                          <p className="text-xs text-on-surface-variant">{hc.profile.latestEducation || "-"} • {hc.profile.domicileAddress || "-"}</p>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center shrink-0 border border-slate-200">
+                              {hc.profile.photoUrl ? (
+                                <img 
+                                  src={hc.profile.photoUrl} 
+                                  alt={hc.profile.fullName} 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-xs font-bold text-primary">
+                                  {hc.profile.fullName?.charAt(0)?.toUpperCase() || "C"}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-bold text-black">{hc.profile.fullName || "Unknown"}</p>
+                              <p className="text-xs text-on-surface-variant">{hc.profile.latestEducation || "-"} • {hc.profile.domicileAddress || "-"}</p>
+                            </div>
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <p className="font-medium">{hc.profile.email || "-"}</p>

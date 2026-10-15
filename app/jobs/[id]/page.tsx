@@ -9,9 +9,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const res = await getPublicJobById(id);
   if (!res.success || !res.data) return { title: "Lowongan Tidak Ditemukan" };
   
-  const title = res.data.positionId === "0" ? res.data.positionName : res.data.position?.name;
+  const title = res.data.positionName || res.data.position?.name || "Lowongan Pekerjaan";
   return {
-    title: `${title} | Recruitment Portal`,
+    title: `${title} | E-Recruitment`,
   };
 }
 
@@ -24,7 +24,7 @@ export default async function PublicJobDetailPage({ params }: { params: Promise<
   }
 
   const job = res.data;
-  const title = job.positionId === "0" ? job.positionName : job.position?.name;
+  const title = job.positionName || job.position?.name || "Lowongan Pekerjaan";
 
   return (
     <div className="min-h-screen bg-surface-container-lowest pt-20 pb-20">

@@ -201,6 +201,8 @@ model CandidateProfile {
   isProfileCompleted   Boolean             @default(false)
   isTalentPool       Boolean             @default(false)
   isBlacklisted      Boolean             @default(false)
+  blacklistReason    String?
+  blacklistedAt      DateTime?
   isArchived         Boolean             @default(false)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
@@ -224,9 +226,9 @@ model CandidateDocument {
 }
 
 model JobOpening {
-  id                String           @id @default(cuid())
-  noRegistrasi      String           @unique
-  positionId        String
+  id                String            @id @default(cuid())
+  noRegistrasi      String            @unique
+  positionId        String?
   customerId        String
   cityId            String
   provinceId        String
@@ -234,27 +236,27 @@ model JobOpening {
   statusPermintaan  String
   jumlahPermintaan  Int
   tanggalMasuk      DateTime
-  status            JobStatus        @default(DRAFT)
-  isPriority        Boolean          @default(false)
-  requiresSkillTest Boolean          @default(false)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  departmentId      String
+  status            JobStatus         @default(DRAFT)
+  isPriority        Boolean           @default(false)
+  requiresSkillTest Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  departmentId      String?
   departmentName    String?
   positionName      String?
   benefit           String?
   district          String?
   kualifikasi       String?
   noFormB1          String?
-  requiresBnsp      Boolean          @default(false)
+  requiresBnsp      Boolean           @default(false)
   publishedDate     DateTime?
   applications      Application[]
-  city              MasterCity       @relation(fields: [cityId], references: [id])
-  customer          MasterCustomer   @relation(fields: [customerId], references: [id])
-  department        MasterDepartment @relation(fields: [departmentId], references: [id])
-  position          MasterPosition   @relation(fields: [positionId], references: [id])
-  province          MasterProvince   @relation(fields: [provinceId], references: [id])
-  site              MasterSite       @relation(fields: [siteId], references: [id])
+  city              MasterCity        @relation(fields: [cityId], references: [id])
+  customer          MasterCustomer    @relation(fields: [customerId], references: [id])
+  department        MasterDepartment? @relation(fields: [departmentId], references: [id])
+  position          MasterPosition?   @relation(fields: [positionId], references: [id])
+  province          MasterProvince    @relation(fields: [provinceId], references: [id])
+  site              MasterSite        @relation(fields: [siteId], references: [id])
   timeline          JobTimeline[]
 }
 

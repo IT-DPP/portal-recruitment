@@ -28,12 +28,20 @@ export default function PipelineBoard({ jobId, timeline, initialApplications = [
     const profiles: Record<string, any> = {};
     initialApplications.forEach((app: any) => {
        if (app.candidateProfile) {
-         const photoDoc = app.candidateProfile.documents?.find((d: any) => (d.documentType || "").toLowerCase() === "photo" || (d.documentType || "").toLowerCase() === "pas foto");
+         const photoDoc = app.candidateProfile.documents?.find((d: any) => {
+           const dt = (d.documentType || "").toLowerCase();
+           return dt === "photo" || dt === "pas foto" || dt.includes("photo") || dt.includes("pas foto");
+         });
+
+         const photoUrl = photoDoc?.objectKey 
+           ? `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}`
+           : photoDoc?.fileUrl || app.candidateProfile.user?.image || null;
+
          profiles[app.candidateProfileId] = {
            ...app.candidateProfile,
            fullName: app.candidateProfile.user?.name || "Unknown",
            nik: app.candidateProfile.nik,
-           filePhoto: photoDoc ? { base64: `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}` } : null
+           filePhoto: photoUrl ? { base64: photoUrl } : null
          };
        }
     });

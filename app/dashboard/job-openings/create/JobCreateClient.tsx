@@ -103,13 +103,16 @@ export default function JobCreateClient({
       const isNewPosition = !positionOptions.some(opt => opt.value === formData.positionId);
       const isNewDepartment = !departmentOptions.some(opt => opt.value === formData.departmentId);
 
+      const matchedPos = positionOptions.find(opt => opt.value === formData.positionId);
+      const matchedDept = departmentOptions.find(opt => opt.value === formData.departmentId);
+
       const payload = {
         ...formData,
         jumlahPermintaan: parseInt(formData.jumlahPermintaan) || 0,
-        positionName: isNewPosition ? formData.positionId : undefined,
-        positionId: isNewPosition ? "0" : formData.positionId,
-        departmentName: isNewDepartment ? formData.departmentId : undefined,
-        departmentId: isNewDepartment ? "0" : formData.departmentId,
+        positionName: isNewPosition ? formData.positionId : (matchedPos?.label || undefined),
+        positionId: isNewPosition ? null : formData.positionId,
+        departmentName: isNewDepartment ? formData.departmentId : (matchedDept?.label || undefined),
+        departmentId: isNewDepartment ? null : formData.departmentId,
       };
 
       const res = await createJobOpening(payload);
@@ -197,7 +200,7 @@ export default function JobCreateClient({
                 />
                 {formData.positionId && !positionOptions.some(opt => opt.value === formData.positionId) && (
                   <p className="text-[10px] text-blue-600 mt-1 font-semibold">
-                    Akan didaftarkan sebagai data baru: "{formData.positionId}"
+                    Posisi khusus lowongan ini: "{formData.positionId}" (tidak masuk master data)
                   </p>
                 )}
               </div>
@@ -218,7 +221,7 @@ export default function JobCreateClient({
                 />
                 {formData.departmentId && !departmentOptions.some(opt => opt.value === formData.departmentId) && (
                   <p className="text-[10px] text-blue-600 mt-1 font-semibold">
-                    Akan didaftarkan sebagai data baru: "{formData.departmentId}"
+                    Departemen khusus lowongan ini: "{formData.departmentId}" (tidak masuk master data)
                   </p>
                 )}
               </div>
