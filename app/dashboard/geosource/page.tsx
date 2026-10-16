@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Building2, School, Percent, Activity, Filter, X } from 'lucide-react';
+import { Building2, School, Percent, Activity, Filter, X, RefreshCw } from 'lucide-react';
 import StatWidget from '@/components/dashboard/StatWidget';
 import GeoMap from '@/components/dashboard/GeoMap';
 import RegionalDistributionChart, { RegionalData } from '@/components/dashboard/RegionalDistributionChart';
 import TopBlkChart, { BlkData } from '@/components/dashboard/TopBlkChart';
 import { SiteMarker } from '@/components/dashboard/GeoMapComponent';
 import InstitutionRankingTable from '@/components/dashboard/InstitutionRankingTable';
+import { getGeoSourceDashboardData } from '@/app/actions/dashboard';
 
 export default function GeoSourceDashboard() {
   const [applications, setApplications] = useState<any[]>([]);
@@ -15,6 +16,7 @@ export default function GeoSourceDashboard() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
   const [blks, setBlks] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Filter states
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -32,22 +34,28 @@ export default function GeoSourceDashboard() {
     endDate: ""
   });
 
-  useEffect(() => {
-    // Load data from localStorage
-    const rawApps = localStorage.getItem("ugz_applications");
-    const rawCands = localStorage.getItem("ugz_candidate_profiles");
-    const rawJobs = localStorage.getItem("ugz_jobs");
-    const rawSites = localStorage.getItem("ugz_master_sites_operation");
-    const rawInstitutes = localStorage.getItem("ugz_master_institute");
-
-    if (rawApps) setApplications(JSON.parse(rawApps));
-    if (rawCands) setCandidates(JSON.parse(rawCands));
-    if (rawJobs) setJobs(JSON.parse(rawJobs));
-    if (rawSites) setSites(JSON.parse(rawSites));
-    if (rawInstitutes) {
-      const allInst = JSON.parse(rawInstitutes);
-      setBlks(allInst.filter((i: any) => ["BPVP", "BLK", "LPK"].includes(i.type)));
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const res = await getGeoSourceDashboardData();
+      if (res.success && res.data) {
+        setApplications(res.data.applications);
+        setCandidates(res.data.candidates);
+        setJobs(res.data.jobs);
+        setSites(res.data.sites);
+        setBlks(res.data.institutes);
+      } else {
+        console.error("GeoSource error:", res.error);
+      }
+    } catch (err) {
+      console.error("Failed to load geosource data:", err);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const handleApplyFilter = () => {
@@ -274,6 +282,17 @@ export default function GeoSourceDashboard() {
     new Set(Object.values(candidates).map((c: any) => c.province).filter(Boolean))
   ).sort() as string[];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="flex flex-col items-center gap-3 text-on-surface-variant">
+          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-sm font-medium">Memuat data GeoSource Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -292,6 +311,13 @@ export default function GeoSourceDashboard() {
             {(activeFilters.site || activeFilters.blk || activeFilters.province || activeFilters.startDate || activeFilters.endDate) && (
               <span className="flex h-2 w-2 rounded-full bg-primary relative -top-1 -right-1"></span>
             )}
+          </button>
+          <button
+            onClick={loadData}
+            className="px-4 py-2 bg-white border border-outline-variant text-on-surface font-semibold rounded-xl hover:bg-surface-container-low transition-colors flex items-center gap-2 shadow-sm shrink-0 text-sm"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
           </button>
         </div>
       </div>

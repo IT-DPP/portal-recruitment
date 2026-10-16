@@ -98,6 +98,12 @@ export default function JobCreateClient({
       setErrorMsg("Department is required.");
       return;
     }
+
+    const headcount = parseInt(formData.jumlahPermintaan, 10);
+    if (isNaN(headcount) || headcount <= 0) {
+      setErrorMsg("Jumlah permintaan kandidat harus berupa angka lebih dari 0.");
+      return;
+    }
     
     startTransition(async () => {
       const isNewPosition = !positionOptions.some(opt => opt.value === formData.positionId);
@@ -234,11 +240,22 @@ export default function JobCreateClient({
                   required
                   type="number"
                   min="1"
+                  step="1"
                   value={formData.jumlahPermintaan}
-                  onChange={(e) => setFormData({ ...formData, jumlahPermintaan: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (["-", "+", "e", "E", "."].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "" || parseInt(val, 10) >= 0) {
+                      setFormData({ ...formData, jumlahPermintaan: val });
+                    }
+                  }}
                   disabled={isPending}
                   className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-black disabled:bg-gray-100"
-                  placeholder="Jumlah kandidat dibutuhkan"
+                  placeholder="Minimal 1 kandidat"
                 />
               </div>
 

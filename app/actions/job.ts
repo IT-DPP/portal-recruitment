@@ -129,7 +129,8 @@ export async function createJobOpening(data: JobOpeningInput) {
   try {
     const parsed = JobOpeningSchema.safeParse(data);
     if (!parsed.success) {
-      return { success: false, error: "Validasi gagal: " + parsed.error.message };
+      const errorMessages = parsed.error.issues.map((i) => i.message).join(", ");
+      return { success: false, error: "Validasi gagal: " + errorMessages };
     }
 
     let { positionId, departmentId, positionName, departmentName, ...restData } = parsed.data;
@@ -204,6 +205,14 @@ export async function updateJobOpening(id: string, data: Partial<JobOpeningInput
       revalidatePath("/dashboard/job-openings");
       revalidatePath(`/dashboard/job-openings/${id}`);
       return { success: true, data: updatedJob };
+    }
+
+    if (data.jumlahPermintaan !== undefined) {
+      const parsedQty = Number(data.jumlahPermintaan);
+      if (isNaN(parsedQty) || parsedQty <= 0 || !Number.isInteger(parsedQty)) {
+        return { success: false, error: "Jumlah permintaan kandidat harus berupa bilangan bulat lebih dari 0." };
+      }
+      data.jumlahPermintaan = parsedQty;
     }
 
     let { positionId, departmentId, positionName, departmentName, ...restData } = data;
@@ -556,12 +565,13 @@ export async function applyToJob(jobId: string) {
     if (job.requiresBnsp) {
       const hasBnsp = profile.documents?.some(doc => {
         const type = (doc.documentType || "").toLowerCase();
-        return type.includes("bnsp") || type.includes("sertifikat");
+        const hasValidFile = Boolean(doc.fileUrl || doc.objectKey);
+        return (type.includes("bnsp") || type.includes("sertifikat")) && hasValidFile;
       });
       if (!hasBnsp) {
         return {
           success: false,
-          error: "Lowongan ini mewajibkan sertifikasi kompetensi BNSP. Harap unggah sertifikat BNSP Anda di menu My Profile terlebih dahulu."
+          error: "Lowongan ini mewajibkan sertifikasi kompetensi BNSP resmi. Proses pelamaran digagalkan karena Anda belum mengunggah sertifikat BNSP di menu My Profile."
         };
       }
     }

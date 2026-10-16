@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { AlertTriangle, TrendingDown } from "lucide-react";
+import { AlertTriangle, TrendingDown, CheckCircle2 } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
   stage_1: "CV Screening",
@@ -133,9 +133,16 @@ export default function RejectionAnalysisWidget({
       {/* Content */}
       <div className="p-6">
         {rejectionData.length === 0 ? (
-          <div className="py-12 text-center text-on-surface-variant">
-            <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Belum ada data penolakan</p>
+          <div className="py-10 text-center max-w-md mx-auto">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-3 shadow-2xs">
+              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-800 mb-1">
+              Tingkat Penolakan: 0% (Optimal)
+            </h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Tidak ada kandidat gugur atau data eliminasi pada periode ini. Begitu terdapat penolakan pada tahapan seleksi, analisis akar penyebab dan evaluasi bottleneck akan tersaji otomatis di sini.
+            </p>
           </div>
         ) : (
           <div className="space-y-5">

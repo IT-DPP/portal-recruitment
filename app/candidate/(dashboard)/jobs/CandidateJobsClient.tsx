@@ -10,6 +10,9 @@ import {
   ChevronRight,
   Building2,
   AlertCircle,
+  Award,
+  ShieldAlert,
+  CheckCircle2,
 } from "lucide-react";
 import { applyToJob } from "@/app/actions/job";
 
@@ -44,7 +47,17 @@ export default function CandidateJobsClient({
   const [errorModalMessage, setErrorModalMessage] = useState<string | null>(
     null,
   );
+  const [bnspWarningModalOpen, setBnspWarningModalOpen] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+
+  // Helper check for candidate certificate
+  const hasCandidateBnsp = Boolean(
+    candidateProfile?.documents?.some((doc: any) => {
+      const type = (doc.documentType || "").toLowerCase();
+      const hasValidFile = Boolean(doc.fileUrl || doc.objectKey);
+      return (type.includes("bnsp") || type.includes("sertifikat")) && hasValidFile;
+    })
+  );
 
   // Debounce search effect
   useEffect(() => {
@@ -88,17 +101,10 @@ export default function CandidateJobsClient({
       return;
     }
 
-    if (selectedJob.requiresBnsp) {
-      const hasBnsp = candidateProfile.documents?.some((doc: any) => {
-        const type = (doc.documentType || "").toLowerCase();
-        return type.includes("bnsp") || type.includes("sertifikat");
-      });
-      if (!hasBnsp) {
-        setErrorModalMessage(
-          "Lowongan ini mewajibkan sertifikasi kompetensi BNSP. Harap unggah sertifikat BNSP Anda pada tab Dokumen di menu My Profile terlebih dahulu sebelum melamar lowongan ini."
-        );
-        return;
-      }
+    // Intercept if job requires BNSP and candidate does not have it uploaded
+    if (selectedJob.requiresBnsp && !hasCandidateBnsp) {
+      setBnspWarningModalOpen(true);
+      return;
     }
 
     setIsApplying(true);
@@ -196,9 +202,17 @@ export default function CandidateJobsClient({
                 className="group bg-white rounded-3xl p-6 border border-table-border shadow-sm hover:shadow-xl hover:border-primary/40 transition-all duration-300 relative flex flex-col h-full transform hover:-translate-y-1"
               >
                 <div className="flex justify-between items-start mb-4">
-                  <span className="inline-block px-3 py-1 bg-surface-container-low text-on-surface text-xs font-bold uppercase tracking-wider rounded-full">
-                    {job.department?.name || job.departmentName || "General"}
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-block px-3 py-1 bg-surface-container-low text-on-surface text-xs font-bold uppercase tracking-wider rounded-full">
+                      {job.department?.name || job.departmentName || "General"}
+                    </span>
+                    {job.requiresBnsp && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs font-bold">
+                        <Award className="w-3.5 h-3.5 text-amber-600" />
+                        Wajib BNSP
+                      </span>
+                    )}
+                  </div>
                   {hasApplied ? (
                     <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-full border border-emerald-100 uppercase tracking-wider">
                       Applied
@@ -285,7 +299,43 @@ export default function CandidateJobsClient({
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-8">
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+              {selectedJob.requiresBnsp && (
+                <div
+                  className={`p-4 rounded-2xl border flex items-start gap-3.5 ${
+                    hasCandidateBnsp
+                      ? "bg-emerald-50/80 border-emerald-200 text-emerald-950"
+                      : "bg-amber-50/80 border-amber-200 text-amber-950"
+                  }`}
+                >
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      hasCandidateBnsp
+                        ? "bg-emerald-100 text-emerald-600"
+                        : "bg-amber-100 text-amber-600"
+                    }`}
+                  >
+                    {hasCandidateBnsp ? (
+                      <CheckCircle2 className="w-5 h-5" />
+                    ) : (
+                      <ShieldAlert className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h5 className="font-bold text-sm">
+                      {hasCandidateBnsp
+                        ? "Syarat Sertifikasi BNSP Terpenuhi"
+                        : "Lowongan Ini Mewajibkan Sertifikat BNSP"}
+                    </h5>
+                    <p className="text-xs mt-1 leading-relaxed text-on-surface-variant">
+                      {hasCandidateBnsp
+                        ? "Dokumen sertifikat kompetensi Anda sudah terunggah di profil. Anda siap melamar posisi ini."
+                        : "Posisi ini mensyaratkan Sertifikat Kompetensi BNSP resmi. Dokumen sertifikat Anda belum terunggah di menu My Profile. Anda wajib melengkapinya sebelum melamar."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {selectedJob.kualifikasi && (
                 <div>
                   <h4 className="font-bold text-lg text-primary mb-3">
@@ -363,6 +413,43 @@ export default function CandidateJobsClient({
               >
                 Mengerti
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dedicated BNSP Requirement Warning Modal */}
+      {bnspWarningModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-table-border">
+            <div className="p-7 text-center">
+              <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-200">
+                <ShieldAlert className="w-9 h-9" />
+              </div>
+              <h3 className="text-xl font-bold text-on-surface mb-2">
+                Sertifikat BNSP Diperlukan
+              </h3>
+              <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
+                Lowongan ini mewajibkan sertifikasi kompetensi BNSP resmi. Karena Anda belum mengunggah sertifikat pada dokumen profil Anda, proses pelamaran <strong>tidak dapat dilanjutkan</strong>.
+              </p>
+              <div className="space-y-2.5">
+                <button
+                  onClick={() => {
+                    setBnspWarningModalOpen(false);
+                    setSelectedJob(null);
+                    router.push("/candidate/profile");
+                  }}
+                  className="w-full px-5 py-3 bg-primary hover:bg-primary-container text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                >
+                  <Award className="w-4 h-4" /> Unggah Sertifikat di Profil
+                </button>
+                <button
+                  onClick={() => setBnspWarningModalOpen(false)}
+                  className="w-full px-5 py-2.5 bg-surface-container-low hover:bg-surface-container text-on-surface-variant font-semibold rounded-xl transition-colors text-sm"
+                >
+                  Tutup & Kembali
+                </button>
+              </div>
             </div>
           </div>
         </div>

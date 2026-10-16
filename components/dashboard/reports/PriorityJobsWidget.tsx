@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { MapPin, Users, UserCheck, UserX, Star, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { MapPin, Users, UserCheck, UserX, Star, TrendingUp, Plus } from "lucide-react";
 
 export interface PriorityJob {
   id: string;
@@ -42,8 +43,8 @@ export default function PriorityJobsWidget({
             <h2 className="font-bold text-on-surface text-sm">
               Top 5 Lowongan Priority
             </h2>
-            <p className="text-[11px] text-on-surface-variant">
-              Klik kartu untuk memfilter Pipeline Funnel
+            <p className="text-[11px] text-on-surface-variant font-medium">
+              Klik kartu untuk memfilter Pipeline Funnel & Konversi
             </p>
           </div>
         </div>
@@ -60,9 +61,22 @@ export default function PriorityJobsWidget({
       {/* Job Cards Grid */}
       <div className="p-5">
         {jobs.length === 0 ? (
-          <div className="py-10 text-center text-on-surface-variant">
-            <Star className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Belum ada lowongan priority</p>
+          <div className="py-8 px-4 text-center max-w-md mx-auto">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-3 shadow-2xs">
+              <Star className="w-6 h-6 text-amber-500" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-800 mb-1">
+              Belum Ada Lowongan Prioritas
+            </h3>
+            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+              Tandai lowongan dengan opsi <span className="font-semibold text-slate-700">&ldquo;Priority Job&rdquo;</span> saat membuat lowongan agar kuota pemenuhan dan kecepatan konversi kandidat terpantau di sini.
+            </p>
+            <Link
+              href="/dashboard/job-openings/create"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-container text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" /> Buat Lowongan Prioritas
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">

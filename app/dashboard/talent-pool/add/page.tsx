@@ -508,6 +508,7 @@ export default function AddTalentPoolPage() {
                   label="Sertifikat / Dokumen Pendukung"
                   value={formData.fileSertifikat}
                   onChange={(file) => handleInputChange("fileSertifikat", file)}
+                  helperText="Opsional. Contoh: Sertifikat BNSP, Pelatihan Kerja, Lisensi Keahlian, dan lain-lain."
                 />
                 <FileUpload
                   label="Pas Photo"

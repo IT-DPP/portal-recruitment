@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { RefreshCw, Download, Filter, X, LayoutDashboard } from "lucide-react";
+import Link from "next/link";
+import { RefreshCw, Download, Filter, X, LayoutDashboard, Sparkles, ChevronRight } from "lucide-react";
 import SummaryWidgets from "@/components/dashboard/reports/SummaryWidgets";
 import PriorityJobsWidget, {
   PriorityJob,
@@ -9,42 +10,18 @@ import PriorityJobsWidget, {
 import PipelineFunnelWidget from "@/components/dashboard/reports/PipelineFunnelWidget";
 import RejectionAnalysisWidget from "@/components/dashboard/reports/RejectionAnalysisWidget";
 import RecentCandidatesTable from "@/components/dashboard/RecentCandidatesTable";
+import {
+  getExecutiveDashboardData,
+  DashboardJob,
+  DashboardApplication,
+  DashboardSite,
+  DashboardCustomer,
+  DashboardCandidate,
+} from "@/app/actions/dashboard";
 
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
-interface Job {
-  id: string;
-  noRegistrasi: string;
-  posisi: string;
-  siteId: string;
-  jumlahPermintaan: number;
-  globalStatus: string;
-  priority: boolean;
-  customerId?: string;
-  publishedDate?: string;
-  tanggalMasuk?: string;
-  timeline?: any[];
-}
-
-interface Application {
-  id: string;
-  jobId: string;
-  candidateId: string;
-  applicationDate: string;
-  currentStage: string;
-  history: {
-    stageId: string;
-    stageName: string;
-    date: string;
-    note: string;
-  }[];
-}
-
-interface Site {
-  id: string;
-  siteName: string;
-}
+type Job = DashboardJob;
+type Application = DashboardApplication;
+type Site = DashboardSite;
 
 // ─────────────────────────────────────────────
 // Page Component
@@ -73,22 +50,20 @@ export default function ExecutiveDashboard() {
     endDate: ""
   });
 
-  const loadData = () => {
+  const loadData = async () => {
     setIsLoading(true);
     try {
-      const savedJobs = localStorage.getItem("ugz_jobs");
-      const savedApps = localStorage.getItem("ugz_applications");
-      const savedSites = localStorage.getItem("ugz_master_sites_operation");
-      const savedCustomers = localStorage.getItem("ugz_master_customer");
-      const savedCands = localStorage.getItem("ugz_candidate_profiles");
-
-      if (savedJobs) setJobs(JSON.parse(savedJobs));
-      if (savedApps) setApplications(JSON.parse(savedApps));
-      if (savedSites) setSites(JSON.parse(savedSites));
-      if (savedCustomers) setCustomers(JSON.parse(savedCustomers));
-      if (savedCands) setCandidates(JSON.parse(savedCands));
-      
-      setLastRefreshed(new Date());
+      const res = await getExecutiveDashboardData();
+      if (res.success && res.data) {
+        setJobs(res.data.jobs);
+        setApplications(res.data.applications);
+        setSites(res.data.sites);
+        setCustomers(res.data.customers);
+        setCandidates(res.data.candidates);
+        setLastRefreshed(new Date());
+      } else {
+        console.error("Dashboard error:", res.error);
+      }
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
     } finally {
@@ -277,16 +252,16 @@ export default function ExecutiveDashboard() {
       <div className="flex items-end justify-between">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shadow-2xs">
               <LayoutDashboard className="w-5 h-5 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold text-primary tracking-tight">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
               Executive Dashboard
             </h1>
           </div>
-          <p className="text-sm text-on-surface-variant ml-[52px]">
+          <p className="text-sm text-slate-600 ml-[52px]">
             Laporan komprehensif dan ringkasan aktivitas rekrutmen.{" "}
-            <span className="text-[11px] font-mono text-on-surface-variant/70">
+            <span className="text-[11px] font-mono text-slate-500">
               Diperbarui:{" "}
               {lastRefreshed.toLocaleString("id-ID", {
                 dateStyle: "medium",
@@ -324,18 +299,57 @@ export default function ExecutiveDashboard() {
         </div>
       </div>
 
-      {/* ── No Data Warning ── */}
+      {/* ── Executive Onboarding Card (When 0 Applications) ── */}
       {applications.length === 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-            <RefreshCw className="w-4 h-4 text-amber-600" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-amber-800">Data Kosong</p>
-            <p className="text-xs text-amber-700 mt-0.5">
-              Belum ada data. Silakan jalankan Seeder terlebih dahulu melalui
-              halaman Settings → Master Data untuk mengisi data dummy.
-            </p>
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white p-7 sm:p-8 shadow-xl border border-blue-900/50">
+          {/* Subtle background glow */}
+          <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+          <div className="absolute right-1/3 -bottom-20 w-60 h-60 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="space-y-3 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-blue-200 text-xs font-semibold">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Executive Command Center • Siap Beroperasi</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                Selamat Datang di Portal Rekrutmen Terpadu
+              </h2>
+              <p className="text-sm text-blue-100/80 leading-relaxed">
+                Database dan sistem pelacakan pipeline rekrutmen telah aktif terhubung. Saat ini belum ada data lamaran yang masuk. Begitu Anda mempublikasikan lowongan kerja atau kandidat melamar, analitik funnel, passing rate, dan SLA akan otomatis dihitung secara real-time.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                  <p className="text-[11px] font-bold text-blue-200 uppercase tracking-wider mb-0.5">End-to-End Funnel</p>
+                  <p className="text-xs text-blue-100/70">Otomasi konversi 7 tahapan seleksi</p>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                  <p className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-0.5">SLA Monitoring</p>
+                  <p className="text-xs text-blue-100/70">Deteksi bottleneck & overdue otomatis</p>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                  <p className="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-0.5">Rejection Insight</p>
+                  <p className="text-xs text-blue-100/70">Analisis penyebab gugur kandidat</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
+              <Link
+                href="/dashboard/job-openings/create"
+                className="px-5 py-3 rounded-xl bg-white text-slate-900 hover:bg-blue-50 font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 group"
+              >
+                <span>+ Buat Lowongan Baru</span>
+                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link
+                href="/dashboard/pipeline"
+                className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white border border-white/20 font-semibold text-sm transition-all flex items-center justify-center gap-2"
+              >
+                <span>Buka Pipeline Pelamar</span>
+              </Link>
+            </div>
           </div>
         </div>
       )}
@@ -476,11 +490,11 @@ export default function ExecutiveDashboard() {
 function SectionLabel({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 mb-4">
-      <div className="w-1 h-5 rounded-full bg-primary" />
-      <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider">
+      <div className="w-1.5 h-5 rounded-full bg-primary shadow-2xs" />
+      <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
         {label}
       </h2>
-      <div className="flex-1 h-px bg-table-border" />
+      <div className="flex-1 h-px bg-slate-200" />
     </div>
   );
 }

@@ -611,6 +611,7 @@ export default function CandidateProfilePage() {
                   onChange={(file) => handleInputChange("fileSertifikat", file)}
                   onDelete={() => handleDeleteDocument("fileSertifikat", "sertifikat")}
                   onPreview={() => handlePreviewDocument("fileSertifikat")}
+                  helperText="Opsional. Contoh: Sertifikat BNSP, Pelatihan Kerja (BLK/LPK), Lisensi Keahlian, Sertifikat Bahasa, dan lain-lain. (Wajib diunggah jika Anda berencana melamar lowongan yang mensyaratkan sertifikasi BNSP)."
                 />
                 <FileUpload
                   label="Pas Photo"

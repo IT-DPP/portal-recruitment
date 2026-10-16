@@ -11,7 +11,10 @@ export const JobOpeningSchema = z.object({
   cityId: z.string().min(1, "City is required"),
   siteId: z.string().min(1, "Site is required"),
   statusPermintaan: z.string().min(1, "Status Permintaan is required"),
-  jumlahPermintaan: z.number().min(1, "Jumlah Permintaan must be at least 1"),
+  jumlahPermintaan: z.coerce
+    .number()
+    .int("Jumlah Permintaan harus berupa bilangan bulat")
+    .positive("Jumlah Permintaan harus lebih dari 0 (minimal 1)"),
   tanggalMasuk: z.date(),
   noFormB1: z.string().optional(),
   district: z.string().optional(),

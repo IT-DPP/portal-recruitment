@@ -12,6 +12,7 @@ interface FileUploadProps {
   accept?: string;
   maxSizeKB?: number;
   required?: boolean;
+  helperText?: React.ReactNode;
 }
 
 export default function FileUpload({
@@ -23,6 +24,7 @@ export default function FileUpload({
   onDelete,
   onPreview,
   required = true,
+  helperText,
 }: FileUploadProps) {
   const [error, setError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
@@ -104,6 +106,11 @@ export default function FileUpload({
       <label className="block text-xs font-bold text-on-surface uppercase tracking-wider">
         {label} {required ? <span className="text-status-error">*</span> : <span className="text-on-surface-variant font-medium text-[11px] normal-case">(opsional)</span>}
       </label>
+      {helperText && (
+        <p className="text-xs text-on-surface-variant leading-relaxed -mt-1 mb-1">
+          {helperText}
+        </p>
+      )}
       
       {!value ? (
         <div
