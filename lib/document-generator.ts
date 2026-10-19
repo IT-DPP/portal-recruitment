@@ -15,6 +15,21 @@ export interface OfferingLetterData {
   hak: string; // HTML string
 }
 
+export interface OfferingLetterDataV2 {
+  type: "employee" | "internship";
+  nomorSurat: string;
+  perihal: string;
+  nama: string;
+  posisi: string;
+  pointOfHire?: string;
+  area: string;
+  masaKontrak: string;
+  rosterJamKerja?: string;
+  tanggungJawab: string[];
+  hak: string[];
+  benefit: string[];
+}
+
 export interface McuLetterData {
   nomorSurat: string;
   namaKandidat: string;
@@ -143,7 +158,580 @@ const fetchLogoBuffer = async (logoUrl?: string): Promise<ArrayBuffer | null> =>
 };
 
 /**
- * Generate Offering Letter DOCX
+ * Generate Offering Letter DOCX (Employee & Internship)
+ */
+export const generateOfferingLetterDocx = async (
+  data: OfferingLetterDataV2,
+  logoUrl: string = "/logo_company.png"
+) => {
+  try {
+    const arrayBuffer = await fetchLogoBuffer(logoUrl);
+    const children: any[] = [];
+
+    const tableNoBorders = {
+      top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+      bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
+      left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+      right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+    };
+
+    // 1. Top Right Logo
+    if (arrayBuffer) {
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          children: [
+            new ImageRun({
+              data: arrayBuffer,
+              transformation: { width: 68, height: 55 },
+              type: "png",
+            }),
+          ],
+          spacing: { after: 30 },
+        }),
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          children: [
+            new TextRun({
+              text: "dian pandu pratama",
+              bold: true,
+              size: 18,
+            }),
+          ],
+          spacing: { after: 140 },
+        })
+      );
+    }
+
+    // 2. Center Title (Only for internship OL)
+    if (data.type === "internship") {
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: "SURAT PENAWARAN MAGANG",
+              bold: true,
+              size: 24,
+            }),
+          ],
+          spacing: { before: 60, after: 30 },
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: "(OFFERING LETTER)",
+              bold: true,
+              size: 20,
+            }),
+          ],
+          spacing: { after: 160 },
+        })
+      );
+    }
+
+    // 3. Nomor & Perihal Table
+    children.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 15, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: "No.", bold: true })] })],
+                borders: tableNoBorders,
+              }),
+              new TableCell({
+                width: { size: 3, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+                borders: tableNoBorders,
+              }),
+              new TableCell({
+                width: { size: 82, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: data.nomorSurat || "-", bold: true })] })],
+                borders: tableNoBorders,
+              }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 15, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: "Perihal", bold: true })] })],
+                borders: tableNoBorders,
+              }),
+              new TableCell({
+                width: { size: 3, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+                borders: tableNoBorders,
+              }),
+              new TableCell({
+                width: { size: 82, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: data.perihal, bold: true })] })],
+                borders: tableNoBorders,
+              }),
+            ],
+          }),
+        ],
+      }),
+      new Paragraph({ spacing: { after: 120 } })
+    );
+
+    // 4. Opening Intro
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "Sebagai tindak lanjut proses rekrutmen di PT Dian Pandu Pratama, berikut kami informasikan perincian hak dan benefit serta tugas dan tanggung jawab calon karyawan sebagaimana yang tercantum dalam kontrak kerja sebagai berikut:",
+          }),
+        ],
+        spacing: { after: 120 },
+        alignment: AlignmentType.JUSTIFIED,
+      })
+    );
+
+    // 5. Details Table
+    const detailRows: TableRow[] = [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 25, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ children: [new TextRun({ text: "Nama", bold: true })] })],
+            borders: tableNoBorders,
+          }),
+          new TableCell({
+            width: { size: 3, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+            borders: tableNoBorders,
+          }),
+          new TableCell({
+            width: { size: 72, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ children: [new TextRun({ text: data.nama })] })],
+            borders: tableNoBorders,
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 25, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ children: [new TextRun({ text: "Posisi", bold: true })] })],
+            borders: tableNoBorders,
+          }),
+          new TableCell({
+            width: { size: 3, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+            borders: tableNoBorders,
+          }),
+          new TableCell({
+            width: { size: 72, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ children: [new TextRun({ text: data.posisi })] })],
+            borders: tableNoBorders,
+          }),
+        ],
+      }),
+    ];
+
+    if (data.type === "employee") {
+      detailRows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: "Masa Kontrak", bold: true })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 3, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 72, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: data.masaKontrak || "-" })] })],
+              borders: tableNoBorders,
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: "Point Of Hire", bold: true })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 3, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 72, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: data.pointOfHire || "-" })] })],
+              borders: tableNoBorders,
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: "Area", bold: true })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 3, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 72, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: data.area || "-" })] })],
+              borders: tableNoBorders,
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: "Roster & Jam Kerja", bold: true })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 3, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 72, type: WidthType.PERCENTAGE },
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: data.rosterJamKerja || "-" })],
+                  alignment: AlignmentType.JUSTIFIED,
+                }),
+              ],
+              borders: tableNoBorders,
+            }),
+          ],
+        })
+      );
+    } else {
+      // Internship
+      detailRows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: "Area", bold: true })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 3, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 72, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: data.area || "-" })] })],
+              borders: tableNoBorders,
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: "Masa Kontrak", bold: true })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 3, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+              borders: tableNoBorders,
+            }),
+            new TableCell({
+              width: { size: 72, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ children: [new TextRun({ text: data.masaKontrak || "-" })] })],
+              borders: tableNoBorders,
+            }),
+          ],
+        })
+      );
+    }
+
+    children.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: detailRows,
+      }),
+      new Paragraph({ spacing: { after: 120 } })
+    );
+
+    // 6. Transition
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text:
+              data.type === "employee"
+                ? "Kepada calon karyawan tersebut akan diberikan tanggung jawab dan memiliki Hak sebagai berikut:"
+                : "Kepada calon Magang tersebut akan diberikan hak serta tugas dan tanggung jawab sebagai berikut:",
+          }),
+        ],
+        spacing: { after: 100 },
+      })
+    );
+
+    // 7. Tanggung Jawab
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: data.type === "employee" ? "Tanggung Jawab:" : "Tugas dan Tanggung Jawab:",
+            bold: true,
+          }),
+        ],
+        spacing: { after: 40 },
+      })
+    );
+
+    data.tanggungJawab.forEach((tj, idx) => {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `${idx + 1}.  ${tj}` })],
+          indent: { left: 360 },
+          spacing: { after: 30 },
+        })
+      );
+    });
+
+    children.push(new Paragraph({ spacing: { after: 80 } }));
+
+    // 8. Hak
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: "Hak:", bold: true })],
+        spacing: { after: 40 },
+      })
+    );
+
+    data.hak.forEach((h, idx) => {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `${idx + 1}.  ${h}` })],
+          indent: { left: 360 },
+          spacing: { after: 30 },
+        })
+      );
+    });
+
+    // 9. Benefit (Internship & Employee if provided)
+    if (data.benefit && data.benefit.length > 0) {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: "Benefit:", bold: true })],
+          spacing: { before: 80, after: 40 },
+        })
+      );
+      data.benefit.forEach((b, idx) => {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: `${idx + 1}.  ${b}` })],
+            indent: { left: 360 },
+            spacing: { after: 30 },
+          })
+        );
+      });
+    }
+
+    // 10. BPJS Section (Employee only)
+    if (data.type === "employee") {
+      const bpjsPerusahaan = [
+        "1. BPJS Ketenagakerjaan / JHT  : 3.7%",
+        "2. BPJS Ketenagakerjaan / JKK  : 0.89%",
+        "3. BPJS Ketenagakerjaan / JKM  : 0.3%",
+        "4. BPJS Ketenagakerjaan / JP   : 2%",
+        "5. BPJS Kesehatan              : 4%",
+      ];
+      const bpjsKaryawan = [
+        "1. BPJS Ketenagakerjaan / JHT  : 2%",
+        "2. BPJS Ketenagakerjaan / JP   : 1%",
+        "3. BPJS Kesehatan              : 1%",
+        "4. PPH21",
+        "5. Potongan koperasi karyawan",
+      ];
+
+      children.push(
+        new Paragraph({ spacing: { after: 60 } }),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: 50, type: WidthType.PERCENTAGE },
+                  children: [
+                    new Paragraph({
+                      children: [new TextRun({ text: "Ditanggung Perusahaan:", bold: true })],
+                      spacing: { after: 40 },
+                    }),
+                    ...bpjsPerusahaan.map(
+                      (item) =>
+                        new Paragraph({
+                          children: [new TextRun({ text: item, size: 20 })],
+                          spacing: { after: 20 },
+                        })
+                    ),
+                  ],
+                  borders: tableNoBorders,
+                }),
+                new TableCell({
+                  width: { size: 50, type: WidthType.PERCENTAGE },
+                  children: [
+                    new Paragraph({
+                      children: [new TextRun({ text: "Ditanggung Karyawan:", bold: true })],
+                      spacing: { after: 40 },
+                    }),
+                    ...bpjsKaryawan.map(
+                      (item) =>
+                        new Paragraph({
+                          children: [new TextRun({ text: item, size: 20 })],
+                          spacing: { after: 20 },
+                        })
+                    ),
+                  ],
+                  borders: tableNoBorders,
+                }),
+              ],
+            }),
+          ],
+        }),
+        new Paragraph({ spacing: { after: 100 } })
+      );
+    }
+
+    // 11. Closing Paragraphs
+    if (data.type === "employee") {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: "Demikian Surat Penawaran Kerja ini kami sampaikan." })],
+          spacing: { before: 80, after: 80 },
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: "Atas perhatian dan kesediaan Saudara untuk bergabung bersama PT Dian Pandu Pratama, kami ucapkan terima kasih.",
+            }),
+          ],
+          spacing: { after: 160 },
+        })
+      );
+    } else {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: "Demikian Offering Letter ini kami sampaikan. Apabila Anda setuju dengan penawaran yang diberikan, silahkan tanda tangani offering letter ini di tempat yang sudah disediakan. Apabila masih ada hal-hal yang ingin ditanyakan seputar penawaran kerja ini, silahkan menghubungi tim recruitment untuk pertanyaan lebih lanjut. Atas perhatian dan Kerjasama kami ucapkan terima kasih.",
+            }),
+          ],
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { before: 80, after: 160 },
+        })
+      );
+    }
+
+    // 12. Signatures Table
+    const todayFormatted = new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: `Cikarang, ${todayFormatted}` })],
+        spacing: { after: 100 },
+      }),
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                children: [
+                  new Paragraph({ children: [new TextRun({ text: "Mengetahui," })], spacing: { after: 700 } }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: data.type === "employee" ? "Mursidi" : "Felix Deo Gratias",
+                        bold: true,
+                      }),
+                    ],
+                  }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text:
+                          data.type === "employee"
+                            ? "Recruitment & People Development Dept. Head"
+                            : "Koordinator Recruitment HO",
+                        size: 18,
+                        italics: true,
+                      }),
+                    ],
+                  }),
+                ],
+                borders: tableNoBorders,
+              }),
+              new TableCell({
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [new TextRun({ text: "Menyetujui," })],
+                    spacing: { after: 700 },
+                  }),
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [new TextRun({ text: data.nama, bold: true })],
+                  }),
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                      new TextRun({
+                        text: data.type === "employee" ? "Calon Karyawan" : "Calon Karyawan Magang",
+                        size: 18,
+                        italics: true,
+                      }),
+                    ],
+                  }),
+                ],
+                borders: tableNoBorders,
+              }),
+            ],
+          }),
+        ],
+      })
+    );
+
+    const doc = new Document({
+      sections: [{ properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } }, children }],
+    });
+
+    const blobResult = await Packer.toBlob(doc);
+    saveAs(blobResult, `Offering_Letter_${data.type === "internship" ? "Magang" : "Employee"}_${data.nama.replace(/\s+/g, "_")}.docx`);
+  } catch (error) {
+    console.error("Error generating Offering Letter DOCX:", error);
+    alert("Terjadi kesalahan saat membuat file DOCX.");
+  }
+};
+
+/**
+ * Generate Offering Letter DOCX (Legacy)
  */
 export const generateDocx = async (data: OfferingLetterData, logoUrl: string = "/icon.png") => {
   try {
@@ -521,7 +1109,7 @@ export const generateMcuDocx = async (data: McuLetterData, logoUrl: string = "/i
 export const generatePdfFromElement = async (
   elementId: string,
   filename: string,
-  logoUrl: string = "/icon.png"
+  logoUrl: string = "/logo_company.png"
 ) => {
   const element = document.getElementById(elementId);
   if (!element) {
@@ -556,10 +1144,13 @@ export const generatePdfFromElement = async (
       throw new Error("Gagal menginisialisasi sandbox dokumen PDF.");
     }
 
-    // Extract HTML and substitute any relative logo paths with base64 data URI
-    let elementHtml = element.innerHTML;
+    // Extract HTML and substitute any logo paths with base64 data URI
+    let elementHtml = element.outerHTML;
     if (base64Logo) {
-      elementHtml = elementHtml.replace(/src=["']\/icon\.png["']/g, `src="${base64Logo}"`);
+      elementHtml = elementHtml.replace(
+        /src=["'][^"']*(logo_company|icon)\.png[^"']*["']/gi,
+        `src="${base64Logo}"`
+      );
     }
 
     iframeDoc.open();
@@ -579,65 +1170,44 @@ export const generatePdfFromElement = async (
               color: #000000;
               background-color: #ffffff;
               width: 794px;
-              padding: 48px;
+              padding: 0;
+              margin: 0;
               line-height: 1.5;
-              font-size: 14px;
+              font-size: 13px;
             }
             h1 {
-              font-size: 20px;
+              font-size: 18px;
               font-weight: bold;
               text-align: center;
-              margin-bottom: 4px;
+              margin-bottom: 2px;
             }
             h2, h3 {
-              font-size: 15px;
+              font-size: 14px;
               font-weight: bold;
-              margin-top: 12px;
-              margin-bottom: 6px;
+              margin-top: 8px;
+              margin-bottom: 4px;
             }
             p {
-              margin-bottom: 10px;
-              text-align: justify;
+              margin: 0 0 4px 0;
             }
             table {
               width: 100%;
               border-collapse: collapse;
-              margin: 12px 0;
             }
             td {
-              padding: 4px 6px;
+              padding: 2px 4px;
               vertical-align: top;
             }
             ul, ol {
-              padding-left: 24px;
-              margin: 8px 0;
+              padding-left: 20px;
+              margin: 4px 0;
             }
             li {
-              margin-bottom: 4px;
+              margin-bottom: 2px;
             }
             img {
-              max-width: 80px;
+              max-width: 100%;
               height: auto;
-              display: block;
-              margin: 0 auto 8px auto;
-            }
-            .header-bar {
-              border-bottom: 2px solid #000000;
-              padding-bottom: 12px;
-              margin-bottom: 20px;
-              text-align: center;
-            }
-            .meta-table {
-              margin-bottom: 16px;
-            }
-            .content-box {
-              border: 1px solid #cccccc;
-              padding: 12px 16px;
-              margin: 14px 0;
-              background: #fafafa;
-            }
-            .signature-area {
-              margin-top: 40px;
             }
           </style>
         </head>
@@ -648,8 +1218,18 @@ export const generatePdfFromElement = async (
     `);
     iframeDoc.close();
 
-    // Allow iframe images and layout to settle
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    // Ensure all images in iframeDoc have completed loading before rendering
+    const iframeImgs = Array.from(iframeDoc.getElementsByTagName("img"));
+    await Promise.all(
+      iframeImgs.map((img) => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve(true);
+        return new Promise((resolve) => {
+          img.onload = () => resolve(true);
+          img.onerror = () => resolve(false);
+        });
+      })
+    );
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Dynamically import libraries safely
     const html2canvasModule = await import("html2canvas");
@@ -673,7 +1253,8 @@ export const generatePdfFromElement = async (
       throw new Error("Modul jsPDF tidak dapat dimuat.");
     }
 
-    const canvas = await html2canvas(iframeDoc.body, {
+    const targetElement = iframeDoc.getElementById(elementId) || iframeDoc.body;
+    const canvas = await html2canvas(targetElement, {
       scale: 2,
       useCORS: true,
       allowTaint: true,
@@ -731,7 +1312,7 @@ export const generatePdfFromElement = async (
 export const printDocument = async (
   elementId: string,
   title: string,
-  logoUrl: string = "/icon.png"
+  logoUrl: string = "/logo_company.png"
 ) => {
   const element = document.getElementById(elementId);
   if (!element) {
@@ -758,7 +1339,10 @@ export const printDocument = async (
 
   let elementHtml = element.innerHTML;
   if (base64Logo) {
-    elementHtml = elementHtml.replace(/src=["']\/icon\.png["']/g, `src="${base64Logo}"`);
+    elementHtml = elementHtml.replace(
+      /src=["'][^"']*(logo_company|icon)\.png[^"']*["']/gi,
+      `src="${base64Logo}"`
+    );
   }
 
   doc.open();
@@ -771,7 +1355,7 @@ export const printDocument = async (
         <style>
           @page {
             size: A4;
-            margin: 15mm;
+            margin: 10mm 15mm;
           }
           * {
             box-sizing: border-box;
@@ -782,10 +1366,11 @@ export const printDocument = async (
             background: #ffffff;
             font-size: 11pt;
             line-height: 1.5;
-            padding: 10px;
+            padding: 0;
+            margin: 0;
           }
           h1 {
-            font-size: 16pt;
+            font-size: 15pt;
             font-weight: bold;
             text-align: center;
             margin-bottom: 2pt;
@@ -793,39 +1378,30 @@ export const printDocument = async (
           h2, h3 {
             font-size: 12pt;
             font-weight: bold;
-            margin-top: 10pt;
+            margin-top: 8pt;
             margin-bottom: 4pt;
           }
           p {
-            margin-bottom: 8pt;
-            text-align: justify;
+            margin-bottom: 4pt;
           }
           table {
             width: 100%;
             border-collapse: collapse;
-            margin: 8pt 0;
           }
           td {
-            padding: 3pt 4pt;
+            padding: 2pt 4pt;
             vertical-align: top;
           }
           ul, ol {
             padding-left: 18pt;
-            margin: 6pt 0;
+            margin: 4pt 0;
           }
           li {
-            margin-bottom: 3pt;
+            margin-bottom: 2pt;
           }
           img {
-            max-width: 75px;
+            max-width: 100%;
             height: auto;
-            display: block;
-            margin: 0 auto 6pt auto;
-          }
-          .border-b-2 {
-            border-bottom: 2px solid #000000;
-            padding-bottom: 8pt;
-            margin-bottom: 12pt;
           }
         </style>
       </head>
@@ -836,6 +1412,18 @@ export const printDocument = async (
   `);
   doc.close();
 
+  // Wait for all images inside print iframe to load
+  const printImgs = Array.from(doc.getElementsByTagName("img"));
+  await Promise.all(
+    printImgs.map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    })
+  );
+
   setTimeout(() => {
     printIframe.contentWindow?.focus();
     printIframe.contentWindow?.print();
@@ -843,8 +1431,8 @@ export const printDocument = async (
       if (document.body.contains(printIframe)) {
         document.body.removeChild(printIframe);
       }
-    }, 1000);
-  }, 250);
+    }, 1500);
+  }, 200);
 };
 
 /**
