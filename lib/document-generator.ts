@@ -1,6 +1,7 @@
 import { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun, Table, TableRow, TableCell, WidthType, BorderStyle } from "docx";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export interface OfferingLetterData {
   nomorSurat: string;
@@ -1435,42 +1436,327 @@ export const printDocument = async (
   }, 200);
 };
 
+export interface BastExcelMeta {
+  customerName?: string;
+  month?: string;
+  nomorBast?: string;
+  logoUrl?: string;
+}
+
 /**
- * Generate Excel BAST Document
+ * Format date value to M/D/YYYY (e.g., 8/5/2026, 8/28/2026) without timezone shift
  */
-export const generateBastExcel = (
+const formatExcelDate = (val: any): string => {
+  if (!val) return "-";
+  if (typeof val === "string") {
+    const match = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      const [, y, m, d] = match;
+      return `${parseInt(m, 10)}/${parseInt(d, 10)}/${y}`;
+    }
+  }
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return String(val);
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+};
+
+/**
+ * Generate Excel BAST Document with official layout, kop surat, logo, and formatted table
+ */
+export const generateBastExcel = async (
   rows: any[],
-  meta?: { customerName?: string; month?: string }
+  meta?: BastExcelMeta
 ) => {
   if (!rows || rows.length === 0) {
     alert("Tidak ada data untuk diekspor ke Excel.");
     return;
   }
 
-  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "PT Dian Pandu Pratama";
+  wb.created = new Date();
 
-  const colWidths = [
-    { wch: 6 },  // No
-    { wch: 22 }, // No. Request
-    { wch: 20 }, // No. Form B1
-    { wch: 18 }, // Tanggal Terima B1
-    { wch: 30 }, // Nama Kandidat
-    { wch: 22 }, // NIK
-    { wch: 25 }, // Posisi
-    { wch: 18 }, // Status
-    { wch: 18 }, // NRP DPP
-    { wch: 25 }, // Area Kerja
-    { wch: 16 }, // Awal Kontrak
-    { wch: 16 }, // Akhir Kontrak
-    { wch: 30 }, // Link Sertifikat
-    { wch: 15 }, // Validasi
+  const ws = wb.addWorksheet("BAST Serah Terima", {
+    views: [{ showGridLines: true }],
+  });
+
+  // Set explicit column widths matching official layout
+  ws.columns = [
+    { key: "no", width: 6 },
+    { key: "noRequest", width: 23 },
+    { key: "noB1", width: 10 },
+    { key: "tanggalTerimaB1", width: 18 },
+    { key: "nama", width: 28 },
+    { key: "nik", width: 22 },
+    { key: "posisi", width: 22 },
+    { key: "status", width: 14 },
+    { key: "nrpDpp", width: 16 },
+    { key: "areaKerja", width: 18 },
+    { key: "awalKontrak", width: 16 },
+    { key: "akhirKontrak", width: 16 },
+    { key: "linkSertifikat", width: 44 },
+    { key: "validasi", width: 12 },
   ];
-  ws["!cols"] = colWidths;
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "BAST Serah Terima");
+  // 1. Fetch & Embed Logo
+  const logoUrl = meta?.logoUrl || "/logo_company.png";
+  const logoBuffer = await fetchLogoBuffer(logoUrl);
+  if (logoBuffer) {
+    try {
+      const imageId = wb.addImage({
+        buffer: logoBuffer,
+        extension: "png",
+      });
+      ws.addImage(imageId, {
+        tl: { col: 0.1, row: 0.1 },
+        ext: { width: 56, height: 42 },
+        editAs: "oneCell",
+      });
+    } catch (e) {
+      console.warn("Could not add logo to Excel sheet:", e);
+    }
+  }
+
+  // 2. Company Subtitle below logo
+  ws.mergeCells("A3:B3");
+  const logoText = ws.getCell("A3");
+  logoText.value = "dian pandu pratama";
+  logoText.font = { name: "Calibri", size: 8, color: { argb: "595959" }, bold: true };
+  logoText.alignment = { horizontal: "center", vertical: "middle" };
+
+  // 3. Header Kop Surat (Centered over columns C to N)
+  ws.mergeCells("C1:N1");
+  const h1 = ws.getCell("C1");
+  h1.value = "PT DIAN PANDU PRATAMA";
+  h1.font = { name: "Calibri", size: 14, bold: true, color: { argb: "000000" } };
+  h1.alignment = { horizontal: "center", vertical: "middle" };
+
+  ws.mergeCells("C2:N2");
+  const h2 = ws.getCell("C2");
+  h2.value = "Jl. Jababeka XII, Harja Mekar, Kec. Cikarang Utara, Kabupaten Bekasi, Jawa Barat 17530";
+  h2.font = { name: "Calibri", size: 9.5, color: { argb: "000000" } };
+  h2.alignment = { horizontal: "center", vertical: "middle" };
+
+  ws.mergeCells("C3:N3");
+  const h3 = ws.getCell("C3");
+  h3.value = "No Telp: (021) 8935016 | Email: dpp.all@dpp.co.id | Web: dpp.co.id";
+  h3.font = { name: "Calibri", size: 9.5, color: { argb: "000000" } };
+  h3.alignment = { horizontal: "center", vertical: "middle" };
+
+  // Row Heights for Kop Surat
+  ws.getRow(1).height = 24;
+  ws.getRow(2).height = 18;
+  ws.getRow(3).height = 18;
+  ws.getRow(4).height = 12;
+
+  // Bottom double border under Kop Surat (spanning columns A to N)
+  for (let c = 1; c <= 14; c++) {
+    const cell = ws.getRow(3).getCell(c);
+    cell.border = {
+      ...cell.border,
+      bottom: { style: "double", color: { argb: "000000" } },
+    };
+  }
+
+  // 4. Document Title Section
+  ws.mergeCells("A5:N5");
+  const t1 = ws.getCell("A5");
+  t1.value = "LAMPIRAN BAST";
+  t1.font = { name: "Calibri", size: 12, bold: true, color: { argb: "000000" } };
+  t1.alignment = { horizontal: "center", vertical: "middle" };
+  ws.getRow(5).height = 20;
+
+  ws.mergeCells("A6:N6");
+  const t2 = ws.getCell("A6");
+  t2.value = "PT Dian Pandu Pratama";
+  t2.font = { name: "Calibri", size: 11, bold: true, color: { argb: "000000" } };
+  t2.alignment = { horizontal: "center", vertical: "middle" };
+  ws.getRow(6).height = 18;
+
+  ws.mergeCells("A7:N7");
+  const t3 = ws.getCell("A7");
+  t3.value = meta?.nomorBast?.trim() || "DPP/247/BASTMP/IX/2026";
+  t3.font = { name: "Calibri", size: 11, bold: true, color: { argb: "000000" } };
+  t3.alignment = { horizontal: "center", vertical: "middle" };
+  ws.getRow(7).height = 18;
+
+  ws.getRow(8).height = 12;
+
+  // 5. Introduction Paragraph
+  ws.mergeCells("A9:N9");
+  const introCell = ws.getCell("A9");
+  introCell.value =
+    "Pada hari ini telah diselesaikan proses Recruitment dari PT Dian Pandu Pratama atas permintaan Manpower yang telah diajukan sebelumnya oleh Pelanggan. Dengan ini kami menyerahkan Manpower ini sepenuhnya kepada pelanggan karena telah memenuhi standar dan kualifikasi yang diinginkan, dengan rincian sebagai berikut:";
+  introCell.font = { name: "Calibri", size: 9.5, color: { argb: "000000" } };
+  introCell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+  ws.getRow(9).height = 32;
+
+  ws.getRow(10).height = 12;
+
+  // 6. Table Header Row
+  const headers = [
+    "No",
+    "No. Request",
+    "No. B1",
+    "Tanggal Terima B1",
+    "Nama",
+    "NIK",
+    "Posisi",
+    "Status",
+    "NRP DPP",
+    "Area Kerja",
+    "Awal Kontrak",
+    "Akhir Kontrak",
+    "Link Sertifikat",
+    "Validasi",
+  ];
+
+  const headerRow = ws.getRow(11);
+  headerRow.height = 26;
+  headers.forEach((h, idx) => {
+    const cell = headerRow.getCell(idx + 1);
+    cell.value = h;
+    cell.font = { name: "Calibri", size: 10, bold: true, color: { argb: "000000" } };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "BDD7EE" }, // Slate blue accent
+    };
+    cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    cell.border = {
+      top: { style: "thin", color: { argb: "000000" } },
+      left: { style: "thin", color: { argb: "000000" } },
+      bottom: { style: "thin", color: { argb: "000000" } },
+      right: { style: "thin", color: { argb: "000000" } },
+    };
+  });
+
+  // 7. Table Data Rows
+  rows.forEach((row, idx) => {
+    const rowNum = 12 + idx;
+    const r = ws.getRow(rowNum);
+    r.height = 21;
+
+    // Normalizing values supporting both object structures
+    const no = row.no ?? row["No"] ?? idx + 1;
+    const noRequest = row.noRequest ?? row["No. Request"] ?? "-";
+    const noB1 = row.noB1 ?? row["No. B1"] ?? row["No. Form B1"] ?? "-";
+    const rawTglB1 = row.tanggalTerimaB1 ?? row["Tanggal Terima B1"] ?? "-";
+    const nama = (row.nama ?? row["Nama"] ?? row["Nama Kandidat"] ?? "-").toUpperCase();
+    const nik = String(row.nik ?? row["NIK"] ?? "-");
+    const posisi = (row.posisi ?? row["Posisi"] ?? "-").toUpperCase();
+    const status = (row.status ?? row["Status"] ?? "LOKAL").toUpperCase();
+    const nrpDpp = String(row.nrpDpp ?? row["NRP DPP"] ?? "-");
+    const areaKerja = (row.areaKerja ?? row["Area Kerja"] ?? "-").toUpperCase();
+    const rawAwal = row.awalKontrak ?? row["Awal Kontrak"] ?? "-";
+    const rawAkhir = row.akhirKontrak ?? row["Akhir Kontrak"] ?? "-";
+    const linkSertifikat = row.linkSertifikat ?? row["Link Sertifikat"] ?? "-";
+    const validasi = (row.validasi ?? row["Validasi"] ?? "VALID").toUpperCase();
+
+    const values = [
+      no,
+      noRequest,
+      noB1,
+      formatExcelDate(rawTglB1),
+      nama,
+      nik,
+      posisi,
+      status,
+      nrpDpp,
+      areaKerja,
+      formatExcelDate(rawAwal),
+      formatExcelDate(rawAkhir),
+      linkSertifikat,
+      validasi,
+    ];
+
+    values.forEach((val, cIdx) => {
+      const cell = r.getCell(cIdx + 1);
+
+      // Handle Hyperlink for Certificate Link (Col 13)
+      if (cIdx === 12 && val && val !== "-") {
+        const strVal = String(val).trim();
+        const isUrl = /^https?:\/\//i.test(strVal);
+
+        if (isUrl) {
+          let label = strVal;
+          try {
+            const urlObj = new URL(strVal);
+            const pathParts = urlObj.pathname.split("/");
+            const fn = pathParts[pathParts.length - 1];
+            if (fn) label = decodeURIComponent(fn);
+          } catch {}
+          cell.value = {
+            text: label,
+            hyperlink: strVal,
+          };
+        } else {
+          cell.value = strVal;
+        }
+
+        cell.font = {
+          name: "Calibri",
+          size: 10,
+          color: { argb: "0563C1" },
+          underline: true,
+        };
+      } else {
+        cell.value = val;
+        cell.font = { name: "Calibri", size: 10, color: { argb: "000000" } };
+      }
+
+      // Explicit string format for NIK & NRP to prevent scientific notation
+      if (cIdx === 5 || cIdx === 8) {
+        cell.numFmt = "@";
+      }
+
+      // Solid yellow fill as per requested BAST template layout
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFFF00" },
+      };
+
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border = {
+        top: { style: "thin", color: { argb: "000000" } },
+        left: { style: "thin", color: { argb: "000000" } },
+        bottom: { style: "thin", color: { argb: "000000" } },
+        right: { style: "thin", color: { argb: "000000" } },
+      };
+    });
+  });
+
+  // 8. Closing Paragraph
+  const closingRowIndex = 12 + rows.length + 1;
+  ws.getRow(closingRowIndex - 1).height = 12; // Spacing row
+
+  ws.mergeCells(`A${closingRowIndex}:N${closingRowIndex}`);
+  const closingCell = ws.getCell(`A${closingRowIndex}`);
+  closingCell.value = {
+    richText: [
+      {
+        text: "Demikian atas Surat Pernyataan & Berita Acara Serah Terima Manpower ini dibuat dengan sebenar - benarnya, selanjutnya untuk proses penagihan atas Manpower ini dimulai sejak ",
+        font: { name: "Calibri", size: 9.5, color: { argb: "000000" } },
+      },
+      {
+        text: "Awal Kontrak PKWT Dibuat.",
+        font: { name: "Calibri", size: 9.5, bold: true, color: { argb: "000000" } },
+      },
+    ],
+  };
+  closingCell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+  ws.getRow(closingRowIndex).height = 26;
+
+  // 9. Generate & Trigger Download via file-saver
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
 
   const cleanMonth = meta?.month ? meta.month.replace("-", "_") : "Report";
-  const cleanCustomer = meta?.customerName ? meta.customerName.replace(/[^a-zA-Z0-9]/g, "_") : "All";
-  XLSX.writeFile(wb, `BAST_${cleanCustomer}_${cleanMonth}.xlsx`);
+  const cleanCustomer = meta?.customerName
+    ? meta.customerName.replace(/[^a-zA-Z0-9]/g, "_")
+    : "All";
+  saveAs(blob, `BAST_${cleanCustomer}_${cleanMonth}.xlsx`);
 };

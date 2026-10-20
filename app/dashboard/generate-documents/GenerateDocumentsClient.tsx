@@ -31,6 +31,7 @@ import {
   Search,
   Plus,
   Trash2,
+  Loader2,
 } from "lucide-react";
 
 // -------------------------------------------------------------------------
@@ -229,6 +230,7 @@ export default function GenerateDocumentsClient({
   // -------------------------------------------------------------------------
   // 2. BAST STATES
   // -------------------------------------------------------------------------
+  const [bastNomorSurat, setBastNomorSurat] = useState("");
   const [bastMonth, setBastMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -240,6 +242,7 @@ export default function GenerateDocumentsClient({
   const [bastSearchQuery, setBastSearchQuery] = useState("");
   const [bastInputs, setBastInputs] = useState<Record<string, any>>({});
   const [isSavingBast, setIsSavingBast] = useState(false);
+  const [isGeneratingBastExcel, setIsGeneratingBastExcel] = useState(false);
 
   // -------------------------------------------------------------------------
   // 3. MCU STATES
@@ -282,6 +285,9 @@ export default function GenerateDocumentsClient({
     }
     if (!mcuNomorSurat) {
       setMcuNomorSurat(`001/HRD-DPP/MCU/${rMonth}/${year}`);
+    }
+    if (!bastNomorSurat) {
+      setBastNomorSurat(`DPP/247/BASTMP/${rMonth}/${year}`);
     }
 
     if (typeof window !== "undefined") {
@@ -502,7 +508,7 @@ export default function GenerateDocumentsClient({
           } catch (e) {}
         }
         newInputs[app.id] = {
-          status: initialData.status || "Diterima / Lolos",
+          status: initialData.status || "LOKAL",
           nrp: initialData.nrp || "",
           start: initialData.start || "",
           end: initialData.end || "",
@@ -596,52 +602,56 @@ export default function GenerateDocumentsClient({
     setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
-  const handleDownloadExcelBAST = () => {
+  const handleDownloadExcelBAST = async () => {
     if (bastSelectedApps.length === 0) {
       alert("Pilih minimal satu kandidat yang ingin disertakan dalam BAST.");
       return;
     }
 
-    const currentCustomer = customers.find((c) => c.id === bastCustomerId);
+    setIsGeneratingBastExcel(true);
+    try {
+      const currentCustomer = customers.find((c) => c.id === bastCustomerId);
 
-    const rows = bastSelectedApps
-      .map((appId, index) => {
-        const app = applications.find((a) => a.id === appId);
-        if (!app) return null;
-        const job = jobs.find((j) => j.id === app.jobId);
-        const cand = app.candidateProfile;
-        const inputs = bastInputs[appId] || {};
-        const site = sites.find((s) => s.id === job?.siteId);
+      const rows = bastSelectedApps
+        .map((appId, index) => {
+          const app = applications.find((a) => a.id === appId);
+          if (!app) return null;
+          const job = jobs.find((j) => j.id === app.jobId);
+          const cand = app.candidateProfile;
+          const inputs = bastInputs[appId] || {};
+          const site = sites.find((s) => s.id === job?.siteId);
 
-        return {
-          No: index + 1,
-          "No. Request": job?.noRegistrasi || "-",
-          "No. B1": job?.noB1 || "-",
-          "Tanggal Terima B1": job?.tanggalMasuk
-            ? new Date(job.tanggalMasuk).toLocaleDateString("id-ID")
-            : "-",
-          Nama: cand?.user?.name || cand?.nik || "-",
-          NIK: cand?.nik || "-",
-          Posisi: job?.posisi || "-",
-          Status: inputs.status || "Diterima / Lolos",
-          "NRP DPP": inputs.nrp || "-",
-          "Area Kerja": site?.name || job?.location || "-",
-          "Awal Kontrak": inputs.start
-            ? new Date(inputs.start).toLocaleDateString("id-ID")
-            : "-",
-          "Akhir Kontrak": inputs.end
-            ? new Date(inputs.end).toLocaleDateString("id-ID")
-            : "-",
-          "Link Sertifikat": inputs.link || "-",
-          Validasi: inputs.validasi || "Valid",
-        };
-      })
-      .filter(Boolean);
+          return {
+            no: index + 1,
+            noRequest: job?.noRegistrasi || "-",
+            noB1: job?.noB1 || "-",
+            tanggalTerimaB1: job?.tanggalMasuk || "-",
+            nama: cand?.user?.name || cand?.nik || "-",
+            nik: cand?.nik || "-",
+            posisi: job?.posisi || "-",
+            status: inputs.status || "LOKAL",
+            nrpDpp: inputs.nrp || "-",
+            areaKerja: site?.name || job?.location || "-",
+            awalKontrak: inputs.start || "-",
+            akhirKontrak: inputs.end || "-",
+            linkSertifikat: inputs.link || "-",
+            validasi: inputs.validasi || "Valid",
+          };
+        })
+        .filter(Boolean);
 
-    generateBastExcel(rows, {
-      customerName: currentCustomer?.name || "Customer",
-      month: bastMonth,
-    });
+      await generateBastExcel(rows, {
+        customerName: currentCustomer?.name || "Customer",
+        month: bastMonth,
+        nomorBast: bastNomorSurat,
+        logoUrl: "/logo_company.png",
+      });
+    } catch (err) {
+      console.error("Error generating Excel BAST:", err);
+      alert("Terjadi kesalahan saat memproses file Excel BAST.");
+    } finally {
+      setIsGeneratingBastExcel(false);
+    }
   };
 
   // -------------------------------------------------------------------------
@@ -1311,11 +1321,27 @@ export default function GenerateDocumentsClient({
                 )}
               </div>
 
-              {/* Filter Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Form & Filter Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
                   <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
-                    Periode Bulan & Tahun (Tanggal Masuk Lowongan)
+                    Nomor Dokumen BAST
+                  </label>
+                  <input
+                    type="text"
+                    value={bastNomorSurat}
+                    onChange={(e) => setBastNomorSurat(e.target.value)}
+                    placeholder="Contoh: DPP/247/BASTMP/IX/2026"
+                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface font-mono"
+                  />
+                  <p className="text-[11px] text-on-surface-variant mt-1">
+                    Nomor surat resmi lampiran BAST yang dicantumkan pada judul Excel.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
+                    Periode Bulan & Tahun (Tanggal Masuk)
                   </label>
                   <input
                     type="month"
@@ -1327,6 +1353,9 @@ export default function GenerateDocumentsClient({
                     }}
                     className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
                   />
+                  <p className="text-[11px] text-on-surface-variant mt-1">
+                    Filter lowongan berdasarkan bulan masuk.
+                  </p>
                 </div>
 
                 <div>
@@ -1350,6 +1379,9 @@ export default function GenerateDocumentsClient({
                       </option>
                     ))}
                   </select>
+                  <p className="text-[11px] text-on-surface-variant mt-1">
+                    Perusahaan mitra penerima serah terima.
+                  </p>
                 </div>
               </div>
 
@@ -1691,11 +1723,20 @@ export default function GenerateDocumentsClient({
                   </button>
                   <button
                     onClick={handleDownloadExcelBAST}
-                    disabled={bastSelectedApps.length === 0}
+                    disabled={bastSelectedApps.length === 0 || isGeneratingBastExcel}
                     className="px-5 py-2.5 text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
                   >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <span>Download Excel BAST (.xlsx)</span>
+                    {isGeneratingBastExcel ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Menyiapkan Excel BAST...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileSpreadsheet className="w-4 h-4" />
+                        <span>Download Excel BAST (.xlsx)</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
