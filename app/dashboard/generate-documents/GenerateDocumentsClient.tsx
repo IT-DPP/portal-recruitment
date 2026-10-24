@@ -6,9 +6,11 @@ import {
   generatePdfFromElement,
   printDocument,
   generateMcuDocx,
+  generateMcuBatchDocx,
   generateBastExcel,
   getBase64FromUrl,
   McuLetterData,
+  McuBatchDocumentData,
   OfferingLetterDataV2,
 } from "@/lib/document-generator";
 import {
@@ -16,6 +18,14 @@ import {
   batchSaveBastData,
   getDocumentGenerationData,
 } from "@/app/actions/document";
+import McuDocumentTemplate from "@/components/dashboard/documents/McuDocumentTemplate";
+import {
+  MCU_CLINICS,
+  McuClinic,
+  McuCandidateRow,
+  DEFAULT_MCU_CONTACT,
+  MOCK_MCU_CANDIDATES,
+} from "@/lib/mcu-clinics";
 import {
   FileText,
   FileSpreadsheet,
@@ -32,7 +42,19 @@ import {
   Plus,
   Trash2,
   Loader2,
+  Building2,
+  MapPin,
+  Users,
+  Filter,
+  CheckSquare,
+  Square,
+  Info,
+  Sparkles,
+  Building,
+  Briefcase,
+  ExternalLink,
 } from "lucide-react";
+
 
 // -------------------------------------------------------------------------
 // Reusable Repeatable Field Component
@@ -121,6 +143,8 @@ interface Props {
     customers: any[];
     sites: any[];
     stages: any[];
+    clinics?: any[];
+    provinces?: any[];
   };
   initialError?: string;
 }
@@ -138,6 +162,8 @@ export default function GenerateDocumentsClient({
     initialData?.customers || [],
   );
   const [sites, setSites] = useState<any[]>(initialData?.sites || []);
+  const [clinics, setClinics] = useState<any[]>(initialData?.clinics || []);
+  const [provinces, setProvinces] = useState<any[]>(initialData?.provinces || []);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{
@@ -245,20 +271,45 @@ export default function GenerateDocumentsClient({
   const [isGeneratingBastExcel, setIsGeneratingBastExcel] = useState(false);
 
   // -------------------------------------------------------------------------
-  // 3. MCU STATES
+  // 3. MCU STATES (Prototype Surat Pengantar MCU Batch)
   // -------------------------------------------------------------------------
   const [mcuNomorSurat, setMcuNomorSurat] = useState("");
-  const [mcuJobId, setMcuJobId] = useState("");
-  const [mcuAppId, setMcuAppId] = useState("");
-  const [mcuKlinik, setMcuKlinik] = useState("Klinik Kimia Farma");
-  const [mcuAlamatKlinik, setMcuAlamatKlinik] = useState("");
-  const [mcuTanggal, setMcuTanggal] = useState("");
-  const [mcuPaket, setMcuPaket] = useState(
-    "Paket MCU Standard (Fisik Lengkap, Darah Rutin, Urine, Rontgen Thorax, Bebas Narkoba 5 Parameter)",
-  );
-  const [mcuCatatan, setMcuCatatan] = useState(
-    "1. Calon karyawan wajib berpuasa minimal 10-12 jam sebelum pengambilan darah (hanya diperbolehkan minum air putih).\n2. Membawa KTP / Kartu Identitas asli dan hadir 15 menit sebelum waktu pemeriksaan.\n3. Istirahat cukup pada malam hari sebelum pemeriksaan.",
-  );
+  const [mcuProvinceId, setMcuProvinceId] = useState<string>("");
+  const [mcuClinicId, setMcuClinicId] = useState<string>("");
+  const [mcuFilterPosisi, setMcuFilterPosisi] = useState<string>("");
+  const [mcuFilterSite, setMcuFilterSite] = useState<string>("");
+  const [mcuFilterCustomer, setMcuFilterCustomer] = useState<string>("");
+  const [mcuSearchQuery, setMcuSearchQuery] = useState<string>("");
+  const [mcuSelectedCandIds, setMcuSelectedCandIds] = useState<string[]>([
+    "mock-mcu-1",
+    "mock-mcu-2",
+  ]);
+  const [mcuCandidateOverrides, setMcuCandidateOverrides] = useState<
+    Record<string, { kategori?: string; paketMcu?: string }>
+  >({});
+
+  // Auto-select initial clinic and province when clinics load
+  useEffect(() => {
+    if (clinics.length > 0 && !mcuClinicId) {
+      const firstClinic = clinics[0];
+      if (firstClinic.provinceId) {
+        setMcuProvinceId(firstClinic.provinceId);
+      }
+      setMcuClinicId(firstClinic.id);
+    }
+  }, [clinics, mcuClinicId]);
+
+  const handleProvinceChange = (provId: string) => {
+    setMcuProvinceId(provId);
+    const matching = provId
+      ? clinics.filter((c) => c.provinceId === provId)
+      : clinics;
+    if (matching.length > 0) {
+      setMcuClinicId(matching[0].id);
+    } else {
+      setMcuClinicId("");
+    }
+  };
 
   // Auto-generate surat numbers on load
   useEffect(() => {
@@ -278,17 +329,18 @@ export default function GenerateDocumentsClient({
       "XI",
       "XII",
     ];
-    const rMonth = romanMonths[month - 1] || "I";
+    const rMonth = romanMonths[month - 1] || "X";
 
     if (!nomorSurat) {
       setNomorSurat(`DPP/750/OL/${rMonth}/${year}`);
     }
     if (!mcuNomorSurat) {
-      setMcuNomorSurat(`001/HRD-DPP/MCU/${rMonth}/${year}`);
+      setMcuNomorSurat(`DPP/807/SKE/${rMonth}/${year}`);
     }
     if (!bastNomorSurat) {
       setBastNomorSurat(`DPP/247/BASTMP/${rMonth}/${year}`);
     }
+
 
     if (typeof window !== "undefined") {
       getBase64FromUrl("/logo_company.png").then((b64) => {
@@ -307,6 +359,8 @@ export default function GenerateDocumentsClient({
         setApplications(res.applications || []);
         setCustomers(res.customers || []);
         setSites(res.sites || []);
+        if (res.clinics) setClinics(res.clinics);
+        if (res.provinces) setProvinces(res.provinces);
         setFeedbackMsg({
           type: "success",
           text: "Data database berhasil dimuat ulang.",
@@ -655,67 +709,200 @@ export default function GenerateDocumentsClient({
   };
 
   // -------------------------------------------------------------------------
-  // MCU LOGIC
+  // MCU LOGIC (Prototype Surat Pengantar MCU Batch)
   // -------------------------------------------------------------------------
-  const selectedMcuJob = useMemo(() => {
-    return jobs.find((j) => j.id === mcuJobId);
-  }, [jobs, mcuJobId]);
+  // Clinics filtered by selected province
+  const availableMcuClinics = useMemo(() => {
+    if (!mcuProvinceId) return clinics;
+    return clinics.filter((c) => c.provinceId === mcuProvinceId);
+  }, [clinics, mcuProvinceId]);
 
-  const mcuJobApplications = useMemo(() => {
-    if (!mcuJobId) return [];
-    return applications.filter((app) => app.jobId === mcuJobId);
-  }, [applications, mcuJobId]);
-
-  const selectedMcuApp = useMemo(() => {
-    return applications.find((a) => a.id === mcuAppId);
-  }, [applications, mcuAppId]);
-
-  const selectedMcuCand = selectedMcuApp?.candidateProfile;
-
-  useEffect(() => {
-    if (selectedMcuApp?.stageData) {
-      try {
-        const sd =
-          typeof selectedMcuApp.stageData === "string"
-            ? JSON.parse(selectedMcuApp.stageData)
-            : selectedMcuApp.stageData;
-        if (sd.mcu) {
-          if (sd.mcu.nomorSurat) setMcuNomorSurat(sd.mcu.nomorSurat);
-          if (sd.mcu.klinik) setMcuKlinik(sd.mcu.klinik);
-          if (sd.mcu.alamatKlinik) setMcuAlamatKlinik(sd.mcu.alamatKlinik);
-          if (sd.mcu.tanggal) setMcuTanggal(sd.mcu.tanggal);
-          if (sd.mcu.paket) setMcuPaket(sd.mcu.paket);
-          if (sd.mcu.catatan) setMcuCatatan(sd.mcu.catatan);
-        }
-      } catch (e) {}
+  const selectedClinic: McuClinic = useMemo(() => {
+    const found = clinics.find((c) => c.id === mcuClinicId);
+    if (found) {
+      return {
+        id: found.id,
+        code: found.code,
+        name: found.name,
+        nama: found.name,
+        address: found.address,
+        alamat: found.address,
+        provinceId: found.provinceId,
+        province: found.province,
+        wilayah: found.province?.name || "-",
+        site: "-",
+      };
     }
-  }, [mcuAppId]);
-
-  const handleSaveMcuToDb = async () => {
-    if (!mcuAppId) {
-      alert("Pilih kandidat terlebih dahulu.");
-      return;
+    if (clinics.length > 0) {
+      const first = clinics[0];
+      return {
+        id: first.id,
+        code: first.code,
+        name: first.name,
+        nama: first.name,
+        address: first.address,
+        alamat: first.address,
+        provinceId: first.provinceId,
+        province: first.province,
+        wilayah: first.province?.name || "-",
+        site: "-",
+      };
     }
-    const res = await saveCandidateDocumentData(mcuAppId, "mcu", {
-      nomorSurat: mcuNomorSurat,
-      klinik: mcuKlinik,
-      alamatKlinik: mcuAlamatKlinik,
-      tanggal: mcuTanggal,
-      paket: mcuPaket,
-      catatan: mcuCatatan,
+    return (
+      MCU_CLINICS.find((c) => c.id === mcuClinicId) || MCU_CLINICS[0]
+    );
+  }, [clinics, mcuClinicId]);
+
+  // Helper to determine if an application reached MCU stage
+  const isCandidateAtMcuStage = (app: any) => {
+    const stageId = (app.currentStageId || "").toLowerCase();
+    const stageName = (app.currentStage?.name || "").toLowerCase();
+    const orderIndex = app.currentStage?.orderIndex;
+    const inHistory = app.history?.some(
+      (h: any) =>
+        (h.stageId || "").toLowerCase() === "stage_7" ||
+        (h.stage?.name || "").toLowerCase().includes("mcu")
+    );
+    return (
+      stageId === "stage_7" ||
+      stageName.includes("mcu") ||
+      (typeof orderIndex === "number" && orderIndex >= 7) ||
+      inHistory ||
+      app.status === "HIRED"
+    );
+  };
+
+  // Build full pool of candidates at MCU stage (combining active DB applications + mock prototype candidates)
+  const allMcuCandidates = useMemo(() => {
+    const dbCandidates: McuCandidateRow[] = applications
+      .filter(isCandidateAtMcuStage)
+      .map((app) => {
+        const job = jobs.find((j) => j.id === app.jobId);
+        const cand = app.candidateProfile;
+        const site = sites.find((s) => s.id === job?.siteId);
+        const customer = customers.find((c) => c.id === job?.customerId);
+        return {
+          id: app.id,
+          nama: (cand?.user?.name || cand?.nik || "Kandidat").toUpperCase(),
+          nik: cand?.nik || "-",
+          posisi: (job?.posisi || "WELDER").toUpperCase(),
+          kategori: "PRE EMPLOYEE",
+          paketMcu: site?.mcuPackage || "Paket Standar OHS Tambang - Fit to Work",
+          site: site?.name || job?.location || "Head Office / Cikarang",
+          customer: customer?.name || job?.customerName || "PT. Dian Pandu Pratama",
+          jobOpeningId: job?.id,
+          applicationId: app.id,
+        };
+      });
+
+    // Merge with prototype mock candidates so it is immediately interactive out of the box
+    const existingIds = new Set(dbCandidates.map((c) => c.id));
+    const merged = [...dbCandidates];
+    for (const mock of MOCK_MCU_CANDIDATES) {
+      if (!existingIds.has(mock.id)) {
+        merged.push(mock);
+      }
+    }
+    return merged;
+  }, [applications, jobs, sites, customers]);
+
+  // Unique Filter Options
+  const mcuPositions = useMemo(() => {
+    const pos = Array.from(new Set(allMcuCandidates.map((c) => c.posisi))).filter(Boolean);
+    return pos.sort();
+  }, [allMcuCandidates]);
+
+  const mcuSites = useMemo(() => {
+    const sts = Array.from(new Set(allMcuCandidates.map((c) => c.site))).filter(Boolean);
+    return sts.sort();
+  }, [allMcuCandidates]);
+
+  const mcuCustomers = useMemo(() => {
+    const custs = Array.from(new Set(allMcuCandidates.map((c) => c.customer))).filter(Boolean);
+    return custs.sort();
+  }, [allMcuCandidates]);
+
+  // Filtered Candidate List
+  const filteredMcuCandidates = useMemo(() => {
+    return allMcuCandidates.filter((cand) => {
+      if (mcuFilterPosisi && cand.posisi !== mcuFilterPosisi) return false;
+      if (mcuFilterSite && cand.site !== mcuFilterSite) return false;
+      if (mcuFilterCustomer && cand.customer !== mcuFilterCustomer) return false;
+      if (mcuSearchQuery) {
+        const q = mcuSearchQuery.toLowerCase();
+        const matchName = cand.nama.toLowerCase().includes(q);
+        const matchNik = cand.nik.toLowerCase().includes(q);
+        const matchPos = cand.posisi.toLowerCase().includes(q);
+        if (!matchName && !matchNik && !matchPos) return false;
+      }
+      return true;
     });
-    if (res.success) {
-      setFeedbackMsg({
-        type: "success",
-        text: "Data Pengantar MCU tersimpan di database.",
+  }, [
+    allMcuCandidates,
+    mcuFilterPosisi,
+    mcuFilterSite,
+    mcuFilterCustomer,
+    mcuSearchQuery,
+  ]);
+
+  // Selected candidates prepared for document rendering
+  const selectedMcuCandidatesList = useMemo(() => {
+    return mcuSelectedCandIds
+      .map((id) => allMcuCandidates.find((c) => c.id === id))
+      .filter((c): c is McuCandidateRow => Boolean(c))
+      .map((cand, idx) => {
+        const overrides = mcuCandidateOverrides[cand.id] || {};
+        return {
+          id: cand.id,
+          no: idx + 1,
+          nama: cand.nama,
+          nik: cand.nik,
+          posisi: cand.posisi,
+          kategori: overrides.kategori || cand.kategori || "PRE EMPLOYEE",
+          paketMcu:
+            overrides.paketMcu || cand.paketMcu || "Paket Standar OHS Tambang - Fit to Work",
+          site: cand.site,
+          customer: cand.customer,
+        };
       });
-    } else {
-      setFeedbackMsg({
-        type: "error",
-        text: res.error || "Gagal menyimpan ke database.",
-      });
-    }
-    setTimeout(() => setFeedbackMsg(null), 4000);
+  }, [
+    mcuSelectedCandIds,
+    allMcuCandidates,
+    mcuCandidateOverrides,
+  ]);
+
+  const handleToggleSelectCandidate = (id: string) => {
+    setMcuSelectedCandIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllFiltered = () => {
+    const filteredIds = filteredMcuCandidates.map((c) => c.id);
+    setMcuSelectedCandIds((prev) =>
+      Array.from(new Set([...prev, ...filteredIds]))
+    );
+  };
+
+  const handleDeselectAllFiltered = () => {
+    const filteredIdSet = new Set(filteredMcuCandidates.map((c) => c.id));
+    setMcuSelectedCandIds((prev) =>
+      prev.filter((id) => !filteredIdSet.has(id))
+    );
+  };
+
+  const handleUpdateCandidateOverride = (
+    id: string,
+    field: "kategori" | "paketMcu",
+    value: string
+  ) => {
+    setMcuCandidateOverrides((prev) => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [field]: value,
+      },
+    }));
   };
 
   // -------------------------------------------------------------------------
@@ -738,7 +925,7 @@ export default function GenerateDocumentsClient({
     await generatePdfFromElement(
       "offering-pdf-template",
       `Offering_Letter_${candidateFullName.replace(/\s+/g, "_")}`,
-      "/logo_company.png",
+      "/logo_company.png"
     );
     setIsDownloading(false);
   };
@@ -751,53 +938,82 @@ export default function GenerateDocumentsClient({
     printDocument(
       "offering-pdf-template",
       `Offering Letter - ${candidateFullName}`,
-      "/logo_company.png",
+      "/logo_company.png"
     );
   };
 
   const handleDownloadMcuDocx = () => {
-    if (!mcuNomorSurat || !selectedMcuJob || !selectedMcuCand) {
-      alert("Harap lengkapi form MCU dengan benar.");
+    if (!mcuNomorSurat) {
+      alert("Harap isi Nomor Surat terlebih dahulu.");
       return;
     }
-    const data: McuLetterData = {
+    if (selectedMcuCandidatesList.length === 0) {
+      alert("Pilih minimal satu kandidat yang sudah mencapai tahap MCU.");
+      return;
+    }
+    const batchData: McuBatchDocumentData = {
       nomorSurat: mcuNomorSurat,
-      namaKandidat: selectedMcuCand.user?.name || "Kandidat",
-      nik: selectedMcuCand.nik || "-",
-      posisi: selectedMcuJob.posisi,
-      namaPerusahaan: selectedMcuJob.customerName,
-      klinikTujuan: mcuKlinik,
-      alamatKlinik: mcuAlamatKlinik,
-      tanggalPelaksanaan: mcuTanggal ? new Date(mcuTanggal) : null,
-      paketPemeriksaan: mcuPaket,
-      catatan: mcuCatatan,
+      perihal: "Surat Pengantar MCU",
+      klinikNama: selectedClinic.name || selectedClinic.nama || "Klinik Rekanan MCU",
+      klinikAlamat: selectedClinic.address || selectedClinic.alamat || "-",
+      candidates: selectedMcuCandidatesList.map((c, i) => ({
+        no: i + 1,
+        nama: c.nama,
+        nik: c.nik,
+        posisi: c.posisi,
+        kategori: c.kategori,
+        paketMcu: c.paketMcu,
+      })),
+      picNama: DEFAULT_MCU_CONTACT.picName,
+      picJabatan: DEFAULT_MCU_CONTACT.picJabatan,
+      picTelepon: DEFAULT_MCU_CONTACT.picPhone,
+      emails: DEFAULT_MCU_CONTACT.resultEmails,
+      billingPerusahaan: DEFAULT_MCU_CONTACT.billing.company,
+      billingUp: DEFAULT_MCU_CONTACT.billing.up,
+      billingAlamat: DEFAULT_MCU_CONTACT.billing.address,
+      kota: DEFAULT_MCU_CONTACT.signee.city,
+      tanggalSurat: formattedDate,
+      signeeNama: DEFAULT_MCU_CONTACT.signee.name,
+      signeeJabatan: DEFAULT_MCU_CONTACT.signee.title,
     };
-    generateMcuDocx(data, "/icon.png");
+    generateMcuBatchDocx(batchData, "/logo_company.png");
   };
 
   const handleDownloadMcuPdf = async () => {
-    if (!mcuNomorSurat || !selectedMcuJob || !selectedMcuCand) {
-      alert("Harap lengkapi form MCU dengan benar.");
+    if (!mcuNomorSurat) {
+      alert("Harap isi Nomor Surat terlebih dahulu.");
+      return;
+    }
+    if (selectedMcuCandidatesList.length === 0) {
+      alert("Pilih minimal satu kandidat yang sudah mencapai tahap MCU.");
       return;
     }
     setIsDownloading(true);
+    const cleanSurat = mcuNomorSurat.replace(/[\/\\]/g, "_");
     await generatePdfFromElement(
       "mcu-pdf-template",
-      `Surat_Pengantar_MCU_${(selectedMcuCand.user?.name || "Kandidat").replace(/\s+/g, "_")}`,
+      `Surat_Pengantar_MCU_${cleanSurat}`,
+      "/logo_company.png"
     );
     setIsDownloading(false);
   };
 
   const handlePrintMcu = () => {
-    if (!mcuNomorSurat || !selectedMcuJob || !selectedMcuCand) {
-      alert("Harap lengkapi form MCU dengan benar.");
+    if (!mcuNomorSurat) {
+      alert("Harap isi Nomor Surat terlebih dahulu.");
+      return;
+    }
+    if (selectedMcuCandidatesList.length === 0) {
+      alert("Pilih minimal satu kandidat yang sudah mencapai tahap MCU.");
       return;
     }
     printDocument(
       "mcu-pdf-template",
-      `Surat Pengantar MCU - ${selectedMcuCand.user?.name || "Kandidat"}`,
+      `Surat Pengantar MCU - ${mcuNomorSurat}`,
+      "/logo_company.png"
     );
   };
+
 
   // Current formatted date
   const formattedDate = new Date().toLocaleDateString("id-ID", {
@@ -1744,206 +1960,504 @@ export default function GenerateDocumentsClient({
           )}
 
           {/* ========================================================================= */}
-          {/* 3. SURAT PENGANTAR MCU TAB */}
+          {/* 3. SURAT PENGANTAR MCU TAB (Prototype DPP Site Operations) */}
           {/* ========================================================================= */}
           {documentType === "mcu" && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between pb-3 border-b border-table-border">
+              {/* Header Info */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-table-border">
                 <div>
-                  <h2 className="text-base font-semibold text-on-surface">
-                    Form Surat Pengantar Medical Check-Up (MCU)
-                  </h2>
-                  <p className="text-xs text-on-surface-variant">
-                    Terbitkan surat rujukan resmi pemeriksaan kesehatan bagi
-                    calon karyawan ke klinik atau laboratorium rekanan.
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-semibold text-on-surface">
+                      Form Surat Pengantar Medical Check-Up (MCU)
+                    </h2>
+                    <span className="px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-800 rounded-full border border-emerald-300">
+                      Multi-Candidate
+                    </span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    Pilih klinik rujukan site operations dan centang kandidat yang telah mencapai tahap seleksi MCU untuk diterbitkan dokumen pengantar resmi.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={handleSaveMcuToDb}
-                    disabled={!mcuAppId}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-lg transition-colors cursor-pointer disabled:opacity-40"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Simpan ke DB</span>
-                  </button>
-                  <button
+                    type="button"
                     onClick={() => setIsPreviewOpen(true)}
-                    disabled={!selectedMcuJob || !selectedMcuCand}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-lg transition-colors disabled:opacity-40 cursor-pointer"
+                    disabled={selectedMcuCandidatesList.length === 0}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-lg transition-colors disabled:opacity-40 cursor-pointer shadow-xs"
                   >
-                    <Eye className="w-3.5 h-3.5" />
+                    <Eye className="w-3.5 h-3.5 text-primary" />
                     <span>Live Preview</span>
+                    <span className="ml-1 px-1.5 py-0.2 bg-primary/10 text-primary text-[10px] rounded-full font-bold">
+                      {selectedMcuCandidatesList.length}
+                    </span>
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Form Input: No. Surat & Cascading Filter Provinsi -> Klinik */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* 1. No Surat */}
                 <div>
-                  <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
-                    Nomor Surat Pengantar
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-on-surface uppercase">
+                      No. Surat Pengantar <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[11px] text-on-surface-variant font-medium">
+                      Free Text
+                    </span>
+                  </div>
                   <input
                     type="text"
                     value={mcuNomorSurat}
                     onChange={(e) => setMcuNomorSurat(e.target.value)}
-                    placeholder="Contoh: 001/HRD-DPP/MCU/III/2026"
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
+                    placeholder="Contoh: DPP/807/SKE/X/2026"
+                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface font-mono"
                   />
+                  <p className="text-[11px] text-on-surface-variant mt-1">
+                    Format penomoran dokumen resmi Head Office / Site.
+                  </p>
                 </div>
 
+                {/* 2. Dropdown Provinsi Klinik (Master Data) */}
                 <div>
-                  <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
-                    Lowongan Pekerjaan (Database)
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-on-surface uppercase">
+                      Provinsi Klinik <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[11px] text-on-surface-variant font-medium">
+                      Master Wilayah
+                    </span>
+                  </div>
                   <select
-                    value={mcuJobId}
-                    onChange={(e) => {
-                      setMcuJobId(e.target.value);
-                      setMcuAppId("");
-                    }}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
+                    value={mcuProvinceId}
+                    onChange={(e) => handleProvinceChange(e.target.value)}
+                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface font-medium cursor-pointer"
                   >
-                    <option value="">-- Pilih Lowongan Pekerjaan --</option>
-                    {jobs.map((job) => (
-                      <option key={job.id} value={job.id}>
-                        {job.noRegistrasi} - {job.posisi} ({job.customerName})
+                    <option value="">-- Semua Provinsi --</option>
+                    {provinces.map((prov) => (
+                      <option key={prov.id} value={prov.id}>
+                        {prov.name} ({prov.code})
                       </option>
                     ))}
                   </select>
+                  <p className="text-[11px] text-on-surface-variant mt-1">
+                    Pilih provinsi untuk memfilter daftar klinik rujukan.
+                  </p>
                 </div>
 
+                {/* 3. Dropdown Opsi Klinik berdasarkan Provinsi */}
                 <div>
-                  <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
-                    Kandidat untuk MCU
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-on-surface uppercase">
+                      Pilihan Klinik MCU <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[11px] text-on-surface-variant font-medium">
+                      {availableMcuClinics.length} klinik tersedia
+                    </span>
+                  </div>
                   <select
-                    value={mcuAppId}
-                    onChange={(e) => setMcuAppId(e.target.value)}
-                    disabled={!mcuJobId || mcuJobApplications.length === 0}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface disabled:opacity-50"
+                    value={mcuClinicId}
+                    onChange={(e) => setMcuClinicId(e.target.value)}
+                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface font-medium cursor-pointer"
                   >
-                    <option value="">
-                      {!mcuJobId
-                        ? "-- Pilih Lowongan Terlebih Dahulu --"
-                        : mcuJobApplications.length === 0
-                          ? "-- Tidak ada kandidat pada lowongan ini --"
-                          : "-- Pilih Kandidat --"}
-                    </option>
-                    {mcuJobApplications.map((app) => (
-                      <option key={app.id} value={app.id}>
-                        {app.candidateProfile?.user?.name || "Kandidat"} (
-                        {app.currentStage?.name || app.status})
-                      </option>
-                    ))}
+                    {availableMcuClinics.length === 0 ? (
+                      <option value="">Belum ada klinik di provinsi terpilih</option>
+                    ) : (
+                      availableMcuClinics.map((clinic) => (
+                        <option key={clinic.id} value={clinic.id}>
+                          {clinic.name || clinic.nama} {clinic.code ? `(${clinic.code})` : ""}
+                        </option>
+                      ))
+                    )}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
-                    Tanggal Pelaksanaan MCU
-                  </label>
-                  <input
-                    type="date"
-                    value={mcuTanggal}
-                    onChange={(e) => setMcuTanggal(e.target.value)}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
-                    Klinik / RS Rekanan Rujukan
-                  </label>
-                  <input
-                    type="text"
-                    value={mcuKlinik}
-                    onChange={(e) => setMcuKlinik(e.target.value)}
-                    placeholder="Contoh: Klinik Kimia Farma / RS Siloam / Prodia"
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
-                    Alamat / Lokasi Klinik (Opsional)
-                  </label>
-                  <input
-                    type="text"
-                    value={mcuAlamatKlinik}
-                    onChange={(e) => setMcuAlamatKlinik(e.target.value)}
-                    placeholder="Contoh: Jl. Ahmad Yani No. 12, Balikpapan"
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
-                  />
+                  <p className="text-[11px] text-on-surface-variant mt-1">
+                    Klinik tujuan pelaksanaan pemeriksaan kesehatan kandidat.
+                  </p>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
-                  Paket Pemeriksaan MCU
-                </label>
-                <input
-                  type="text"
-                  value={mcuPaket}
-                  onChange={(e) => setMcuPaket(e.target.value)}
-                  className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
-                />
+              {/* Detail Info Card Klinik Terpilih */}
+              <div className="bg-surface-container-low border border-table-border rounded-xl p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-bold text-on-surface">
+                      {selectedClinic.name || selectedClinic.nama}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                      <MapPin className="w-3 h-3" />
+                      Provinsi: {selectedClinic.province?.name || selectedClinic.wilayah || "-"}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      <Sparkles className="w-3 h-3" />
+                      Paket MCU: Dari Site Operations
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs pt-1 border-t border-table-border/60">
+                  <div className="md:col-span-8">
+                    <span className="font-semibold text-on-surface-variant block mb-0.5">
+                      Alamat Lengkap Klinik (Dicetak pada Surat Pengantar):
+                    </span>
+                    <p className="text-on-surface leading-relaxed">
+                      {selectedClinic.address || selectedClinic.alamat}
+                    </p>
+                  </div>
+                  <div className="md:col-span-4">
+                    <span className="font-semibold text-on-surface-variant block mb-0.5">
+                      Ketentuan Paket Pemeriksaan:
+                    </span>
+                    <div className="p-2 bg-surface-container-lowest rounded border border-table-border/80 text-on-surface text-[11px] leading-relaxed">
+                      <p className="text-on-surface-variant text-[11px]">
+                        Standar paket MCU masing-masing kandidat terkonfigurasi secara dinamis sesuai ketentuan penempatan <strong>Site Operations</strong>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
-                  Catatan & Persiapan Calon Karyawan
-                </label>
-                <textarea
-                  rows={3}
-                  value={mcuCatatan}
-                  onChange={(e) => setMcuCatatan(e.target.value)}
-                  className="w-full bg-surface-container-lowest border border-table-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
-                />
+              {/* ===================================================================== */}
+              {/* SECTION: SELEKSI KANDIDAT STAGE MCU */}
+              {/* ===================================================================== */}
+              <div className="space-y-3 pt-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <h3 className="text-sm font-bold text-on-surface">
+                        Pilih Kandidat (Khusus Stage: MCU)
+                      </h3>
+                      <span className="px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">
+                        {allMcuCandidates.length} Kandidat Tersedia
+                      </span>
+                    </div>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      Dapat memilih kandidat dari berbagai area, posisi, dan customer asalkan telah mencapai tahap seleksi MCU.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllFiltered}
+                      className="px-2.5 py-1.5 text-xs font-semibold bg-surface border border-table-border text-on-surface hover:bg-surface-container rounded-lg transition-colors cursor-pointer"
+                    >
+                      Pilih Semua ({filteredMcuCandidates.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeselectAllFiltered}
+                      className="px-2.5 py-1.5 text-xs font-semibold bg-surface border border-table-border text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors cursor-pointer"
+                    >
+                      Batal Pilih
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter Bar (Posisi, Site Operations, Customer, & Search) */}
+                <div className="bg-surface-container-low p-3 rounded-xl border border-table-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {/* Filter Posisi */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-on-surface-variant uppercase mb-1">
+                      Filter Posisi / Job
+                    </label>
+                    <select
+                      value={mcuFilterPosisi}
+                      onChange={(e) => setMcuFilterPosisi(e.target.value)}
+                      className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="">Semua Posisi ({mcuPositions.length})</option>
+                      {mcuPositions.map((pos) => (
+                        <option key={pos} value={pos}>
+                          {pos}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filter Site Operations */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-on-surface-variant uppercase mb-1">
+                      Filter Site Operations
+                    </label>
+                    <select
+                      value={mcuFilterSite}
+                      onChange={(e) => setMcuFilterSite(e.target.value)}
+                      className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="">Semua Site ({mcuSites.length})</option>
+                      {mcuSites.map((site) => (
+                        <option key={site} value={site}>
+                          {site}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filter Customer */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-on-surface-variant uppercase mb-1">
+                      Filter Customer
+                    </label>
+                    <select
+                      value={mcuFilterCustomer}
+                      onChange={(e) => setMcuFilterCustomer(e.target.value)}
+                      className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="">Semua Customer ({mcuCustomers.length})</option>
+                      {mcuCustomers.map((cust) => (
+                        <option key={cust} value={cust}>
+                          {cust}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Search Query */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-on-surface-variant uppercase mb-1">
+                      Cari Nama / NIK
+                    </label>
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-on-surface-variant absolute left-2.5 top-2.5" />
+                      <input
+                        type="text"
+                        value={mcuSearchQuery}
+                        onChange={(e) => setMcuSearchQuery(e.target.value)}
+                        placeholder="Ketik nama atau NIK..."
+                        className="w-full bg-surface-container-lowest border border-table-border rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Candidate Selection Table */}
+                <div className="border border-table-border rounded-xl overflow-hidden bg-surface">
+                  <div className="overflow-x-auto max-h-[380px]">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-surface-container-low text-on-surface-variant uppercase font-semibold sticky top-0 border-b border-table-border z-10">
+                        <tr>
+                          <th className="p-3 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={
+                                filteredMcuCandidates.length > 0 &&
+                                filteredMcuCandidates.every((c) =>
+                                  mcuSelectedCandIds.includes(c.id)
+                                )
+                              }
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  handleSelectAllFiltered();
+                                } else {
+                                  handleDeselectAllFiltered();
+                                }
+                              }}
+                              className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                              title="Pilih semua yang sedang difilter"
+                            />
+                          </th>
+                          <th className="p-3 w-12 text-center">NO</th>
+                          <th className="p-3 min-w-[200px]">NAMA & NIK</th>
+                          <th className="p-3 min-w-[150px]">POSISI</th>
+                          <th className="p-3 min-w-[160px]">SITE & CUSTOMER</th>
+                          <th className="p-3 min-w-[130px]">KATEGORI</th>
+                          <th className="p-3 min-w-[240px]">PAKET MCU</th>
+                          <th className="p-3 w-24 text-center">STATUS</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-table-border/60">
+                        {filteredMcuCandidates.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={8}
+                              className="p-8 text-center text-on-surface-variant italic"
+                            >
+                              Tidak ada kandidat di stage MCU yang sesuai dengan kriteria filter saat ini.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredMcuCandidates.map((cand, idx) => {
+                            const isSelected = mcuSelectedCandIds.includes(cand.id);
+                            const overrides = mcuCandidateOverrides[cand.id] || {};
+                            const currentKategori =
+                              overrides.kategori || cand.kategori || "PRE EMPLOYEE";
+                            const currentPaket =
+                              overrides.paketMcu ||
+                              cand.paketMcu ||
+                              "Paket Standar OHS Tambang - Fit to Work";
+
+                            return (
+                              <tr
+                                key={cand.id}
+                                className={`transition-colors hover:bg-surface-container-low/60 ${
+                                  isSelected ? "bg-primary/5" : ""
+                                }`}
+                              >
+                                <td className="p-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => handleToggleSelectCandidate(cand.id)}
+                                    className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                                  />
+                                </td>
+                                <td className="p-3 text-center font-medium text-on-surface-variant">
+                                  {idx + 1}
+                                </td>
+                                <td className="p-3">
+                                  <div className="font-bold text-on-surface">
+                                    {cand.nama}
+                                  </div>
+                                  <div className="text-[11px] font-mono text-on-surface-variant">
+                                    NIK: {cand.nik}
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <span className="inline-block px-2 py-0.5 font-semibold text-[11px] rounded bg-surface-container border border-table-border text-on-surface">
+                                    {cand.posisi}
+                                  </span>
+                                </td>
+                                <td className="p-3">
+                                  <div className="font-semibold text-on-surface">
+                                    {cand.site}
+                                  </div>
+                                  <div className="text-[11px] text-on-surface-variant">
+                                    {cand.customer}
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <select
+                                    value={currentKategori}
+                                    onChange={(e) =>
+                                      handleUpdateCandidateOverride(
+                                        cand.id,
+                                        "kategori",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="bg-surface-container-lowest border border-table-border rounded px-2 py-1 text-xs text-on-surface font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer w-full"
+                                  >
+                                    <option value="PRE EMPLOYEE">PRE EMPLOYEE</option>
+                                    <option value="EMPLOYEE">EMPLOYEE</option>
+                                    <option value="INTERNSHIP">INTERNSHIP</option>
+                                  </select>
+                                </td>
+                                <td className="p-3">
+                                  <input
+                                    type="text"
+                                    value={currentPaket}
+                                    onChange={(e) =>
+                                      handleUpdateCandidateOverride(
+                                        cand.id,
+                                        "paketMcu",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full bg-surface-container-lowest border border-table-border rounded px-2 py-1 text-[11px] text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                                    placeholder="Paket MCU kandidat..."
+                                  />
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    MCU Stage
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Candidate Selection Summary */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-surface-container-low rounded-xl border border-table-border">
+                  <div className="flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-semibold text-on-surface">
+                      {selectedMcuCandidatesList.length} dari {allMcuCandidates.length} kandidat dipilih untuk dicetak pada Surat Pengantar MCU
+                    </span>
+                  </div>
+
+                  {selectedMcuCandidatesList.length === 0 && (
+                    <span className="text-xs text-red-600 font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      Centang minimal 1 kandidat di atas untuk mengaktifkan download.
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Action Buttons for MCU */}
-              <div className="pt-4 border-t border-table-border flex flex-wrap justify-end gap-3">
-                <button
-                  onClick={() => setIsPreviewOpen(true)}
-                  disabled={!selectedMcuJob || !selectedMcuCand}
-                  className="px-4 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span>Preview</span>
-                </button>
-                <button
-                  onClick={handlePrintMcu}
-                  disabled={!selectedMcuJob || !selectedMcuCand}
-                  className="px-4 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40"
-                  title="Cetak langsung atau simpan via browser print engine"
-                >
-                  <Printer className="w-4 h-4 text-neutral-600" />
-                  <span>Cetak / Print</span>
-                </button>
-                <button
-                  onClick={handleDownloadMcuPdf}
-                  disabled={
-                    !selectedMcuJob || !selectedMcuCand || isDownloading
-                  }
-                  className="px-5 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40"
-                >
-                  <Download className="w-4 h-4 text-red-600" />
+              <div className="pt-4 border-t border-table-border flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs text-on-surface-variant font-medium">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
                   <span>
-                    {isDownloading ? "Memproses PDF..." : "Download PDF"}
+                    Template resmi PT Dian Pandu Pratama — Sesuai format layout aktual site.
                   </span>
-                </button>
-                <button
-                  onClick={handleDownloadMcuDocx}
-                  disabled={!selectedMcuJob || !selectedMcuCand}
-                  className="px-6 py-2.5 text-white bg-primary hover:bg-primary/90 text-on-primary rounded-xl font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
-                >
-                  <Download className="w-4 h-4 text-blue-200" />
-                  <span>Download DOCX (Word)</span>
-                </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewOpen(true)}
+                    disabled={selectedMcuCandidatesList.length === 0}
+                    className="px-4 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40 shadow-xs"
+                  >
+                    <Eye className="w-4 h-4 text-primary" />
+                    <span>Live Preview</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handlePrintMcu}
+                    disabled={selectedMcuCandidatesList.length === 0}
+                    className="px-4 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40 shadow-xs"
+                    title="Cetak langsung atau simpan via browser print engine (Vector Crisp)"
+                  >
+                    <Printer className="w-4 h-4 text-neutral-600" />
+                    <span>Cetak / Print</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadMcuPdf}
+                    disabled={selectedMcuCandidatesList.length === 0 || isDownloading}
+                    className="px-5 py-2.5 text-white bg-red-600 hover:bg-red-700 rounded-xl font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Membuat PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        <span>Download Dokumen PDF</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadMcuDocx}
+                    disabled={selectedMcuCandidatesList.length === 0}
+                    className="px-5 py-2.5 text-white bg-primary hover:bg-primary/90 rounded-xl font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
+                  >
+                    <Download className="w-4 h-4 text-blue-200" />
+                    <span>Download DOCX (Word)</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
+
         </div>
       </div>
 
@@ -2047,150 +2561,18 @@ export default function GenerateDocumentsClient({
                   logoSrc={logoBase64}
                 />
               ) : (
-                /* MCU Letter Visual Document */
-                <div className="w-[720px] bg-white p-12 text-black font-serif shadow-md border rounded-sm">
-                  <div className="flex flex-col items-center mb-8 border-b-2 border-black pb-4 text-center">
-                    <img
-                      src="/icon.png"
-                      alt="Logo"
-                      className="w-20 h-20 mb-2 object-contain"
-                    />
-                    <h1 className="text-xl font-bold uppercase tracking-wide text-center">
-                      SURAT PENGANTAR MEDICAL CHECK-UP (MCU)
-                    </h1>
-                    <p className="text-xs text-neutral-600 font-sans">
-                      PT DUA PERMATA PERSADA — HUMAN CAPITAL DIVISION
-                    </p>
-                  </div>
-
-                  <div className="flex justify-between mb-6 text-sm">
-                    <div>
-                      <p>
-                        Nomor:{" "}
-                        <span className="font-bold">
-                          {mcuNomorSurat || "......"}
-                        </span>
-                      </p>
-                    </div>
-                    <div>
-                      <p>Tanggal: {formattedDate}</p>
-                    </div>
-                  </div>
-
-                  <div className="mb-6 text-sm leading-relaxed">
-                    <p>Kepada Yth,</p>
-                    <p className="font-bold">
-                      Pimpinan / Petugas Laboratorium MCU
-                    </p>
-                    <p className="font-bold text-base">{mcuKlinik}</p>
-                    <p>{mcuAlamatKlinik || "Di Tempat"}</p>
-                  </div>
-
-                  <div className="mb-6 text-sm leading-relaxed text-justify">
-                    <p>
-                      Dengan hormat, bersama surat ini kami menghadapkan calon
-                      karyawan dari{" "}
-                      <strong>
-                        {selectedMcuJob?.customerName || "Perusahaan"}
-                      </strong>{" "}
-                      untuk dapat dilakukan pemeriksaan kesehatan pra-penempatan
-                      kerja:
-                    </p>
-                  </div>
-
-                  <div className="mb-6 text-sm border border-neutral-300 rounded p-4 bg-neutral-50/50">
-                    <table className="w-full text-left">
-                      <tbody className="divide-y divide-neutral-200">
-                        <tr>
-                          <td className="py-2 w-1/3 font-semibold text-neutral-700">
-                            Nama Calon Karyawan
-                          </td>
-                          <td className="py-2 w-4">:</td>
-                          <td className="py-2 font-bold">
-                            {selectedMcuCand?.user?.name || "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="py-2 font-semibold text-neutral-700">
-                            NIK / No. KTP
-                          </td>
-                          <td className="py-2">:</td>
-                          <td className="py-2 font-mono">
-                            {selectedMcuCand?.nik || "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="py-2 font-semibold text-neutral-700">
-                            Posisi yang Dituju
-                          </td>
-                          <td className="py-2">:</td>
-                          <td className="py-2">
-                            {selectedMcuJob?.posisi || "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="py-2 font-semibold text-neutral-700">
-                            Tanggal Pemeriksaan
-                          </td>
-                          <td className="py-2">:</td>
-                          <td className="py-2">
-                            {mcuTanggal
-                              ? new Date(mcuTanggal).toLocaleDateString(
-                                  "id-ID",
-                                  {
-                                    weekday: "long",
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                  },
-                                )
-                              : "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="py-2 font-semibold text-neutral-700">
-                            Paket MCU
-                          </td>
-                          <td className="py-2">:</td>
-                          <td className="py-2 font-medium">{mcuPaket}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {mcuCatatan && (
-                    <div className="mb-6 text-sm">
-                      <h3 className="font-bold underline mb-1">
-                        Catatan Persiapan Calon Karyawan:
-                      </h3>
-                      <p className="whitespace-pre-line text-neutral-800 leading-relaxed bg-amber-50/50 p-3 rounded border border-amber-200 text-xs font-sans">
-                        {mcuCatatan}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="mb-10 text-sm leading-relaxed text-justify">
-                    <p>
-                      Segala biaya pemeriksaan agar ditagihkan langsung ke
-                      bagian HR/Finance{" "}
-                      {selectedMcuJob?.customerName || "Perusahaan"}. Hasil
-                      pemeriksaan diharapkan dapat dikirimkan kepada kami segera
-                      setelah proses verifikasi selesai.
-                    </p>
-                  </div>
-
-                  <div className="flex justify-end text-sm pt-4">
-                    <div className="text-center">
-                      <p className="mb-20">Hormat Kami,</p>
-                      <p className="font-bold underline">
-                        HR & Recruitment Dept.
-                      </p>
-                      <p className="text-xs text-neutral-600 font-sans">
-                        {selectedMcuJob?.customerName ||
-                          "PT Dua Permata Persada"}
-                      </p>
-                    </div>
-                  </div>
+                /* MCU Letter Visual Document (Batch Candidates DPP Official Format) */
+                <div className="bg-white shadow-xl rounded border border-neutral-300 overflow-hidden">
+                  <McuDocumentTemplate
+                    id="mcu-preview-document"
+                    nomorSurat={mcuNomorSurat}
+                    perihal="Surat Pengantar MCU"
+                    klinik={selectedClinic}
+                    candidates={selectedMcuCandidatesList}
+                    tanggalSurat={formattedDate}
+                    logoSrc={logoBase64 || "/logo_company.png"}
+                    showSignature={true}
+                  />
                 </div>
               )}
             </div>
@@ -2478,209 +2860,17 @@ export default function GenerateDocumentsClient({
           </table>
         </div>
 
-        {/* MCU HTML Template */}
-        <div
+        {/* MCU HTML Template (Batch Candidates Official DPP Letterhead) */}
+        <McuDocumentTemplate
           id="mcu-pdf-template"
-          style={{
-            width: "794px",
-            backgroundColor: "#ffffff",
-            padding: "48px",
-          }}
-        >
-          <div
-            style={{
-              textAlign: "center",
-              borderBottom: "2px solid #000000",
-              paddingBottom: "12px",
-              marginBottom: "20px",
-            }}
-          >
-            <img
-              src="/icon.png"
-              alt="Logo"
-              style={{
-                width: "80px",
-                height: "80px",
-                margin: "0 auto 8px auto",
-              }}
-            />
-            <h1
-              style={{
-                fontSize: "18px",
-                fontWeight: "bold",
-                textTransform: "uppercase",
-              }}
-            >
-              SURAT PENGANTAR MEDICAL CHECK-UP (MCU)
-            </h1>
-            <p style={{ fontSize: "11px", color: "#555555" }}>
-              PT DUA PERMATA PERSADA — HUMAN CAPITAL DIVISION
-            </p>
-          </div>
-
-          <table style={{ width: "100%", marginBottom: "16px" }}>
-            <tbody>
-              <tr>
-                <td style={{ width: "50%", padding: "4px 0" }}>
-                  Nomor: <strong>{mcuNomorSurat || "......"}</strong>
-                </td>
-                <td
-                  style={{ width: "50%", textAlign: "right", padding: "4px 0" }}
-                >
-                  Tanggal: {formattedDate}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div style={{ marginBottom: "16px" }}>
-            <p>Kepada Yth,</p>
-            <p style={{ fontWeight: "bold" }}>
-              Pimpinan / Petugas Laboratorium MCU
-            </p>
-            <p style={{ fontWeight: "bold" }}>{mcuKlinik}</p>
-            <p>{mcuAlamatKlinik || "Di Tempat"}</p>
-          </div>
-
-          <p style={{ marginBottom: "14px" }}>
-            Dengan hormat, bersama surat ini kami menghadapkan calon karyawan
-            dari <strong>{selectedMcuJob?.customerName || "Perusahaan"}</strong>{" "}
-            untuk dapat dilakukan pemeriksaan kesehatan pra-penempatan kerja:
-          </p>
-
-          <table
-            style={{
-              width: "100%",
-              border: "1px solid #cccccc",
-              padding: "8px",
-              marginBottom: "16px",
-            }}
-          >
-            <tbody>
-              <tr>
-                <td
-                  style={{ width: "32%", fontWeight: "bold", padding: "6px" }}
-                >
-                  Nama Calon Karyawan
-                </td>
-                <td style={{ width: "4%", padding: "6px" }}>:</td>
-                <td style={{ padding: "6px", fontWeight: "bold" }}>
-                  {selectedMcuCand?.user?.name || "-"}
-                </td>
-              </tr>
-              <tr>
-                <td
-                  style={{ width: "32%", fontWeight: "bold", padding: "6px" }}
-                >
-                  NIK / No. KTP
-                </td>
-                <td style={{ width: "4%", padding: "6px" }}>:</td>
-                <td style={{ padding: "6px" }}>
-                  {selectedMcuCand?.nik || "-"}
-                </td>
-              </tr>
-              <tr>
-                <td
-                  style={{ width: "32%", fontWeight: "bold", padding: "6px" }}
-                >
-                  Posisi yang Dituju
-                </td>
-                <td style={{ width: "4%", padding: "6px" }}>:</td>
-                <td style={{ padding: "6px" }}>
-                  {selectedMcuJob?.posisi || "-"}
-                </td>
-              </tr>
-              <tr>
-                <td
-                  style={{ width: "32%", fontWeight: "bold", padding: "6px" }}
-                >
-                  Tanggal Pemeriksaan
-                </td>
-                <td style={{ width: "4%", padding: "6px" }}>:</td>
-                <td style={{ padding: "6px" }}>
-                  {mcuTanggal
-                    ? new Date(mcuTanggal).toLocaleDateString("id-ID", {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })
-                    : "-"}
-                </td>
-              </tr>
-              <tr>
-                <td
-                  style={{ width: "32%", fontWeight: "bold", padding: "6px" }}
-                >
-                  Paket MCU
-                </td>
-                <td style={{ width: "4%", padding: "6px" }}>:</td>
-                <td style={{ padding: "6px" }}>{mcuPaket}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          {mcuCatatan && (
-            <div
-              style={{
-                marginBottom: "16px",
-                padding: "10px",
-                border: "1px solid #e5e5e5",
-                backgroundColor: "#fafafa",
-              }}
-            >
-              <p
-                style={{
-                  fontWeight: "bold",
-                  textDecoration: "underline",
-                  marginBottom: "4px",
-                }}
-              >
-                Catatan Persiapan Calon Karyawan:
-              </p>
-              <p style={{ whiteSpace: "pre-line", fontSize: "12px" }}>
-                {mcuCatatan}
-              </p>
-            </div>
-          )}
-
-          <p style={{ marginBottom: "30px" }}>
-            Segala biaya pemeriksaan agar ditagihkan langsung ke bagian
-            HR/Finance {selectedMcuJob?.customerName || "Perusahaan"}. Hasil
-            pemeriksaan diharapkan dapat dikirimkan kepada kami segera setelah
-            proses verifikasi selesai.
-          </p>
-
-          <table style={{ width: "100%", marginTop: "30px" }}>
-            <tbody>
-              <tr>
-                <td style={{ width: "50%" }}></td>
-                <td
-                  style={{
-                    width: "50%",
-                    textAlign: "center",
-                    paddingBottom: "70px",
-                  }}
-                >
-                  Hormat Kami,
-                </td>
-              </tr>
-              <tr>
-                <td></td>
-                <td style={{ textAlign: "center" }}>
-                  <p
-                    style={{ fontWeight: "bold", textDecoration: "underline" }}
-                  >
-                    HR & Recruitment Dept.
-                  </p>
-                  <p style={{ fontSize: "11px", color: "#555" }}>
-                    {selectedMcuJob?.customerName || "PT Dua Permata Persada"}
-                  </p>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          nomorSurat={mcuNomorSurat}
+          perihal="Surat Pengantar MCU"
+          klinik={selectedClinic}
+          candidates={selectedMcuCandidatesList}
+          tanggalSurat={formattedDate}
+          logoSrc={logoBase64 || "/logo_company.png"}
+          showSignature={true}
+        />
       </div>
     </div>
   );

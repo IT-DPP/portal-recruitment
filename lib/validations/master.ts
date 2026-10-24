@@ -82,6 +82,7 @@ export const SiteSchema = z.object({
   cityId: z.string().min(1, 'Kota wajib dipilih'),
   provinceId: z.string().min(1, 'Provinsi wajib dipilih'),
   useSpecificSla: z.boolean().default(false),
+  mcuPackage: z.string().optional().nullable(),
   siteSlas: z.array(z.object({
     stageId: z.string(),
     slaDays: z.number().min(0),
@@ -89,3 +90,12 @@ export const SiteSchema = z.object({
   })).optional()
 });
 export type SiteInput = z.infer<typeof SiteSchema>;
+
+// Clinic Schema
+export const ClinicSchema = z.object({
+  code: z.string().optional().nullable(),
+  name: z.string().min(1, 'Nama Klinik wajib diisi'),
+  provinceId: z.string().min(1, 'Provinsi wajib dipilih'),
+  address: z.string().min(1, 'Detail alamat klinik wajib diisi'),
+});
+export type ClinicInput = z.infer<typeof ClinicSchema>;

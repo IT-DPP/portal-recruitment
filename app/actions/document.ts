@@ -39,13 +39,15 @@ export type DocumentGenerationDataResult = {
   customers?: any[];
   sites?: any[];
   stages?: any[];
+  clinics?: any[];
+  provinces?: any[];
   error?: string;
 };
 
 export async function getDocumentGenerationData(): Promise<DocumentGenerationDataResult> {
   try {
     return await withRetry(async () => {
-      const [jobs, applications, customers, sites, stages] = await Promise.all([
+      const [jobs, applications, customers, sites, stages, clinics, provinces] = await Promise.all([
         prisma.jobOpening.findMany({
           include: {
             position: true,
@@ -95,6 +97,13 @@ export async function getDocumentGenerationData(): Promise<DocumentGenerationDat
         prisma.masterPipelineStage.findMany({
           orderBy: { orderIndex: "asc" },
         }),
+        prisma.masterClinic.findMany({
+          include: { province: true },
+          orderBy: { name: "asc" },
+        }),
+        prisma.masterProvince.findMany({
+          orderBy: { name: "asc" },
+        }),
       ]);
 
       // Format jobs with fallback position & location names
@@ -113,6 +122,8 @@ export async function getDocumentGenerationData(): Promise<DocumentGenerationDat
         customers,
         sites,
         stages,
+        clinics,
+        provinces,
       };
     });
   } catch (error: any) {

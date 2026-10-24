@@ -63,6 +63,7 @@ model MasterProvince {
   jobs     JobOpening[]
   cities   MasterCity[]
   sites    MasterSite[]
+  clinics  MasterClinic[]
 }
 
 model MasterCity {
@@ -94,11 +95,21 @@ model MasterSite {
   cityId         String
   provinceId     String
   useSpecificSla Boolean        @default(false)
+  mcuPackage     String?
   jobs           JobOpening[]
   city           MasterCity     @relation(fields: [cityId], references: [id])
   customer       MasterCustomer @relation(fields: [customerId], references: [id])
   province       MasterProvince @relation(fields: [provinceId], references: [id])
   siteSlas       SiteSla[]
+}
+
+model MasterClinic {
+  id         String         @id @default(cuid())
+  code       String?        @unique
+  name       String
+  provinceId String
+  address    String
+  province   MasterProvince @relation(fields: [provinceId], references: [id])
 }
 
 model MasterPosition {

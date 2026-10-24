@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
-import { ProvinceInput, ProvinceSchema, CityInput, CitySchema, CustomerInput, CustomerSchema, PositionInput, PositionSchema, DepartmentInput, DepartmentSchema, SiteInput, SiteSchema, InstituteInput, InstituteSchema, RequestTypeInput, RequestTypeSchema, CertificationInput, CertificationSchema, RejectionMessageInput, RejectionMessageSchema } from "@/lib/validations/master"
+import { ProvinceInput, ProvinceSchema, CityInput, CitySchema, CustomerInput, CustomerSchema, PositionInput, PositionSchema, DepartmentInput, DepartmentSchema, SiteInput, SiteSchema, InstituteInput, InstituteSchema, RequestTypeInput, RequestTypeSchema, CertificationInput, CertificationSchema, RejectionMessageInput, RejectionMessageSchema, ClinicInput, ClinicSchema } from "@/lib/validations/master"
 
 export async function getProvinces() {
   try {
@@ -295,6 +295,7 @@ export async function createSite(data: SiteInput) {
       data: {
         ...siteData,
         code: siteData.code || null,
+        mcuPackage: siteData.mcuPackage || null,
         siteSlas: siteData.useSpecificSla && siteSlas ? {
           create: siteSlas.map(sla => ({
             stageId: sla.stageId,
@@ -327,6 +328,7 @@ export async function updateSite(id: string, data: SiteInput) {
         data: {
           ...siteData,
           code: siteData.code || null,
+          mcuPackage: siteData.mcuPackage || null,
           siteSlas: siteData.useSpecificSla && siteSlas ? {
             create: siteSlas.map(sla => ({
               stageId: sla.stageId,
@@ -575,5 +577,79 @@ export async function updateGlobalSla(payload: { id: string; slaDays: number; re
     return { success: true };
   } catch (error) {
     return { success: false, error: "Gagal mengupdate konfigurasi SLA" };
+  }
+}
+
+// ----------------------------------------------------------------------
+// Master Clinic Actions
+// ----------------------------------------------------------------------
+
+export async function getClinics() {
+  try {
+    const data = await prisma.masterClinic.findMany({
+      include: { province: true },
+      orderBy: { name: 'asc' }
+    });
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: "Gagal mengambil data klinik" };
+  }
+}
+
+export async function createClinic(data: ClinicInput) {
+  try {
+    const parsed = ClinicSchema.safeParse(data);
+    if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message };
+
+    const result = await prisma.masterClinic.create({
+      data: {
+        code: parsed.data.code || null,
+        name: parsed.data.name,
+        provinceId: parsed.data.provinceId,
+        address: parsed.data.address
+      },
+      include: { province: true }
+    });
+
+    revalidatePath("/dashboard/settings/master-data/clinics");
+    revalidatePath("/dashboard/generate-documents");
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: "Gagal menyimpan data klinik" };
+  }
+}
+
+export async function updateClinic(id: string, data: ClinicInput) {
+  try {
+    const parsed = ClinicSchema.safeParse(data);
+    if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message };
+
+    const result = await prisma.masterClinic.update({
+      where: { id },
+      data: {
+        code: parsed.data.code || null,
+        name: parsed.data.name,
+        provinceId: parsed.data.provinceId,
+        address: parsed.data.address
+      },
+      include: { province: true }
+    });
+
+    revalidatePath("/dashboard/settings/master-data/clinics");
+    revalidatePath("/dashboard/generate-documents");
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: "Gagal mengupdate data klinik" };
+  }
+}
+
+export async function deleteClinic(id: string) {
+  try {
+    await prisma.masterClinic.delete({ where: { id } });
+    revalidatePath("/dashboard/settings/master-data/clinics");
+    revalidatePath("/dashboard/generate-documents");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: "Gagal menghapus data klinik" };
   }
 }

@@ -12,7 +12,8 @@ import {
   Navigation,
   Award,
   BookOpen,
-  MessageSquareX
+  MessageSquareX,
+  Activity
 } from "lucide-react";
 
 export default function MasterDataPage() {
@@ -79,6 +80,12 @@ export default function MasterDataPage() {
       description: "Kelola pesan penolakan kandidat per stage pipeline.",
       href: "/dashboard/settings/master-data/rejection-message",
       icon: MessageSquareX,
+    },
+    {
+      title: "Klinik (MCU)",
+      description: "Kelola master data klinik rujukan MCU dan lokasinya.",
+      href: "/dashboard/settings/master-data/clinics",
+      icon: Activity,
     }
   ];
 

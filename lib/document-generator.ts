@@ -46,6 +46,35 @@ export interface McuLetterData {
   catatan?: string;
 }
 
+export interface McuBatchCandidate {
+  no: number;
+  nama: string;
+  nik: string;
+  posisi: string;
+  kategori: string;
+  paketMcu: string;
+}
+
+export interface McuBatchDocumentData {
+  nomorSurat: string;
+  perihal?: string;
+  klinikNama: string;
+  klinikAlamat: string;
+  candidates: McuBatchCandidate[];
+  picNama?: string;
+  picJabatan?: string;
+  picTelepon?: string;
+  emails?: string[];
+  billingPerusahaan?: string;
+  billingUp?: string;
+  billingAlamat?: string;
+  kota?: string;
+  tanggalSurat?: string;
+  signeeNama?: string;
+  signeeJabatan?: string;
+}
+
+
 // Helper to convert an image URL to a Base64 data URL
 export const getBase64FromUrl = async (url: string): Promise<string> => {
   if (typeof window === "undefined" || !url) return "";
@@ -1098,6 +1127,316 @@ export const generateMcuDocx = async (data: McuLetterData, logoUrl: string = "/i
     alert("Terjadi kesalahan saat membuat file MCU DOCX.");
   }
 };
+
+/**
+ * Generate Batch Surat Pengantar MCU DOCX with candidate table matching official DPP format
+ */
+export const generateMcuBatchDocx = async (
+  data: McuBatchDocumentData,
+  logoUrl: string = "/logo_company.png"
+) => {
+  try {
+    const arrayBuffer = await fetchLogoBuffer(logoUrl);
+    const children: any[] = [];
+
+    const tableNoBorders = {
+      top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+      bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
+      left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+      right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+    };
+
+    // 1. Top Right Logo
+    if (arrayBuffer) {
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          children: [
+            new ImageRun({
+              data: arrayBuffer,
+              transformation: { width: 68, height: 55 },
+              type: "png",
+            }),
+          ],
+          spacing: { after: 30 },
+        }),
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          children: [
+            new TextRun({
+              text: "dian pandu pratama",
+              bold: true,
+              size: 18,
+            }),
+          ],
+          spacing: { after: 140 },
+        })
+      );
+    }
+
+    // 2. No Surat & Perihal
+    children.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 15, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: "No. Surat", bold: true })] })],
+                borders: tableNoBorders,
+              }),
+              new TableCell({
+                width: { size: 3, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+                borders: tableNoBorders,
+              }),
+              new TableCell({
+                width: { size: 82, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: data.nomorSurat, bold: true })] })],
+                borders: tableNoBorders,
+              }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 15, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: "Perihal", bold: true })] })],
+                borders: tableNoBorders,
+              }),
+              new TableCell({
+                width: { size: 3, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: ":" })] })],
+                borders: tableNoBorders,
+              }),
+              new TableCell({
+                width: { size: 82, type: WidthType.PERCENTAGE },
+                children: [new Paragraph({ children: [new TextRun({ text: data.perihal || "Surat Pengantar MCU", bold: true })] })],
+                borders: tableNoBorders,
+              }),
+            ],
+          }),
+        ],
+      }),
+      new Paragraph({ spacing: { after: 120 } })
+    );
+
+    // 3. Recipient
+    children.push(
+      new Paragraph({ children: [new TextRun({ text: "Kepada Yth," })], spacing: { after: 40 } }),
+      new Paragraph({ children: [new TextRun({ text: data.klinikNama, bold: true })] }),
+      new Paragraph({ children: [new TextRun({ text: data.klinikAlamat, bold: true })] }),
+      new Paragraph({ children: [new TextRun({ text: "Di-Tempat", bold: true })], spacing: { after: 140 } }),
+      new Paragraph({ children: [new TextRun({ text: "Dengan Hormat," })], spacing: { after: 40 } }),
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "Mohon untuk dapat diberikan pelayanan medis kepada karyawan PT. Dian Pandu Pratama, berikut :",
+          }),
+        ],
+        spacing: { after: 100 },
+      })
+    );
+
+    // 4. Candidate Table
+    const tableHeaderBorders = {
+      top: { style: BorderStyle.SINGLE, size: 8, color: "000000" },
+      bottom: { style: BorderStyle.SINGLE, size: 8, color: "000000" },
+      left: { style: BorderStyle.SINGLE, size: 8, color: "000000" },
+      right: { style: BorderStyle.SINGLE, size: 8, color: "000000" },
+    };
+
+    const headerCells = [
+      { text: "NO", width: 6 },
+      { text: "NAMA", width: 24 },
+      { text: "NIK", width: 20 },
+      { text: "POSISI", width: 16 },
+      { text: "KATEGORI", width: 14 },
+      { text: "PAKET MCU", width: 20 },
+    ].map(
+      (col) =>
+        new TableCell({
+          width: { size: col.width, type: WidthType.PERCENTAGE },
+          shading: { fill: "D5DFB5" },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: col.text, bold: true, size: 18 })],
+            }),
+          ],
+          borders: tableHeaderBorders,
+        })
+    );
+
+    const bodyRows = data.candidates.map((cand, idx) => {
+      return new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 6, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(idx + 1), size: 18 })] })],
+            borders: tableHeaderBorders,
+          }),
+          new TableCell({
+            width: { size: 24, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: cand.nama.toUpperCase(), bold: true, size: 18 })] })],
+            borders: tableHeaderBorders,
+          }),
+          new TableCell({
+            width: { size: 20, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: cand.nik, size: 18 })] })],
+            borders: tableHeaderBorders,
+          }),
+          new TableCell({
+            width: { size: 16, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: cand.posisi.toUpperCase(), size: 18 })] })],
+            borders: tableHeaderBorders,
+          }),
+          new TableCell({
+            width: { size: 14, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: cand.kategori.toUpperCase(), size: 18 })] })],
+            borders: tableHeaderBorders,
+          }),
+          new TableCell({
+            width: { size: 20, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: cand.paketMcu, size: 16 })] })],
+            borders: tableHeaderBorders,
+          }),
+        ],
+      });
+    });
+
+    children.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [new TableRow({ children: headerCells }), ...bodyRows],
+      }),
+      new Paragraph({ spacing: { after: 120 } })
+    );
+
+    // 5. Follow-up Details
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "Apabila yang bersangkutan memerlukan tindakan medis lebih lanjut harap segera menghubungi :",
+          }),
+        ],
+        spacing: { after: 40 },
+      }),
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: "Nama" })] })], borders: tableNoBorders }),
+              new TableCell({ width: { size: 3, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: ":" })] })], borders: tableNoBorders }),
+              new TableCell({ width: { size: 77, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: data.picNama || "Annisa Nur Cahya Rahmadani", bold: true })] })], borders: tableNoBorders }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: "Jabatan" })] })], borders: tableNoBorders }),
+              new TableCell({ width: { size: 3, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: ":" })] })], borders: tableNoBorders }),
+              new TableCell({ width: { size: 77, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: data.picJabatan || "Recruitment Staff" })] })], borders: tableNoBorders }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: "No. Telepon" })] })], borders: tableNoBorders }),
+              new TableCell({ width: { size: 3, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: ":" })] })], borders: tableNoBorders }),
+              new TableCell({ width: { size: 77, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: data.picTelepon || "0895-2305-7314" })] })], borders: tableNoBorders }),
+            ],
+          }),
+        ],
+      }),
+      new Paragraph({ spacing: { after: 80 } }),
+      new Paragraph({
+        children: [new TextRun({ text: "Kemudian untuk hasil MCU (WAJIB) harap dikirimkan ke :" })],
+        spacing: { after: 30 },
+      })
+    );
+
+    const emailList = data.emails && data.emails.length > 0 ? data.emails : [
+      "annisa.rahmadani@dpp.co.id",
+      "indrajid.k@dpp.co.id",
+      "RecruitmentTeam@dpp.co.id",
+      "m.hidayat@dpp.co.id",
+      "pretty.tm@dpp.co.id",
+      "deo.felix@dpp.co.id",
+    ];
+
+    emailList.forEach((email) => {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `•  ${email}`, color: "0000EE", underline: {} })],
+          indent: { left: 240 },
+          spacing: { after: 20 },
+        })
+      );
+    });
+
+    // 6. Billing
+    children.push(
+      new Paragraph({ spacing: { after: 60 } }),
+      new Paragraph({
+        children: [new TextRun({ text: "Tagihan biaya resume medis harap dikirimkan ke:" })],
+        indent: { left: 240 },
+        spacing: { after: 20 },
+      }),
+      new Paragraph({
+        children: [new TextRun({ text: data.billingPerusahaan || "PT. Dian Pandu Pratama", bold: true })],
+        indent: { left: 280 },
+        spacing: { after: 20 },
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({ text: "Up : " }),
+          new TextRun({ text: data.billingUp || "M Irfan Dzul Izzudin/ irfandzul@dpp.co.id" }),
+        ],
+        indent: { left: 280 },
+        spacing: { after: 20 },
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: data.billingAlamat || "Jl. Jababeka Blok I Kawasan Industri Jababeka (Patria Pos 7) Desa Harja Mekar, Kec. Cikarang Utara, Kab. Bekasi, Jawa Barat, 17530",
+          }),
+        ],
+        indent: { left: 280 },
+        spacing: { after: 100 },
+      }),
+      new Paragraph({
+        children: [new TextRun({ text: "Atas perhatian dan kerjasamanya kami ucapkan terima kasih." })],
+        spacing: { after: 120 },
+      })
+    );
+
+    // 7. Closing & Signature
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: `${data.kota || "Cikarang"}, ${data.tanggalSurat || new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}` })],
+        spacing: { after: 40 },
+      }),
+      new Paragraph({ children: [new TextRun({ text: "Hormat kami," })] }),
+      new Paragraph({ children: [new TextRun({ text: "PT. Dian Pandu Pratama", bold: true })], spacing: { after: 450 } }),
+      new Paragraph({ children: [new TextRun({ text: data.signeeNama || "Mursidi", bold: true, underline: {} })] }),
+      new Paragraph({ children: [new TextRun({ text: data.signeeJabatan || "Recruitment & Development Dept. Head" })] })
+    );
+
+    const doc = new Document({
+      sections: [{ properties: {}, children }],
+    });
+
+    const cleanSuratNo = (data.nomorSurat || "MCU").replace(/[\/\\]/g, "_");
+    const blobResult = await Packer.toBlob(doc);
+    saveAs(blobResult, `Surat_Pengantar_MCU_${cleanSuratNo}.docx`);
+  } catch (error) {
+    console.error("Error generating Batch MCU DOCX:", error);
+    alert("Terjadi kesalahan saat membuat file MCU DOCX.");
+  }
+};
+
 
 /**
  * Generate PDF from DOM Element using an isolated sandbox iframe

@@ -37,6 +37,7 @@ export default function SiteClient({ initialData, customers, provinces, cities, 
     cityId: '',
     latitude: '',
     longitude: '',
+    mcuPackage: '',
     useSpecificSla: false,
     siteSlas: stages.map(s => ({ stageId: s.id, slaDays: s.slaDays, reminderDays: s.reminderDays }))
   });
@@ -50,7 +51,7 @@ export default function SiteClient({ initialData, customers, provinces, cities, 
 
   const table = useClientTable({
     data: filteredData,
-    searchKeys: ['name', 'code', 'customer.name', 'city.name', 'province.name']
+    searchKeys: ['name', 'code', 'customer.name', 'city.name', 'province.name', 'mcuPackage']
   });
 
   const availableCities = cities.filter(c => c.provinceId === formData.provinceId);
@@ -90,6 +91,7 @@ export default function SiteClient({ initialData, customers, provinces, cities, 
         setIsEditing(null);
         setFormData({ 
           name: '', code: '', customerId: '', provinceId: '', cityId: '', latitude: '', longitude: '',
+          mcuPackage: '',
           useSpecificSla: false,
           siteSlas: stages.map(s => ({ stageId: s.id, slaDays: s.slaDays, reminderDays: s.reminderDays }))
         });
@@ -127,6 +129,7 @@ export default function SiteClient({ initialData, customers, provinces, cities, 
       cityId: item.cityId,
       latitude: item.latitude?.toString() || '',
       longitude: item.longitude?.toString() || '',
+      mcuPackage: item.mcuPackage || '',
       useSpecificSla: item.useSpecificSla,
       siteSlas: slasToUse
     });
@@ -163,6 +166,7 @@ export default function SiteClient({ initialData, customers, provinces, cities, 
               setIsEditing(null); 
               setFormData({ 
                 name: "", code: "", customerId: '', provinceId: '', cityId: '', latitude: '', longitude: '',
+                mcuPackage: '',
                 useSpecificSla: false,
                 siteSlas: stages.map(s => ({ stageId: s.id, slaDays: s.slaDays, reminderDays: s.reminderDays }))
               }); 
@@ -264,6 +268,23 @@ export default function SiteClient({ initialData, customers, provinces, cities, 
                     className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black disabled:bg-gray-100"
                     placeholder="106.8650"
                   />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-on-surface mb-1">
+                    Nama Paket MCU (Free Text)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.mcuPackage}
+                    onChange={(e) => setFormData({ ...formData, mcuPackage: e.target.value })}
+                    disabled={isPending}
+                    className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black disabled:bg-gray-100"
+                    placeholder="e.g. Paket Tambang Standar OHS - Fit to Work"
+                  />
+                  <p className="text-[11px] text-on-surface-variant mt-1">
+                    Nama paket MCU rujukan default untuk kandidat yang dialokasikan ke site operasional ini.
+                  </p>
                 </div>
 
                 {/* SLA Configuration Toggle */}
@@ -390,13 +411,14 @@ export default function SiteClient({ initialData, customers, provinces, cities, 
                 <th className="px-6 py-3">Site Name</th>
                 <th className="px-6 py-3">Customer</th>
                 <th className="px-6 py-3">Location</th>
+                <th className="px-6 py-3">Paket MCU</th>
                 <th className="px-6 py-3 text-right w-32">Actions</th>
               </tr>
             </thead>
             <tbody>
               {table.paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-on-surface-variant">Tidak ada data ditemukan.</td>
+                  <td colSpan={6} className="px-6 py-8 text-center text-on-surface-variant">Tidak ada data ditemukan.</td>
                 </tr>
               ) : (
                 table.paginatedData.map((item, index) => (
@@ -411,6 +433,15 @@ export default function SiteClient({ initialData, customers, provinces, cities, 
                       <div>{item.city.name}, {item.province.name}</div>
                       {(item.latitude || item.longitude) && (
                         <div className="font-mono text-[10px] mt-1">{item.latitude}, {item.longitude}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {item.mcuPackage ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {item.mcuPackage}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">Belum diatur</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">

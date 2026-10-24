@@ -14,6 +14,8 @@ export default async function GenerateDocumentsPage() {
         customers: result.customers || [],
         sites: result.sites || [],
         stages: result.stages || [],
+        clinics: result.clinics || [],
+        provinces: result.provinces || [],
       }
     : {
         jobs: [],
@@ -21,6 +23,8 @@ export default async function GenerateDocumentsPage() {
         customers: [],
         sites: [],
         stages: [],
+        clinics: [],
+        provinces: [],
       };
 
   return (
