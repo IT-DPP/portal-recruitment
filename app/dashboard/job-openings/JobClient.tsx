@@ -34,14 +34,18 @@ export default function JobClient({ initialData, customers }: { initialData: any
   });
 
   const getDynamicGlobalStatus = (job: any) => {
-    // In future this will check timelines, currently simple
-    return job.status === "DRAFT" ? "Draft" : job.status;
+    const s = (job.status || "").toUpperCase();
+    if (s === "DRAFT") return "Draft";
+    if (s === "ACTIVE") return "Active";
+    if (s === "OVERDUE") return "Overdue";
+    if (s === "CLOSED") return "Closed";
+    return job.status || "";
   };
 
   const preFilteredData = useMemo(() => {
     return initialData.filter((job) => {
       let match = true;
-      if (activeFilters.status && getDynamicGlobalStatus(job) !== activeFilters.status) {
+      if (activeFilters.status && getDynamicGlobalStatus(job).toLowerCase() !== activeFilters.status.toLowerCase()) {
         match = false;
       }
       if (activeFilters.customer && job.customerId !== activeFilters.customer) {

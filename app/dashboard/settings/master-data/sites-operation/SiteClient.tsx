@@ -319,7 +319,7 @@ export default function SiteClient({ initialData, customers, provinces, cities, 
                         <tbody className="divide-y divide-table-border">
                           {stages.map((stage) => {
                             const slaData = formData.siteSlas.find(s => s.stageId === stage.id) || { slaDays: stage.slaDays, reminderDays: stage.reminderDays };
-                            const isUnlimitedStage = ['Training User', 'Induction', 'PWKT'].includes(stage.name);
+                            const isUnlimitedStage = ['training', 'induction', 'pkwt', 'pwkt'].some(n => stage.name.toLowerCase().includes(n)) || ['stage_8', 'stage_9', 'stage_10'].includes(stage.id);
                             return (
                               <tr key={stage.id} className="hover:bg-surface-container-lowest">
                                 <td className="px-3 py-2 font-medium text-black">{stage.name}</td>

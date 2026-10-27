@@ -105,8 +105,16 @@ export default function TalentPoolClient({ initialCandidates = [] }: { initialCa
       }
     }
 
-    if (activeFilters.education && candidate.latestEducation !== activeFilters.education) {
-      match = false;
+    if (activeFilters.education) {
+      const edu = (candidate.latestEducation || "").toUpperCase();
+      const filt = activeFilters.education.toUpperCase();
+      const isMatch =
+        edu === filt ||
+        edu.startsWith(filt) ||
+        (filt === "SMA/SMK" && (edu.includes("SMA") || edu.includes("SMK") || edu.includes("SLTA")));
+      if (!isMatch) {
+        match = false;
+      }
     }
 
     return match;

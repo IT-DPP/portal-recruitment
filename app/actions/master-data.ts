@@ -554,8 +554,27 @@ export async function deleteRejectionMessage(id: string) {
   }
 }
 
+export async function ensureExtendedPipelineStages() {
+  try {
+    const newStages = [
+      { id: "stage_8", name: "Training", orderIndex: 8, slaDays: 0, reminderDays: 0 },
+      { id: "stage_9", name: "Induction", orderIndex: 9, slaDays: 0, reminderDays: 0 },
+      { id: "stage_10", name: "PKWT", orderIndex: 10, slaDays: 0, reminderDays: 0 },
+    ];
+    for (const st of newStages) {
+      const existing = await prisma.masterPipelineStage.findUnique({ where: { id: st.id } });
+      if (!existing) {
+        await prisma.masterPipelineStage.create({ data: st });
+      }
+    }
+  } catch (err) {
+    console.error("ensureExtendedPipelineStages Error:", err);
+  }
+}
+
 export async function getPipelineStages() {
   try {
+    await ensureExtendedPipelineStages();
     const data = await prisma.masterPipelineStage.findMany({ orderBy: { orderIndex: 'asc' } })
     return { success: true, data }
   } catch (error) {

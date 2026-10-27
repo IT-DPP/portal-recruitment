@@ -9,7 +9,14 @@ export default async function CreateJobPage() {
     prisma.masterProvince.findMany({
  orderBy: { name: 'asc' } }),
     prisma.masterCity.findMany({ orderBy: { name: 'asc' } }),
-    prisma.masterSite.findMany({ orderBy: { name: 'asc' } }),
+    prisma.masterSite.findMany({
+      include: {
+        customer: true,
+        province: true,
+        city: true,
+      },
+      orderBy: { name: 'asc' }
+    }),
     prisma.masterPosition.findMany({ orderBy: { name: 'asc' } }),
     prisma.masterDepartment.findMany({ orderBy: { name: 'asc' } }),
   ]);

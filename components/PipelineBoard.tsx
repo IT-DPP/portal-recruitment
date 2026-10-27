@@ -140,26 +140,11 @@ export default function PipelineBoard({ jobId, timeline, initialApplications = [
            return;
          }
       } else if (app.currentStageId === "stage_8") {
-         const d = stageData.trainingUser || {};
-         if (!d.date || !d.file) {
-           setErrorModal("Anda harus melengkapi seluruh form pada stage Training User sebelum melanjutkan ke tahap berikutnya.");
-           setDraggedAppId(null);
-           return;
-         }
+        // Training: Document store stage (recap)
       } else if (app.currentStageId === "stage_9") {
-         const d = stageData.induction || {};
-         if (!d.date || !d.file) {
-           setErrorModal("Anda harus melengkapi seluruh form pada stage Induction sebelum melanjutkan ke tahap berikutnya.");
-           setDraggedAppId(null);
-           return;
-         }
+        // Induction: Document store stage (recap)
       } else if (app.currentStageId === "stage_10") {
-         const d = stageData.pkwt || {};
-         if (!d.startDate || !d.endDate || !d.file || !d.safetyFile || !d.neopFile || !d.mcuFile) {
-           setErrorModal("Anda harus melengkapi seluruh form pada stage PKWT sebelum melanjutkan ke tahap berikutnya.");
-           setDraggedAppId(null);
-           return;
-         }
+        // PKWT: Document store stage (recap)
       }
 
       const { updateApplicationStage } = await import("@/app/actions/job");
@@ -223,8 +208,18 @@ export default function PipelineBoard({ jobId, timeline, initialApplications = [
 
   // Determine stage visual state (Normal, Reminder, Overdue)
   const getStageStatus = (stageId: string) => {
-    const stageInfo = timeline.find(t => t.id === stageId);
+    const stageInfo = timeline.find(t => t.id === stageId || t.stageId === stageId);
     if (!stageInfo || stageInfo.status === "Completed") return { type: "normal" };
+
+    const stageTitle = (stageInfo.title || stageInfo.stage?.name || "").toLowerCase();
+    const isUnlimited = stageInfo.slaDays === 0 || 
+      stageInfo.stage?.slaDays === 0 || 
+      ['stage_8', 'stage_9', 'stage_10'].includes(stageInfo.stageId || stageInfo.id) ||
+      ['training', 'induction', 'pkwt'].some(n => stageTitle.includes(n));
+      
+    if (isUnlimited) {
+      return { type: "normal" };
+    }
     
     const deadline = new Date(stageInfo.deadlineDate);
     const now = new Date();
@@ -247,7 +242,12 @@ export default function PipelineBoard({ jobId, timeline, initialApplications = [
   };
 
   const filteredApps = applications.filter((app) => {
-    if (app.status !== "ACTIVE") return false;
+    const stageInfo = timeline.find(t => t.id === app.currentStageId || t.stageId === app.currentStageId);
+    const stageTitle = (stageInfo?.title || stageInfo?.stage?.name || "").toLowerCase();
+    const isPostMcuStage = ['stage_8', 'stage_9', 'stage_10'].includes(app.currentStageId) ||
+      ['training', 'induction', 'pkwt'].some(n => stageTitle.includes(n));
+
+    if (app.status !== "ACTIVE" && !(app.status === "HIRED" && isPostMcuStage)) return false;
     const profile = candidateProfiles[app.candidateProfileId];
     if (!profile) return false;
     if (!searchQuery) return true;
@@ -320,7 +320,7 @@ export default function PipelineBoard({ jobId, timeline, initialApplications = [
                 </div>
                 <p className="text-[11px] font-mono font-semibold flex items-center gap-1.5 text-on-surface-variant">
                   <Clock className="w-3.5 h-3.5" /> 
-                  Batas: {new Date(stage.deadlineDate).toLocaleDateString("id-ID")}
+                  Batas: {stage.slaDays === 0 || stage.stage?.slaDays === 0 || ['stage_8', 'stage_9', 'stage_10'].includes(stage.stageId || stage.id) || ['training', 'induction', 'pkwt'].some(n => (stage.title || stage.stage?.name || "").toLowerCase().includes(n)) ? "No Limit (Lifetime SLA)" : new Date(stage.deadlineDate).toLocaleDateString("id-ID")}
                 </p>
                 
                 {stageStatus.type === "overdue" && (
@@ -367,6 +367,9 @@ export default function PipelineBoard({ jobId, timeline, initialApplications = [
                             <p className="text-[10px] text-on-surface-variant">Applied: {new Date(app.applicationDate).toLocaleDateString("id-ID")}</p>
                             {app.isDraft && (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded-sm uppercase">Draft</span>
+                            )}
+                            {app.status === "HIRED" && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 border border-emerald-200 rounded uppercase">Hired</span>
                             )}
                           </div>
                           

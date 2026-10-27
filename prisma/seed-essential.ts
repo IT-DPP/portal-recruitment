@@ -82,7 +82,7 @@ async function main() {
     { code: 'CUST-01', name: 'PT Astra International' },
     { code: 'CUST-02', name: 'PT Telkom Indonesia' },
     { code: 'CUST-03', name: 'PT Bank Mandiri' },
-    { code: 'CUST-04', name: 'PT United Tractors' }
+    { code: 'CUST-UT', name: 'PT United Tractors Tbk' }
   ];
   for (const c of customers) {
     let cust = await prisma.masterCustomer.findFirst({
@@ -134,49 +134,7 @@ async function main() {
     }
   }
 
-  // Seed Sites
-  const siteData = [
-    { name: "KPC Sangatta Coal Mine", lat: 0.823979, lng: 117.599032, loc: "Kalimantan Timur" },
-    { name: "Berau Coal Mine", lat: 2.15, lng: 117.5, loc: "Kalimantan Timur" },
-    { name: "Tanjung Enim Coal Mine", lat: -4.118, lng: 103.772, loc: "Sumatera Selatan" },
-    { name: "Ombilin Coal Mine", lat: -0.683611, lng: 100.766667, loc: "Sumatera Barat" },
-    { name: "Martabe Gold Mine", lat: 1.527778, lng: 99.065556, loc: "Sumatera Utara" },
-    { name: "Sorowako Nickel Mine", lat: -2.54598, lng: 121.35274, loc: "Sulawesi Selatan" },
-    { name: "Morowali Nickel Mining Area", lat: -2.85, lng: 122.1, loc: "Sulawesi Tengah" },
-    { name: "Weda Bay Nickel Mining Area", lat: 0.478319, lng: 127.983631, loc: "Maluku Utara" },
-    { name: "Batu Hijau Mine", lat: -8.96, lng: 116.87, loc: "Nusa Tenggara Barat" },
-    { name: "Grasberg Mine", lat: -4.05836, lng: 137.10811, loc: "Papua Tengah" },
-  ];
-
-  const allCustomers = await prisma.masterCustomer.findMany();
-  const allCities = await prisma.masterCity.findMany();
-
-  if (allCustomers.length > 0 && allCities.length > 0) {
-    for (let i = 0; i < siteData.length; i++) {
-      const site = siteData[i];
-      const customer = allCustomers[i % allCustomers.length];
-      const city = allCities[i % allCities.length];
-      
-      let existingSite = await prisma.masterSite.findFirst({
-        where: { name: site.name }
-      });
-
-      if (!existingSite) {
-        await prisma.masterSite.create({
-          data: {
-            code: `SIT-${i + 1}`,
-            name: site.name,
-            latitude: site.lat,
-            longitude: site.lng,
-            customerId: customer.id,
-            cityId: city.id,
-            provinceId: city.provinceId
-          }
-        });
-        console.log(`Created site: ${site.name}`);
-      }
-    }
-  }
+  // Sites will be seeded accurately by seed-dummy with matching customer, province, and city relations.
 
   // Seed Institutes from MASTER_INSTITUTE
   for (const ins of MASTER_INSTITUTE) {
@@ -244,6 +202,9 @@ async function main() {
     { id: "stage_5", name: "Interview User", orderIndex: 5, slaDays: 5 },
     { id: "stage_6", name: "Offering", orderIndex: 6, slaDays: 3 },
     { id: "stage_7", name: "MCU", orderIndex: 7, slaDays: 5 },
+    { id: "stage_8", name: "Training", orderIndex: 8, slaDays: 0 },
+    { id: "stage_9", name: "Induction", orderIndex: 9, slaDays: 0 },
+    { id: "stage_10", name: "PKWT", orderIndex: 10, slaDays: 0 },
   ];
   for (const st of pipelineStages) {
     let stage = await prisma.masterPipelineStage.findFirst({

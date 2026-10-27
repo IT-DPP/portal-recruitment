@@ -16,7 +16,11 @@ interface JobEditClientProps {
   customers: MasterCustomer[];
   provinces: MasterProvince[];
   cities: MasterCity[];
-  sites: MasterSite[];
+  sites: (MasterSite & {
+    customer?: MasterCustomer | null;
+    province?: MasterProvince | null;
+    city?: MasterCity | null;
+  })[];
   positions: MasterPosition[];
   departments: MasterDepartment[];
 }
@@ -57,40 +61,125 @@ export default function JobEditClient({
   });
 
   const [filteredCities, setFilteredCities] = useState<MasterCity[]>([]);
-  const [filteredSites, setFilteredSites] = useState<MasterSite[]>([]);
+  const [filteredSites, setFilteredSites] = useState<(MasterSite & { customer?: MasterCustomer | null; province?: MasterProvince | null; city?: MasterCity | null })[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Handlers for bidirectional cascading
+  const handleCustomerChange = (newCustomerId: string) => {
+    setFormData(prev => {
+      const currentSite = sites.find(s => s.id === prev.siteId);
+      const isSiteValid = currentSite && currentSite.customerId === newCustomerId;
+      return {
+        ...prev,
+        customerId: newCustomerId,
+        siteId: isSiteValid ? prev.siteId : "",
+      };
+    });
+  };
+
+  const handleProvinceChange = (newProvinceId: string) => {
+    setFormData(prev => {
+      const isCurrentCityInNewProv = cities.some(c => c.id === prev.cityId && c.provinceId === newProvinceId);
+      const isCurrentSiteInNewProv = sites.some(s => s.id === prev.siteId && s.provinceId === newProvinceId);
+      return {
+        ...prev,
+        provinceId: newProvinceId,
+        cityId: isCurrentCityInNewProv ? prev.cityId : "",
+        siteId: isCurrentSiteInNewProv ? prev.siteId : "",
+      };
+    });
+  };
+
+  const handleCityChange = (newCityId: string) => {
+    setFormData(prev => {
+      const isCurrentSiteInNewCity = sites.some(s => s.id === prev.siteId && s.cityId === newCityId);
+      return {
+        ...prev,
+        cityId: newCityId,
+        siteId: isCurrentSiteInNewCity ? prev.siteId : "",
+      };
+    });
+  };
+
+  const handleSiteChange = (selectedSiteId: string) => {
+    const selected = sites.find(s => s.id === selectedSiteId);
+    if (selected) {
+      setFormData(prev => ({
+        ...prev,
+        siteId: selected.id,
+        customerId: selected.customerId || prev.customerId,
+        provinceId: selected.provinceId || prev.provinceId,
+        cityId: selected.cityId || prev.cityId,
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, siteId: "" }));
+    }
+  };
+
+  // Filter cities by province
+  useEffect(() => {
+    if (formData.provinceId) {
+      setFilteredCities(cities.filter(c => c.provinceId === formData.provinceId));
+    } else {
+      setFilteredCities([]);
+    }
+  }, [formData.provinceId, cities]);
+
+  // Filter sites intelligently based on customer, province, and city
+  useEffect(() => {
+    let result = sites;
+    if (formData.customerId) {
+      result = result.filter(s => s.customerId === formData.customerId);
+    }
+    if (formData.provinceId) {
+      const inProv = result.filter(s => s.provinceId === formData.provinceId);
+      if (inProv.length > 0) {
+        result = inProv;
+      }
+    }
+    if (formData.cityId) {
+      const inCity = result.filter(s => s.cityId === formData.cityId);
+      if (inCity.length > 0) {
+        result = inCity;
+      }
+    }
+    setFilteredSites(result);
+  }, [formData.customerId, formData.provinceId, formData.cityId, sites]);
 
   // Select Options
   const customerOptions = customers.map(c => ({ value: c.id, label: c.name }));
   const provinceOptions = provinces.map(p => ({ value: p.id, label: p.name }));
-  const cityOptions = filteredCities.map(c => ({ value: c.id, label: c.name }));
-  const siteOptions = filteredSites.map(s => ({ value: s.id, label: s.name }));
+  
+  const cityOptions = filteredCities.map(c => {
+    const sitesCount = formData.customerId
+      ? sites.filter(s => s.customerId === formData.customerId && s.cityId === c.id).length
+      : 0;
+    return {
+      value: c.id,
+      label: sitesCount > 0 ? `${c.name} (${sitesCount} Site)` : c.name,
+    };
+  });
+
+  const siteOptions = filteredSites.map(s => {
+    const cityName = s.city?.name || cities.find(c => c.id === s.cityId)?.name || '';
+    const provName = s.province?.name || provinces.find(p => p.id === s.provinceId)?.name || '';
+    const locationSuffix = cityName ? ` (${cityName}${provName ? `, ${provName}` : ''})` : '';
+    return {
+      value: s.id,
+      label: `${s.name}${locationSuffix}`,
+    };
+  });
+
   const positionOptions = positions.map(p => ({ value: p.id, label: p.name }));
   const departmentOptions = departments.map(d => ({ value: d.id, label: d.name }));
 
-  useEffect(() => {
-    if (formData.provinceId) {
-      setFilteredCities(cities.filter(c => c.provinceId === formData.provinceId));
-      if (!cities.some(c => c.id === formData.cityId && c.provinceId === formData.provinceId)) {
-        setFormData(prev => ({ ...prev, cityId: "", siteId: "" }));
-      }
-    } else {
-      setFilteredCities([]);
-      setFormData(prev => ({ ...prev, cityId: "", siteId: "" }));
-    }
-  }, [formData.provinceId, cities]);
-
-  useEffect(() => {
-    if (formData.cityId && formData.customerId) {
-      setFilteredSites(sites.filter(s => s.cityId === formData.cityId && s.customerId === formData.customerId));
-      if (!sites.some(s => s.id === formData.siteId && s.cityId === formData.cityId && s.customerId === formData.customerId)) {
-        setFormData(prev => ({ ...prev, siteId: "" }));
-      }
-    } else {
-      setFilteredSites([]);
-      setFormData(prev => ({ ...prev, siteId: "" }));
-    }
-  }, [formData.cityId, formData.customerId, sites]);
+  // Alternate sites of the same customer in this province if selected city has none
+  const sitesInSelectedCity = (formData.customerId && formData.cityId)
+    ? sites.filter(s => s.customerId === formData.customerId && s.cityId === formData.cityId)
+    : [];
+  const otherCustomerSitesInProvince = (formData.customerId && formData.provinceId && formData.cityId && sitesInSelectedCity.length === 0)
+    ? sites.filter(s => s.customerId === formData.customerId && s.provinceId === formData.provinceId)
+    : [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -359,7 +448,7 @@ export default function JobEditClient({
                 <SearchableSelect
                   options={customerOptions}
                   value={formData.customerId}
-                  onChange={(val) => setFormData({ ...formData, customerId: val, siteId: "" })}
+                  onChange={handleCustomerChange}
                   disabled={isPending}
                   placeholder="Pilih Customer"
                 />
@@ -372,7 +461,7 @@ export default function JobEditClient({
                 <SearchableSelect
                   options={provinceOptions}
                   value={formData.provinceId}
-                  onChange={(val) => setFormData({ ...formData, provinceId: val, cityId: "", siteId: "" })}
+                  onChange={handleProvinceChange}
                   disabled={isPending}
                   placeholder="Pilih Provinsi"
                 />
@@ -385,10 +474,37 @@ export default function JobEditClient({
                 <SearchableSelect
                   options={cityOptions}
                   value={formData.cityId}
-                  onChange={(val) => setFormData({ ...formData, cityId: val, siteId: "" })}
+                  onChange={handleCityChange}
                   disabled={isPending || !formData.provinceId}
-                  placeholder="Pilih Kota/Kabupaten"
+                  placeholder={formData.provinceId ? "Pilih Kota/Kabupaten" : "Pilih Provinsi terlebih dahulu"}
                 />
+                {otherCustomerSitesInProvince.length > 0 && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 mt-2 space-y-1.5">
+                    <p className="font-semibold flex items-center gap-1.5">
+                      <span>💡</span>
+                      <span>Tidak ada site operasional langsung di {cities.find(c => c.id === formData.cityId)?.name}.</span>
+                    </p>
+                    <p className="text-[11px] text-amber-800">
+                      Site customer tersedia di kota lain pada provinsi ini (klik untuk otomatis menyesuaikan):
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {otherCustomerSitesInProvince.map(s => {
+                        const sCity = cities.find(c => c.id === s.cityId)?.name || s.city?.name;
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => handleSiteChange(s.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-900 font-medium border border-amber-300 rounded shadow-xs text-[11px] transition-colors cursor-pointer"
+                          >
+                            <span>📍 {s.name}</span>
+                            <span className="text-amber-700 font-normal">({sCity})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -406,19 +522,30 @@ export default function JobEditClient({
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-on-surface mb-1">
-                  Area Kerja (Site Operation) <span className="text-status-error">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-on-surface">
+                    Area Kerja (Site Operation) <span className="text-status-error">*</span>
+                  </label>
+                  {formData.siteId && (
+                    <span className="text-[11px] text-primary font-medium">
+                      ✓ Lokasi & Customer tersinkronisasi otomatis
+                    </span>
+                  )}
+                </div>
                 <SearchableSelect
                   options={siteOptions}
                   value={formData.siteId}
-                  onChange={(val) => setFormData({ ...formData, siteId: val })}
-                  disabled={isPending || !formData.cityId || !formData.customerId}
-                  placeholder="Pilih Site (Pastikan Customer & Kota terisi)"
+                  onChange={handleSiteChange}
+                  disabled={isPending}
+                  placeholder={
+                    formData.customerId
+                      ? "Pilih Site Operation..."
+                      : "Pilih Site Operation (Customer & Lokasi akan otomatis terisi)..."
+                  }
                 />
-                {filteredSites.length === 0 && formData.cityId && formData.customerId && (
-                  <p className="text-[10px] text-status-warning mt-1">
-                    Tidak ada site untuk kombinasi Customer dan Kota ini.
+                {filteredSites.length === 0 && (
+                  <p className="text-[11px] text-status-warning mt-1">
+                    Tidak ada site yang terdaftar untuk filter ini.
                   </p>
                 )}
               </div>

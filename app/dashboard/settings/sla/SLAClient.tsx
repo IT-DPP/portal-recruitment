@@ -113,8 +113,8 @@ export default function SLAClient({ initialData }: { initialData: MasterPipeline
               ) : (
                 initialData.map((stage, idx) => {
                   const data = slaData[stage.id] || { totalDays: stage.slaDays, reminderDays: stage.reminderDays };
-                  // Example logic: PWKT, Induction, Training usually Unlimited
-                  const isUnlimitedStage = ['Training User', 'Induction', 'PWKT'].includes(stage.name);
+                  // Training, Induction, PKWT have Unlimited / Lifetime SLA by default
+                  const isUnlimitedStage = ['training', 'induction', 'pkwt', 'pwkt'].some(n => stage.name.toLowerCase().includes(n)) || ['stage_8', 'stage_9', 'stage_10'].includes(stage.id);
                   
                   return (
                     <tr key={stage.id} className="hover:bg-surface-container-lowest transition-colors">

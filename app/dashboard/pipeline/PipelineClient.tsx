@@ -154,6 +154,11 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
     const stageTimeline = job.timeline.find((t: any) => t.stageId === app.currentStageId);
     if (!stageTimeline || stageTimeline.status === "Completed") return "normal";
 
+    const isUnlimited = stageTimeline.stage?.slaDays === 0 ||
+      ['stage_8', 'stage_9', 'stage_10'].includes(app.currentStageId) ||
+      ['training', 'induction', 'pkwt'].some(n => (stageTimeline.stage?.name || "").toLowerCase().includes(n));
+    if (isUnlimited) return "normal";
+
     const deadline = new Date(stageTimeline.deadlineDate);
     const now = new Date();
     

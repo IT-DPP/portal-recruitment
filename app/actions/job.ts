@@ -279,8 +279,16 @@ export async function publishJobOpening(id: string) {
         }
       }
 
+      const isUnlimited = (slaDays === 0) || ['stage_8', 'stage_9', 'stage_10'].includes(stage.id) || ['training', 'induction', 'pkwt'].some(n => stage.name.toLowerCase().includes(n));
+
       const deadlineDate = new Date(currentStartDate);
-      deadlineDate.setDate(deadlineDate.getDate() + slaDays);
+      if (isUnlimited) {
+        // Lifetime / limitless SLA: set deadline far in the future
+        deadlineDate.setFullYear(deadlineDate.getFullYear() + 50);
+      } else {
+        deadlineDate.setDate(deadlineDate.getDate() + slaDays);
+        currentStartDate = new Date(deadlineDate); // next stage starts when this one ends
+      }
 
       const tData = {
         stageId: stage.id,
@@ -288,8 +296,6 @@ export async function publishJobOpening(id: string) {
         startDate: new Date(currentStartDate),
         deadlineDate: new Date(deadlineDate),
       };
-
-      currentStartDate = new Date(deadlineDate); // next stage starts when this one ends
 
       return tData;
     });
@@ -443,11 +449,32 @@ export async function updateApplicationStage(appId: string, targetStageId: strin
       targetStageName = stage?.name || targetStageId;
     }
 
+    let newStatus = app.status;
+    let newCurrentStageId: string | null = targetStageId;
+
+    if (targetStageId === "Rejected") {
+      newStatus = "REJECTED";
+      newCurrentStageId = app.currentStageId;
+    } else if (targetStageId === "Hired") {
+      newStatus = "HIRED";
+      newCurrentStageId = null;
+    } else if (
+      ["stage_8", "stage_9", "stage_10"].includes(targetStageId) ||
+      (targetStageName && ["training", "induction", "pkwt"].some(n => targetStageName.toLowerCase().includes(n)))
+    ) {
+      // Hired decision is locked in at MCU stage; post-MCU stages (Training, Induction, PKWT) track hired employees
+      newStatus = "HIRED";
+      newCurrentStageId = targetStageId;
+    } else {
+      newStatus = "ACTIVE";
+      newCurrentStageId = targetStageId;
+    }
+
     const updatedApp = await prisma.application.update({
       where: { id: appId },
       data: {
-        currentStageId: targetStageId === "Rejected" || targetStageId === "Hired" ? app.currentStageId : targetStageId,
-        status: targetStageId === "Rejected" ? "REJECTED" : targetStageId === "Hired" ? "HIRED" : "ACTIVE",
+        currentStageId: newCurrentStageId,
+        status: newStatus,
         history: {
           create: {
             stageId: targetStageId === "Rejected" || targetStageId === "Hired" ? undefined : targetStageId,

@@ -83,9 +83,7 @@ export default function JobDetailClient({
     setSlaConfig(config);
 
     const hired = (initialJob.applications || []).filter((a: any) => 
-      a.status === "HIRED" || 
-      a.currentStageId === "Hired" || 
-      a.history?.some((h: any) => h.stageName?.toLowerCase() === "hired")
+      a.status === "HIRED" || a.currentStageId === "Hired"
     );
     const hiredWithProfiles = hired.map((app: any) => {
       const p = app.candidateProfile || {};
@@ -689,16 +687,25 @@ export default function JobDetailClient({
                   <tr>
                     <th className="px-6 py-4">Kandidat</th>
                     <th className="px-6 py-4">Kontak</th>
+                    <th className="px-6 py-4">Tahapan Onboarding</th>
                     <th className="px-6 py-4">Tanggal Hired</th>
                     <th className="px-6 py-4">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-table-border">
                   {hiredCandidates.map((hc, idx) => {
-                    const hiredHistory = hc.history?.find((h: any) => h.stageName?.toLowerCase() === "hired");
+                    const hiredHistory = hc.history?.find((h: any) => 
+                      h.stageName?.toLowerCase() === "hired" || 
+                      h.note?.toLowerCase().includes("hired") || 
+                      h.stageId === "stage_8"
+                    );
                     const hiredDate = hiredHistory 
                       ? new Date(hiredHistory.date || hiredHistory.createdAt).toLocaleDateString("id-ID") 
                       : (hc.updatedAt ? new Date(hc.updatedAt).toLocaleDateString("id-ID") : "-");
+                    
+                    const stageObj = pipelineStages.find((s: any) => s.id === hc.currentStageId);
+                    const stageName = stageObj?.name || (hc.currentStageId === "stage_8" ? "Training" : hc.currentStageId === "stage_9" ? "Induction" : hc.currentStageId === "stage_10" ? "PKWT" : null);
+
                     return (
                       <tr key={idx} className="bg-white hover:bg-surface-container-lowest transition-colors">
                         <td className="px-6 py-4">
@@ -727,7 +734,18 @@ export default function JobDetailClient({
                           <p className="text-xs text-on-surface-variant">{hc.profile.whatsapp || "-"}</p>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase tracking-wide">
+                          {stageName ? (
+                            <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wide">
+                              {stageName} (Onboarding)
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold uppercase tracking-wide">
+                              Active Employee
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-bold tracking-wide">
                             {hiredDate}
                           </span>
                         </td>

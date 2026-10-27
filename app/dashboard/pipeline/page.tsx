@@ -4,8 +4,27 @@ import React from "react";
 import prisma from "@/lib/prisma";
 import PipelineClient from "./PipelineClient";
 
+import { ensureExtendedPipelineStages } from "@/app/actions/master-data";
+
 export default async function PipelinePage() {
-  const [jobs, applications, customers, stages] = await Promise.all([
+  await ensureExtendedPipelineStages();
+
+  const allStages = await prisma.masterPipelineStage.findMany({
+    orderBy: { orderIndex: 'asc' }
+  });
+
+  const postMcuStageIds = Array.from(
+    new Set([
+      "stage_8",
+      "stage_9",
+      "stage_10",
+      ...allStages
+        .filter((s) => ["training", "induction", "pkwt"].some((n) => s.name.toLowerCase().includes(n)))
+        .map((s) => s.id)
+    ])
+  );
+
+  const [jobs, applications, customers] = await Promise.all([
     prisma.jobOpening.findMany({
       where: { status: "ACTIVE" },
       include: {
@@ -14,7 +33,10 @@ export default async function PipelinePage() {
     }),
     prisma.application.findMany({
       where: {
-        status: "ACTIVE"
+        OR: [
+          { status: "ACTIVE" },
+          { status: "HIRED", currentStageId: { in: postMcuStageIds } }
+        ]
       },
       include: {
         candidateProfile: {
@@ -26,11 +48,8 @@ export default async function PipelinePage() {
         job: true
       }
     }),
-    prisma.masterCustomer.findMany(),
-    prisma.masterPipelineStage.findMany({
-      orderBy: { orderIndex: 'asc' }
-    })
+    prisma.masterCustomer.findMany()
   ]);
 
-  return <PipelineClient initialJobs={jobs} initialApplications={applications} customers={customers} stages={stages} />;
+  return <PipelineClient initialJobs={jobs} initialApplications={applications} customers={customers} stages={allStages} />;
 }

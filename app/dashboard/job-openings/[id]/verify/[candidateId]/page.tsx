@@ -4,6 +4,7 @@ import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud, MessageSquare, Send, ChevronDown, UserX, Clock } from "lucide-react";
 import { MASTER_SKEMA_SERTIFIKASI, MASTER_REJECTION_MESSAGE } from "@/lib/masterData";
+import HiredCandidateStageAccordions from "@/components/dashboard/HiredCandidateStageAccordions";
 
 export default function AdvancedDocumentVerificationPage({
   params,
@@ -79,6 +80,12 @@ export default function AdvancedDocumentVerificationPage({
   const [pkwtSafetyFile, setPkwtSafetyFile] = useState<{name: string, base64: string, type: string} | null>(null);
   const [pkwtNeopFile, setPkwtNeopFile] = useState<{name: string, base64: string, type: string} | null>(null);
   const [pkwtMcuFile, setPkwtMcuFile] = useState<{name: string, base64: string, type: string} | null>(null);
+
+  // Post-MCU Document Stores (Training, Induction, PKWT)
+  const [trainingDocs, setTrainingDocs] = useState<any[]>([]);
+  const [inductionDocs, setInductionDocs] = useState<any[]>([]);
+  const [pkwtDocs, setPkwtDocs] = useState<any[]>([]);
+  const [customPreviewFile, setCustomPreviewFile] = useState<{ name: string; url?: string; base64?: string; type?: string } | null>(null);
 
   const [activeDocTab, setActiveDocTab] = useState("KTP");
   const [failureReason, setFailureReason] = useState("");
@@ -200,23 +207,31 @@ export default function AdvancedDocumentVerificationPage({
           setMcuHasilFile(getSecureUrl(foundApp.mcu.hasilFile) || null);
           setMcuFollowUpFile(getSecureUrl(foundApp.mcu.followUpFile) || null);
         }
-        if (foundApp.trainingUser) {
-          setTrainingDate(foundApp.trainingUser.date || "");
-          setTrainingFile(getSecureUrl(foundApp.trainingUser.file) || null);
-          setTrainingHistory(foundApp.trainingUser.history || []);
+        // Training Docs
+        if (foundApp.trainingDocs && Array.isArray(foundApp.trainingDocs)) {
+          setTrainingDocs(foundApp.trainingDocs.map((d: any) => ({ ...d, file: getSecureUrl(d.file) || d.file, base64: getSecureUrl(d.base64 || d.file) || d.base64 })));
+        } else if (foundApp.trainingUser?.file) {
+          setTrainingDocs([{ id: "legacy-train", title: "Bukti Training", name: foundApp.trainingUser.file.name || "Berkas Training", base64: getSecureUrl(foundApp.trainingUser.file), type: foundApp.trainingUser.file.type || "application/pdf", createdAt: foundApp.trainingUser.date || new Date().toISOString() }]);
         }
-        if (foundApp.induction) {
-          setInductionDate(foundApp.induction.date || "");
-          setInductionFile(getSecureUrl(foundApp.induction.file) || null);
-          setInductionHistory(foundApp.induction.history || []);
+
+        // Induction Docs
+        if (foundApp.inductionDocs && Array.isArray(foundApp.inductionDocs)) {
+          setInductionDocs(foundApp.inductionDocs.map((d: any) => ({ ...d, file: getSecureUrl(d.file) || d.file, base64: getSecureUrl(d.base64 || d.file) || d.base64 })));
+        } else if (foundApp.induction?.file) {
+          setInductionDocs([{ id: "legacy-ind", title: "Bukti Induksi", name: foundApp.induction.file.name || "Berkas Induksi", base64: getSecureUrl(foundApp.induction.file), type: foundApp.induction.file.type || "application/pdf", createdAt: foundApp.induction.date || new Date().toISOString() }]);
         }
-        if (foundApp.pkwt) {
-          setPkwtStartDate(foundApp.pkwt.startDate || "");
-          setPkwtEndDate(foundApp.pkwt.endDate || "");
-          setPkwtFile(getSecureUrl(foundApp.pkwt.file) || null);
-          setPkwtSafetyFile(getSecureUrl(foundApp.pkwt.safetyFile) || null);
-          setPkwtNeopFile(getSecureUrl(foundApp.pkwt.neopFile) || null);
-          setPkwtMcuFile(getSecureUrl(foundApp.pkwt.mcuFile) || null);
+
+        // PKWT Docs
+        if (foundApp.pkwtDocs && Array.isArray(foundApp.pkwtDocs)) {
+          setPkwtDocs(foundApp.pkwtDocs.map((d: any) => ({ ...d, file: getSecureUrl(d.file) || d.file, base64: getSecureUrl(d.base64 || d.file) || d.base64 })));
+        } else if (foundApp.pkwt?.file) {
+          const legacyDocs = [
+            { id: "legacy-pkwt-1", title: "Berkas PKWT Signed", name: foundApp.pkwt.file.name || "PKWT Signed", base64: getSecureUrl(foundApp.pkwt.file), type: foundApp.pkwt.file.type || "application/pdf", createdAt: foundApp.pkwt.startDate || new Date().toISOString() },
+            ...(foundApp.pkwt.safetyFile ? [{ id: "legacy-pkwt-2", title: "Safety Induction", name: foundApp.pkwt.safetyFile.name || "Safety File", base64: getSecureUrl(foundApp.pkwt.safetyFile), type: foundApp.pkwt.safetyFile.type || "application/pdf", createdAt: new Date().toISOString() }] : []),
+            ...(foundApp.pkwt.neopFile ? [{ id: "legacy-pkwt-3", title: "Berkas NEOP", name: foundApp.pkwt.neopFile.name || "NEOP File", base64: getSecureUrl(foundApp.pkwt.neopFile), type: foundApp.pkwt.neopFile.type || "application/pdf", createdAt: new Date().toISOString() }] : []),
+            ...(foundApp.pkwt.mcuFile ? [{ id: "legacy-pkwt-4", title: "Berkas MCU Akhir", name: foundApp.pkwt.mcuFile.name || "MCU Akhir", base64: getSecureUrl(foundApp.pkwt.mcuFile), type: foundApp.pkwt.mcuFile.type || "application/pdf", createdAt: new Date().toISOString() }] : []),
+          ];
+          setPkwtDocs(legacyDocs);
         }
       }
     };
@@ -279,7 +294,8 @@ export default function AdvancedDocumentVerificationPage({
     return <div className="p-8 text-center">Loading verification data...</div>;
   }
 
-  const currentStageName = job.timeline?.find((t: any) => t.stageId === application.currentStageId)?.stage?.name || application.currentStageId || "";
+  const currentStageName = job.timeline?.find((t: any) => t.stageId === application.currentStageId)?.stage?.name || (application.status === "HIRED" && !application.currentStageId ? "Hired (Active Employee)" : application.currentStageId || "");
+  const isCandidateHired = application.status === "HIRED" || application.currentStageId === "Hired" || ["stage_8", "stage_9", "stage_10"].includes(application.currentStageId) || ["training", "induction", "pkwt"].some(n => currentStageName.toLowerCase().includes(n));
   const isAdministration = application.currentStageId === "stage_1" || currentStageName.toLowerCase().includes("administration") || currentStageName.toLowerCase().includes("cv screener");
   const isHrInterview = application.currentStageId === "stage_2" || currentStageName.toLowerCase().includes("hr interview") || currentStageName.toLowerCase().includes("interview hr");
   const isPsikotes = application.currentStageId === "stage_3" || currentStageName.toLowerCase().includes("psikotes") || currentStageName.toLowerCase().includes("psychotest") || currentStageName.toLowerCase().includes("psychological");
@@ -366,8 +382,10 @@ export default function AdvancedDocumentVerificationPage({
         psikotes: uploadedAppData.psikotes,
         testSkill: uploadedAppData.testSkill,
         userInterview: uploadedAppData.userInterview,
-        offeringLetter: uploadedAppData.offeringLetter,
         mcu: uploadedAppData.mcu,
+        trainingDocs: uploadedAppData.trainingDocs,
+        inductionDocs: uploadedAppData.inductionDocs,
+        pkwtDocs: uploadedAppData.pkwtDocs,
         trainingUser: uploadedAppData.trainingUser,
         induction: uploadedAppData.induction,
         pkwt: uploadedAppData.pkwt,
@@ -395,6 +413,10 @@ export default function AdvancedDocumentVerificationPage({
 
   const handleSaveDraftSilent = async () => {
     let updatedApp = { ...application };
+    updatedApp.trainingDocs = trainingDocs;
+    updatedApp.inductionDocs = inductionDocs;
+    updatedApp.pkwtDocs = pkwtDocs;
+
     if (isAdministration) {
       let finalBnspFile = bnspFile;
       // File is already uploaded via processUploadedFile
@@ -412,11 +434,11 @@ export default function AdvancedDocumentVerificationPage({
     } else if (isMcu) {
       updatedApp.mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
     } else if (isTrainingUser) {
-      updatedApp.trainingUser = { date: trainingDate, file: trainingFile, history: trainingHistory };
+      updatedApp.trainingDocs = trainingDocs;
     } else if (isInduction) {
-      updatedApp.induction = { date: inductionDate, file: inductionFile, history: inductionHistory };
+      updatedApp.inductionDocs = inductionDocs;
     } else if (isPkwt) {
-      updatedApp.pkwt = { startDate: pkwtStartDate, endDate: pkwtEndDate, file: pkwtFile, safetyFile: pkwtSafetyFile, neopFile: pkwtNeopFile, mcuFile: pkwtMcuFile };
+      updatedApp.pkwtDocs = pkwtDocs;
     }
     
     await safeSaveApplications(updatedApp, true);
@@ -450,11 +472,11 @@ export default function AdvancedDocumentVerificationPage({
     } else if (isMcu) {
       updatedApp.mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
     } else if (isTrainingUser) {
-      updatedApp.trainingUser = { date: trainingDate, file: trainingFile, history: trainingHistory };
+      updatedApp.trainingDocs = trainingDocs;
     } else if (isInduction) {
-      updatedApp.induction = { date: inductionDate, file: inductionFile, history: inductionHistory };
+      updatedApp.inductionDocs = inductionDocs;
     } else if (isPkwt) {
-      updatedApp.pkwt = { startDate: pkwtStartDate, endDate: pkwtEndDate, file: pkwtFile, safetyFile: pkwtSafetyFile, neopFile: pkwtNeopFile, mcuFile: pkwtMcuFile };
+      updatedApp.pkwtDocs = pkwtDocs;
     }
     updatedApp.isDraft = true;
     
@@ -527,45 +549,27 @@ export default function AdvancedDocumentVerificationPage({
       }
     }
 
-    if (isTrainingUser) {
-      if (!trainingDate || !trainingFile) {
-        window.alert("Anda harus melengkapi seluruh form pada stage Training User (Tanggal dan File Bukti) sebelum melanjutkan ke tahap berikutnya.");
-        return;
-      }
-    }
-
-    if (isInduction) {
-      if (!inductionDate || !inductionFile) {
-        window.alert("Anda harus melengkapi seluruh form pada stage Induction (Tanggal dan File Bukti) sebelum melanjutkan ke tahap berikutnya.");
-        return;
-      }
-    }
-
-    if (isPkwt) {
-      if (!pkwtStartDate || !pkwtEndDate || !pkwtFile || !pkwtSafetyFile || !pkwtNeopFile || !pkwtMcuFile) {
-        window.alert("Anda harus melengkapi seluruh form pada stage PKWT (Tanggal Mulai/Selesai dan Semua Dokumen Kontrak/Safety) sebelum melanjutkan ke tahap berikutnya.");
-        return;
-      }
-    }
-
-    
     await handleSaveDraftSilent();
     const currentIndex = job.timeline?.findIndex((t: any) => t.stageId === application.currentStageId);
     if (currentIndex !== -1 && currentIndex + 1 < job.timeline.length) {
        const nextStage = job.timeline[currentIndex + 1];
        const { updateApplicationStage } = await import("@/app/actions/job");
-       const res = await updateApplicationStage(application.id, nextStage.stageId, "Approved to next stage");
+       const res = await updateApplicationStage(application.id, nextStage.stageId, isMcu ? "Lolos MCU - Status Hired. Masuk Training." : "Approved to next stage");
        if (res.success) {
-         window.alert(`Candidate approved and moved to ${(nextStage.stage?.name || nextStage.stageId)}.`);
+         if (isMcu) {
+           window.alert("Kandidat dinyatakan FIT TO WORK dan resmi HIRED! Melanjutkan ke tahapan Training.");
+         } else {
+           window.alert(`Candidate approved and moved to ${(nextStage.stage?.name || nextStage.stageId)}.`);
+         }
          router.push(`/dashboard/job-openings/${job.id}`);
        } else {
          window.alert("Gagal menyetujui kandidat.");
        }
     } else {
        const { updateApplicationStage } = await import("@/app/actions/job");
-       const res = await updateApplicationStage(application.id, "Hired", "Candidate successfully hired.");
+       const res = await updateApplicationStage(application.id, "Hired", "Seluruh tahapan seleksi & onboarding selesai. Resmi Active Employee.");
        if (res.success) {
-          window.alert(`Candidate successfully hired and marked as Employee!`);
+          window.alert("Seluruh tahapan seleksi dan onboarding selesai! Kandidat resmi menjadi Active Employee.");
           router.push(`/dashboard/job-openings/${job.id}`);
        } else {
           window.alert("Gagal menyetujui kandidat.");
@@ -1002,6 +1006,47 @@ export default function AdvancedDocumentVerificationPage({
   };
 
   const renderDocumentPreview = () => {
+    if (customPreviewFile) {
+      const previewSrc = customPreviewFile.url || customPreviewFile.base64;
+      const fileName = customPreviewFile.name;
+      const isPdf = previewSrc?.startsWith("data:application/pdf") || customPreviewFile.type === "application/pdf" || previewSrc?.toLowerCase().includes(".pdf");
+      const isImage = previewSrc?.startsWith("data:image/") || customPreviewFile.type?.startsWith("image/") || previewSrc?.match(/\.(jpeg|jpg|gif|png)/i) != null;
+
+      return (
+        <div className="mt-4 border border-table-border rounded-xl bg-surface-container-lowest overflow-hidden h-[500px] flex flex-col relative">
+          <div className="absolute top-4 left-4 z-10 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-lg shadow-sm flex items-center gap-2">
+            <span>Berkas Stage: {fileName}</span>
+            <button
+              onClick={() => setCustomPreviewFile(null)}
+              className="ml-2 hover:bg-white/20 rounded px-1 font-bold text-white"
+              title="Kembali ke profil kandidat"
+            >
+              ×
+            </button>
+          </div>
+          <div className="absolute top-4 right-4 flex gap-2 z-10 bg-white/80 p-1.5 rounded-lg backdrop-blur-sm border border-outline-variant/30 shadow-sm">
+            {previewSrc && (
+              <a href={previewSrc} download={fileName} target="_blank" rel="noreferrer" className="p-1.5 hover:bg-surface-container-low rounded inline-block" title="Download">
+                <Download className="w-4 h-4 text-black" />
+              </a>
+            )}
+          </div>
+          
+          {isPdf && previewSrc ? (
+            <iframe src={previewSrc} className="w-full h-full border-none bg-white pt-10" title={fileName} />
+          ) : isImage && previewSrc ? (
+            <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-4 pt-10">
+              <img src={previewSrc} alt={fileName} className="max-w-full max-h-full object-contain shadow-sm border border-outline-variant/30 rounded" />
+            </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-surface-container-lowest p-4">
+              <p className="text-sm text-on-surface-variant font-medium">Format file tidak didukung untuk pratinjau langsung.</p>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     let fileData = null;
     let fileName = "";
     
@@ -1075,9 +1120,11 @@ export default function AdvancedDocumentVerificationPage({
             <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Reviewing Candidate</p>
             <h2 className="text-xl font-bold text-black flex items-center gap-2">
               {profile.fullName} <span className="text-on-surface-variant font-normal">—</span> {job.positionName || job.position?.name}
-              {application.currentStageId === "Hired" && (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 uppercase tracking-wide">Employee</span>
-              )}
+              {(application.currentStageId === "Hired" || (application.status === "HIRED" && !application.currentStageId)) ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 uppercase tracking-wide">Active Employee</span>
+              ) : application.status === "HIRED" ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-wide">Hired (Onboarding)</span>
+              ) : null}
               {profile?.isBlacklisted && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-white uppercase tracking-wide">Blacklisted</span>
               )}
@@ -1113,8 +1160,73 @@ export default function AdvancedDocumentVerificationPage({
         {/* Left Column */}
         <div className="space-y-6 flex flex-col">
           
-          {/* Section 1: Dynamic based on Stage */}
-          {isAdministration ? (
+          {/* Section 1: Full Accordion for Hired Candidates OR Dynamic based on Stage */}
+          {isCandidateHired ? (
+            <HiredCandidateStageAccordions
+              application={application}
+              currentStageId={application.currentStageId}
+              bnspData={{
+                skema,
+                certNumber,
+                issueDate,
+                expiryDate,
+                isApproved,
+                file: bnspFile,
+              }}
+              hrInterviewData={{
+                result: interviewResult,
+                date: interviewDate,
+                feedback: interviewFeedback,
+                file: interviewFile,
+                resultFile: interviewResultFile,
+              }}
+              psikotesData={{
+                result: psikotesResult,
+                date: psikotesDate,
+                file: psikotesFile,
+              }}
+              testSkillData={{
+                date: testSkillDate,
+                videoLink: testSkillVideoLink,
+                proofs: testSkillProofs,
+                resultFile: testSkillResultFile,
+              }}
+              userInterviewData={{
+                result: userInterviewResult,
+                date: userInterviewDate,
+                feedback: userInterviewFeedback,
+                file: userInterviewFile,
+              }}
+              offeringData={{
+                date: offeringDate,
+                file: offeringFile,
+              }}
+              mcuData={{
+                date: mcuDate,
+                pengantarFile: mcuPengantarFile,
+                hasilFile: mcuHasilFile,
+                followUpFile: mcuFollowUpFile,
+              }}
+              trainingDocs={trainingDocs}
+              onTrainingDocsChange={(newDocs) => {
+                setTrainingDocs(newDocs);
+                safeSaveApplications({ ...application, trainingDocs: newDocs }, true);
+              }}
+              inductionDocs={inductionDocs}
+              onInductionDocsChange={(newDocs) => {
+                setInductionDocs(newDocs);
+                safeSaveApplications({ ...application, inductionDocs: newDocs }, true);
+              }}
+              pkwtDocs={pkwtDocs}
+              onPkwtDocsChange={(newDocs) => {
+                setPkwtDocs(newDocs);
+                safeSaveApplications({ ...application, pkwtDocs: newDocs }, true);
+              }}
+              onPreviewFile={(fileObj) => {
+                setCustomPreviewFile(fileObj);
+              }}
+            />
+          ) : isAdministration ? (
             <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
               <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
                 <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Sertifikat BNSP Validation
@@ -2190,9 +2302,12 @@ export default function AdvancedDocumentVerificationPage({
             {["KTP", "CV", "Ijazah", "KK", "Pas Foto", "Sertifikat BNSP"].map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveDocTab(tab)}
+                onClick={() => {
+                  setActiveDocTab(tab);
+                  setCustomPreviewFile(null);
+                }}
                 className={`px-4 py-2.5 text-sm font-bold whitespace-nowrap transition-colors border-b-2 ${
-                  activeDocTab === tab 
+                  !customPreviewFile && activeDocTab === tab 
                     ? "border-blue-600 text-blue-600" 
                     : "border-transparent text-on-surface-variant hover:text-black hover:bg-surface-container-lowest"
                 }`}
@@ -2200,6 +2315,20 @@ export default function AdvancedDocumentVerificationPage({
                 {tab}
               </button>
             ))}
+            {customPreviewFile && (
+              <div className="px-4 py-2.5 text-sm font-bold whitespace-nowrap border-b-2 border-primary text-primary bg-primary/5 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5" />
+                <span className="max-w-[120px] truncate">{customPreviewFile.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setCustomPreviewFile(null)}
+                  className="hover:text-red-500 font-bold ml-1 text-slate-400 hover:bg-slate-200 rounded px-1"
+                  title="Tutup pratinjau berkas stage"
+                >
+                  ×
+                </button>
+              </div>
+            )}
           </div>
           
           {/* Viewer */}
@@ -2318,10 +2447,16 @@ export default function AdvancedDocumentVerificationPage({
               </button>
             </div>
             <div className="p-6 flex flex-col gap-4">
-              <button onClick={() => { setShowActionModal(false); handleApproveNextStage(); }} className="w-full px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm">
-                <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5" /> {isLastStage ? "Hire Candidate" : "Approve to Next Stage"}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              {application.status === "HIRED" && !application.currentStageId ? (
+                <div className="w-full px-5 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold rounded-lg text-sm flex items-center justify-between shadow-sm">
+                  <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-emerald-600" /> Seluruh Onboarding Selesai (Resmi Active Employee)</span>
+                </div>
+              ) : (
+                <button onClick={() => { setShowActionModal(false); handleApproveNextStage(); }} className="w-full px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm">
+                  <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5" /> {isMcu ? "Loloskan MCU & Tetapkan Hired" : isLastStage || isPkwt ? "Selesaikan Onboarding PKWT (Hired Selesai)" : "Approve to Next Stage"}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
               <button onClick={() => { setShowActionModal(false); handleApproveAll(); }} className="w-full px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm">
                 <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5" /> Approve All Stages</span>
                 <ArrowRight className="w-4 h-4" />
