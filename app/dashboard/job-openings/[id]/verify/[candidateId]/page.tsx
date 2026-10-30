@@ -382,6 +382,7 @@ export default function AdvancedDocumentVerificationPage({
         psikotes: uploadedAppData.psikotes,
         testSkill: uploadedAppData.testSkill,
         userInterview: uploadedAppData.userInterview,
+        offeringLetter: uploadedAppData.offeringLetter,
         mcu: uploadedAppData.mcu,
         trainingDocs: uploadedAppData.trainingDocs,
         inductionDocs: uploadedAppData.inductionDocs,
@@ -430,7 +431,7 @@ export default function AdvancedDocumentVerificationPage({
     } else if (isUserInterview) {
       updatedApp.userInterview = { result: userInterviewResult, date: userInterviewDate, feedback: userInterviewFeedback, file: userInterviewFile };
     } else if (isOfferingLetter) {
-      updatedApp.offeringLetter = { date: offeringDate, file: offeringFile };
+      updatedApp.offeringLetter = { ...(application?.offeringLetter || {}), date: offeringDate, file: offeringFile };
     } else if (isMcu) {
       updatedApp.mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
     } else if (isTrainingUser) {
@@ -468,7 +469,7 @@ export default function AdvancedDocumentVerificationPage({
     } else if (isUserInterview) {
       updatedApp.userInterview = { result: userInterviewResult, date: userInterviewDate, feedback: userInterviewFeedback, file: userInterviewFile };
     } else if (isOfferingLetter) {
-      updatedApp.offeringLetter = { date: offeringDate, file: offeringFile };
+      updatedApp.offeringLetter = { ...(application?.offeringLetter || {}), date: offeringDate, file: offeringFile };
     } else if (isMcu) {
       updatedApp.mcu = { date: mcuDate, pengantarFile: mcuPengantarFile, hasilFile: mcuHasilFile, followUpFile: mcuFollowUpFile };
     } else if (isTrainingUser) {
@@ -670,6 +671,20 @@ export default function AdvancedDocumentVerificationPage({
       router.push(`/dashboard/job-openings/${job.id}`);
     } else {
       window.alert("Gagal menyetujui semua tahap.");
+    }
+  };
+
+  const handleAcceptDecline = async () => {
+    if (!window.confirm("Apakah Anda yakin ingin menerima penolakan penawaran ini? Status lamaran kandidat akan diubah menjadi REJECTED.")) {
+      return;
+    }
+    const { resolveOfferDeclined } = await import("@/app/actions/candidate-application");
+    const res = await resolveOfferDeclined(application.id, "ACCEPT_DECLINE");
+    if (res.success) {
+      window.alert("Penolakan kandidat telah diterima. Lamaran berstatus REJECTED.");
+      router.push(`/dashboard/job-openings/${job.id}`);
+    } else {
+      window.alert(res.error || "Gagal memproses penolakan.");
     }
   };
 
@@ -1700,6 +1715,90 @@ export default function AdvancedDocumentVerificationPage({
               <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
                 <CheckCircle className="w-5 h-5 text-blue-600" /> 1. Offering Letter Assessment
               </h3>
+
+              {/* Candidate Response Status Banner */}
+              {application?.offeringLetter?.candidateResponse && (
+                <div className="mb-4">
+                  {application.offeringLetter.candidateResponse.status === "ACCEPTED" && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+                          <CheckCircle className="w-5 h-5 text-emerald-600" />
+                          <span>Kandidat Menyetujui Offering Letter (Signed OL Telah Diunggah)</span>
+                        </div>
+                        <span className="text-xs text-emerald-600 font-mono">
+                          {new Date(application.offeringLetter.candidateResponse.signedAt).toLocaleString("id-ID")}
+                        </span>
+                      </div>
+                      {application.offeringLetter.candidateResponse.note && (
+                        <p className="text-xs text-emerald-700 mt-2 bg-white/70 p-2.5 rounded-lg border border-emerald-100">
+                          <strong>Catatan Kandidat:</strong> {application.offeringLetter.candidateResponse.note}
+                        </p>
+                      )}
+                      {application.offeringLetter.candidateResponse.signedFile && (
+                        <div className="mt-3 flex items-center justify-between bg-white p-3 rounded-lg border border-emerald-200">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="text-xs font-bold text-gray-900 truncate">
+                              {application.offeringLetter.candidateResponse.signedFile.name}
+                            </span>
+                          </div>
+                          <a
+                            href={application.offeringLetter.candidateResponse.signedFile.base64 || `/api/file?key=${encodeURIComponent(application.offeringLetter.candidateResponse.signedFile.objectKey || '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5 shrink-0 shadow-sm"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Unduh Signed OL
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {application.offeringLetter.candidateResponse.status === "DECLINED_REVIEW_REQUIRED" && (
+                    <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-red-900 font-bold text-sm">
+                          <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+                          <span>PERHATIAN: Kandidat Menolak Penawaran Kerja (Offer Declined)</span>
+                        </div>
+                        <span className="text-xs text-red-600 font-mono">
+                          {new Date(application.offeringLetter.candidateResponse.declinedAt).toLocaleString("id-ID")}
+                        </span>
+                      </div>
+                      <div className="mt-2.5 bg-white p-3 rounded-lg border border-red-200 text-xs">
+                        <span className="font-bold text-red-800">Alasan Penolakan dari Kandidat:</span>
+                        <p className="mt-1 text-sm text-gray-900 font-medium whitespace-pre-wrap">
+                          "{application.offeringLetter.candidateResponse.note}"
+                        </p>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAcceptDecline}
+                          className="px-3.5 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1.5 shadow-sm"
+                        >
+                          <Ban className="w-3.5 h-3.5" /> Terima Penolakan (Tolak Kandidat)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowMoveJobModal(true)}
+                          className="px-3.5 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-sm"
+                        >
+                          <ArrowRight className="w-3.5 h-3.5" /> Pindahkan ke Lowongan Lain
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {application.offeringLetter.candidateResponse.status === "REJECTED_FINAL" && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700">
+                      <span className="font-bold">Status Penolakan:</span> Telah disetujui recruiter. {application.offeringLetter.candidateResponse.resolutionNote || ''}
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div className="space-y-4">
                 <div>
@@ -1749,6 +1848,42 @@ export default function AdvancedDocumentVerificationPage({
               <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
                 <CheckCircle className="w-5 h-5 text-blue-600" /> 1. MCU Verification Details
               </h3>
+
+              {/* Candidate MCU Proof Banner */}
+              {application?.mcu?.candidateProof?.file && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-blue-900 font-bold text-sm">
+                      <CheckCircle className="w-5 h-5 text-blue-600" />
+                      <span>Kandidat Mengunggah Bukti Kehadiran / Kwitansi MCU</span>
+                    </div>
+                    <span className="text-xs text-blue-600 font-mono">
+                      {new Date(application.mcu.candidateProof.uploadedAt).toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                  {application.mcu.candidateProof.notes && (
+                    <p className="text-xs text-blue-800 mt-2 bg-white/70 p-2.5 rounded-lg border border-blue-100">
+                      <strong>Catatan Kandidat:</strong> {application.mcu.candidateProof.notes}
+                    </p>
+                  )}
+                  <div className="mt-3 flex items-center justify-between bg-white p-3 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                      <span className="text-xs font-bold text-gray-900 truncate">
+                        {application.mcu.candidateProof.file.name}
+                      </span>
+                    </div>
+                    <a
+                      href={application.mcu.candidateProof.file.base64 || `/api/file?key=${encodeURIComponent(application.mcu.candidateProof.file.objectKey || '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 shrink-0 shadow-sm"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Unduh Bukti MCU
+                    </a>
+                  </div>
+                </div>
+              )}
               
               <div className="space-y-4">
                 <div>

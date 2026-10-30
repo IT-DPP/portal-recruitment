@@ -26,7 +26,7 @@ export default async function CandidateHistoryApplicationPage() {
   const pastApplications = allApplications.filter((app: any) => {
     return (
       app.status === "REJECTED" ||
-      app.status === "HIRED" ||
+      (app.status === "HIRED" && (!app.currentStageId || app.currentStageId === "Hired")) ||
       app.job?.status === "CLOSED" ||
       isBlacklisted
     );
