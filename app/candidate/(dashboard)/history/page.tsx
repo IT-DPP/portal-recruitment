@@ -28,7 +28,7 @@ export default async function HistoryPage() {
     }) || [];
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       <div>
         <h2 className="text-2xl font-bold text-primary tracking-tight">
           My Applications

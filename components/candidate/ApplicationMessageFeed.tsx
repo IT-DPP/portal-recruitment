@@ -23,12 +23,14 @@ interface ApplicationMessageFeedProps {
     date: string;
   }>;
   onRefresh?: () => void;
+  className?: string;
 }
 
 export default function ApplicationMessageFeed({
   applicationId,
   messages = [],
   onRefresh,
+  className,
 }: ApplicationMessageFeedProps) {
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -58,7 +60,11 @@ export default function ApplicationMessageFeed({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-table-border shadow-sm overflow-hidden flex flex-col h-[480px]">
+    <div
+      className={`bg-white rounded-2xl border border-table-border shadow-sm overflow-hidden flex flex-col ${
+        className || "h-[480px]"
+      }`}
+    >
       {/* Header */}
       <div className="p-4 border-b border-table-border bg-surface-container-lowest flex items-center justify-between">
         <div className="flex items-center gap-2">
