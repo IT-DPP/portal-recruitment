@@ -2,7 +2,7 @@
 
 Dokumen operasional ini merangkum langkah praktis untuk:
 1. Menjalankan aplikasi di komputer lokal (Development).
-2. Mengatur subdomain `portal.dpp.co.id` & `portal-staging.dpp.co.id` di **cPanel Zone Editor**.
+2. Mengatur subdomain `recruitment.dpp.co.id` & `recruitment-staging.dpp.co.id` di **cPanel Zone Editor**.
 3. Menjalankan `docker compose up -d --build` di **VM Azure Non-Odoo** tanpa bentrok dengan 17 container proyek lain.
 
 ---
@@ -40,7 +40,7 @@ npm run dev
 
 ---
 
-## Bagian 2: Setup Subdomain di cPanel (`portal.dpp.co.id` & `portal-staging.dpp.co.id`)
+## Bagian 2: Setup Subdomain di cPanel (`recruitment.dpp.co.id` & `recruitment-staging.dpp.co.id`)
 
 Untuk menghubungkan domain `dpp.co.id` di cPanel ke VM Azure Non-Odoo:
 
@@ -52,8 +52,8 @@ Untuk menghubungkan domain `dpp.co.id` di cPanel ke VM Azure Non-Odoo:
 
 | Name | TTL | Type | Record (Value) |
 |---|---|---|---|
-| `portal.dpp.co.id.` | `300` (atau `14400`) | **A** | `<IP_PUBLIC_VM_NON_ODOO>` |
-| `portal-staging.dpp.co.id.` | `300` (atau `14400`) | **A** | `<IP_PUBLIC_VM_NON_ODOO>` |
+| `recruitment.dpp.co.id.` | `300` (atau `14400`) | **A** | `<IP_PUBLIC_VM_NON_ODOO>` |
+| `recruitment-staging.dpp.co.id.` | `300` (atau `14400`) | **A** | `<IP_PUBLIC_VM_NON_ODOO>` |
 
 > [!TIP]
 > **Catatan Penting di cPanel:** Jangan membuat menu *Subdomain* di cPanel jika web server-nya berada di VM Azure, karena menu *Subdomain* akan mengarahkan trafik ke server cPanel itu sendiri. Cukup buat **A Record** di menu **Zone Editor**.
@@ -61,15 +61,15 @@ Untuk menghubungkan domain `dpp.co.id` di cPanel ke VM Azure Non-Odoo:
 ### 2.2 Verifikasi Propagasi DNS
 Dari terminal lokal atau VM, jalankan:
 ```bash
-nslookup portal.dpp.co.id
-nslookup portal-staging.dpp.co.id
+nslookup recruitment.dpp.co.id
+nslookup recruitment-staging.dpp.co.id
 ```
 Pastikan keduanya sudah mengembalikan IP publik VM Azure Non-Odoo.
 
 ### 2.3 Apakah Subdomain Bisa Diubah di Kemudian Hari?
 **Sangat bisa (< 5 menit) tanpa mengubah kode aplikasi:**
 1. Tambahkan `A Record` subdomain baru di **cPanel Zone Editor**.
-2. Ubah `server_name` di konfigurasi Nginx VM (`/etc/nginx/sites-available/portal.dpp.co.id`) lalu jalankan `sudo certbot --nginx -d subdomain-baru.dpp.co.id`.
+2. Ubah `server_name` di konfigurasi Nginx VM (`/etc/nginx/sites-available/recruitment.dpp.co.id`) lalu jalankan `sudo certbot --nginx -d subdomain-baru.dpp.co.id`.
 3. Ubah nilai `NEXTAUTH_URL=https://subdomain-baru.dpp.co.id` di file `.env` pada VM, lalu restart container: `docker compose up -d`.
 
 ---
@@ -94,7 +94,7 @@ POSTGRES_PASSWORD=GantiDenganPasswordDatabaseYangKuat2026!
 POSTGRES_DB=recruitment_db
 DATABASE_URL=postgresql://dpp_portal:GantiDenganPasswordDatabaseYangKuat2026!@db:5432/recruitment_db?schema=public
 
-NEXTAUTH_URL=https://portal.dpp.co.id
+NEXTAUTH_URL=https://recruitment.dpp.co.id
 NEXTAUTH_SECRET=GantiDenganHasil_openssl_rand_base64_32
 
 # Sembunyikan portal kandidat & lowongan publik di Production tahap awal
@@ -137,13 +137,13 @@ Jika VM menggunakan Nginx di host untuk meneruskan domain ke container:
 
 ```bash
 # 1. Salin template konfigurasi Nginx yang sudah disiapkan di repo
-sudo cp deploy/nginx/portal.dpp.co.id.conf /etc/nginx/sites-available/portal.dpp.co.id
-sudo ln -sf /etc/nginx/sites-available/portal.dpp.co.id /etc/nginx/sites-enabled/portal.dpp.co.id
+sudo cp deploy/nginx/recruitment.dpp.co.id.conf /etc/nginx/sites-available/recruitment.dpp.co.id
+sudo ln -sf /etc/nginx/sites-available/recruitment.dpp.co.id /etc/nginx/sites-enabled/recruitment.dpp.co.id
 
 # 2. Uji konfigurasi Nginx & reload
 sudo nginx -t && sudo systemctl reload nginx
 
 # 3. Terbitkan sertifikat HTTPS gratis via Certbot
-sudo certbot --nginx -d portal.dpp.co.id
+sudo certbot --nginx -d recruitment.dpp.co.id
 ```
 
