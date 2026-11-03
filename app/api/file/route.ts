@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPresignedDownloadUrl } from "@/lib/s3";
 import prisma from "@/lib/prisma";
 import { requireRole, isObjectKeyOwnedByUser } from "@/lib/auth-guard";
+import { recordAuditLog } from "@/lib/audit-log";
 
 export async function GET(request: NextRequest) {
   const auth = await requireRole(["ADMIN", "RECRUITER", "CANDIDATE"]);
@@ -40,6 +41,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const url = await getPresignedDownloadUrl(key);
+
+    await recordAuditLog({
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      actorRole: auth.user.role,
+      action: "DOCUMENT_ACCESSED",
+      entityType: "S3Object",
+      entityId: key,
+    });
+
     return NextResponse.redirect(url);
   } catch (error) {
     console.error("Error generating presigned URL:", error);

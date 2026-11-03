@@ -6,6 +6,7 @@ import { JobOpeningInput, JobOpeningSchema } from "@/lib/validations/job";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { requireStaffSession } from "@/lib/auth-guard";
+import { recordAuditLog } from "@/lib/audit-log";
 
 export async function getJobOpenings() {
   try {
@@ -157,6 +158,20 @@ export async function createJobOpening(data: JobOpeningInput) {
         departmentId,
         positionName,
         departmentName,
+      },
+    });
+
+    await recordAuditLog({
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      actorRole: auth.user.role,
+      action: "JOB_CREATED",
+      entityType: "JobOpening",
+      entityId: result.id,
+      metadata: {
+        noRegistrasi: result.noRegistrasi,
+        positionName: result.positionName,
+        jumlahPermintaan: result.jumlahPermintaan,
       },
     });
 
@@ -503,6 +518,22 @@ export async function updateApplicationStage(appId: string, targetStageId: strin
     revalidatePath(`/dashboard/pipeline`);
     revalidatePath(`/dashboard/job-openings/${app.jobId}`);
 
+    await recordAuditLog({
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      actorRole: auth.user.role,
+      action: "STAGE_MOVED",
+      entityType: "Application",
+      entityId: appId,
+      metadata: {
+        jobId: app.jobId,
+        targetStageId,
+        targetStageName,
+        newStatus,
+        note: note || null,
+      },
+    });
+
     return { success: true, data: updatedApp };
   } catch (error) {
     console.error("updateApplicationStage Error:", error);
@@ -670,6 +701,19 @@ export async function blacklistCandidate(candidateProfileId: string, note: strin
     revalidatePath(`/dashboard/blacklist`);
     revalidatePath(`/dashboard/pipeline`);
     revalidatePath(`/dashboard/archived-candidates`);
+
+    await recordAuditLog({
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      actorRole: auth.user.role,
+      action: "CANDIDATE_BLACKLISTED",
+      entityType: "CandidateProfile",
+      entityId: candidateProfileId,
+      metadata: {
+        reason: note,
+      },
+    });
+
     return { success: true, data: updatedProfile };
   } catch (error) {
     console.error("blacklistCandidate Error:", error);

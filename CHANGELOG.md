@@ -4,7 +4,20 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — Phase 2 (Foundation, Security Hardening & Docker Alignment) — 2026-11-03
+## [Unreleased] — Phase 3 (MVP Polish, Audit Log, Login Rate-Limiting & R2 Storage Consolidation) — 2026-11-03
+
+### Added
+- `AuditLog` model in `prisma/schema.prisma` and migration `20261103043000_add_audit_log`.
+- `lib/audit-log.ts` service with automatic sensitive-field redaction (`sanitizeAuditMetadata`) and fail-safe logging (`recordAuditLog`).
+- `app/api/audit-logs/route.ts` and `/dashboard/settings/audit-logs` Admin UI with search, action filtering, and CSV export (`§4.9` & `§8` Brief).
+- `lib/rate-limit.ts` in-memory brute-force protection integrated into NextAuth `CredentialsProvider` (`5` failed attempts / `15` minutes lockout).
+
+### Changed
+- `lib/s3.ts` and `app/actions/upload.ts`: routed `uploadBase64File` directly to Cloudflare R2 / S3 (`uploadBufferToS3`) with protected `/api/file?key=...` URLs when S3 is configured, and skipped `CreateBucketCommand` on non-local endpoints to support least-privilege R2 tokens (`ADR-004`).
+- `app/dashboard/settings/users/page.tsx` & `app/api/users/[id]/route.ts`: enabled Super Admin to edit user email, name, department, role, and reset passwords (including primary admin password rotation) with uniqueness and $\ge 8$ character validation.
+- Expanded unit test suite in `lib/__tests__/security-foundation.test.ts` to 6 passing tests.
+
+## [Phase 2] — Foundation, Security Hardening & Docker Alignment — 2026-11-03
 
 ### Added
 - `lib/feature-flags.ts` for environment-driven toggling of Candidate Portal (`FEATURE_CANDIDATE_PORTAL`) and Public Jobs (`FEATURE_PUBLIC_JOBS`).

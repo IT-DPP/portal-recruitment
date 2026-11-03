@@ -6,6 +6,12 @@ import {
   validateUploadMetadata,
   MAX_UPLOAD_SIZE_BYTES,
 } from "../auth-guard";
+import {
+  checkLoginRateLimit,
+  recordLoginFailure,
+  resetLoginRateLimit,
+} from "../rate-limit";
+import { sanitizeAuditMetadata } from "../audit-log";
 
 test("Feature Flags — default to true when env variables are unset", () => {
   const prevCandidate = process.env.FEATURE_CANDIDATE_PORTAL;
@@ -73,3 +79,38 @@ test("Upload Metadata Guard — validates allowed MIME types, extensions, and 5M
   assert.equal(blockedOversize.valid, false);
 });
 
+test("Login Rate Limiter — blocks account after 5 consecutive failures and resets on success", () => {
+  const email = "recruiter.test@dpp.co.id";
+  const now = 1_700_000_000_000;
+
+  resetLoginRateLimit(email);
+  assert.equal(checkLoginRateLimit(email, now).allowed, true);
+
+  for (let i = 1; i <= 4; i++) {
+    const res = recordLoginFailure(email, now + i * 1000);
+    assert.equal(res.blocked, false);
+  }
+
+  const fifth = recordLoginFailure(email, now + 5000);
+  assert.equal(fifth.blocked, true);
+
+  const checkAfterFifth = checkLoginRateLimit(email, now + 6000);
+  assert.equal(checkAfterFifth.allowed, false);
+
+  resetLoginRateLimit(email);
+  assert.equal(checkLoginRateLimit(email, now + 7000).allowed, true);
+});
+
+test("Audit Metadata Sanitizer — redacts sensitive secret/password fields", () => {
+  const sanitized = sanitizeAuditMetadata({
+    targetEmail: "staff@dpp.co.id",
+    password: "SuperSecretPassword123",
+    token: "jwt-token-xyz",
+    role: "RECRUITER",
+  });
+
+  assert.equal(sanitized?.targetEmail, "staff@dpp.co.id");
+  assert.equal(sanitized?.role, "RECRUITER");
+  assert.equal(sanitized?.password, "[REDACTED]");
+  assert.equal(sanitized?.token, "[REDACTED]");
+});

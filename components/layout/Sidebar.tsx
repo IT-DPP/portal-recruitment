@@ -20,6 +20,7 @@ import {
   BarChart2,
   UserX,
   FileText,
+  ShieldAlert,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -331,19 +332,34 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                 </span>
               </Link>
               {(userRole === "administrator" || userRole === "admin") && (
-                <Link
-                  href="/dashboard/settings/users"
-                  className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
-                    pathname.includes("/settings/users")
-                      ? "text-primary font-bold bg-surface-container-low/50"
-                      : "text-on-surface-variant hover:bg-surface-container-low"
-                  }`}
-                >
-                  <Users className="mr-2 w-4 h-4 shrink-0" />
-                  <span className="font-sans text-[11px] font-semibold">
-                    Users
-                  </span>
-                </Link>
+                <>
+                  <Link
+                    href="/dashboard/settings/users"
+                    className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
+                      pathname.includes("/settings/users")
+                        ? "text-primary font-bold bg-surface-container-low/50"
+                        : "text-on-surface-variant hover:bg-surface-container-low"
+                    }`}
+                  >
+                    <Users className="mr-2 w-4 h-4 shrink-0" />
+                    <span className="font-sans text-[11px] font-semibold">
+                      Users
+                    </span>
+                  </Link>
+                  <Link
+                    href="/dashboard/settings/audit-logs"
+                    className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
+                      pathname.includes("/settings/audit-logs")
+                        ? "text-primary font-bold bg-surface-container-low/50"
+                        : "text-on-surface-variant hover:bg-surface-container-low"
+                    }`}
+                  >
+                    <ShieldAlert className="mr-2 w-4 h-4 shrink-0" />
+                    <span className="font-sans text-[11px] font-semibold">
+                      Audit Logs
+                    </span>
+                  </Link>
+                </>
               )}
               <Link
                 href="/dashboard/settings/sla"

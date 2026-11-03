@@ -4,6 +4,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import prisma from "./prisma";
 import bcrypt from "bcryptjs";
+import { checkLoginRateLimit, recordLoginFailure, resetLoginRateLimit } from "./rate-limit";
+import { recordAuditLog } from "./audit-log";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -11,8 +13,6 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      // Allow Google login to link with existing accounts that share the same email.
-      // This is safe because Google verifies email ownership.
       allowDangerousEmailAccountLinking: true,
       profile(profile) {
         return {
@@ -20,7 +20,7 @@ export const authOptions: NextAuthOptions = {
           name: profile.name,
           email: profile.email,
           image: profile.picture,
-          role: "CANDIDATE", // Default for new Google signups; overridden in jwt callback for existing users
+          role: "CANDIDATE",
         };
       },
     }),
@@ -28,40 +28,83 @@ export const authOptions: NextAuthOptions = {
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
+        const normalizedEmail = credentials.email.trim().toLowerCase();
+
+        // Check brute-force rate limit (ADR-003 compensation for no MFA)
+        const rateCheck = checkLoginRateLimit(normalizedEmail);
+        if (!rateCheck.allowed) {
+          await recordAuditLog({
+            actorEmail: normalizedEmail,
+            action: "AUTH_LOGIN_RATE_LIMITED",
+            entityType: "User",
+            metadata: { retryAfterSeconds: rateCheck.retryAfterSeconds },
+          });
+          throw new Error(
+            `Terlalu banyak percobaan login gagal. Silakan coba lagi dalam ${Math.ceil(
+              rateCheck.retryAfterSeconds / 60
+            )} menit.`
+          );
+        }
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
+          where: { email: normalizedEmail },
         });
 
         if (!user || !user.password) {
+          recordLoginFailure(normalizedEmail);
+          await recordAuditLog({
+            actorEmail: normalizedEmail,
+            action: "AUTH_LOGIN_FAILED",
+            entityType: "User",
+            metadata: { reason: "USER_NOT_FOUND_OR_NO_PASSWORD" },
+          });
           throw new Error("Invalid credentials");
         }
 
         const isValid = await bcrypt.compare(credentials.password, user.password);
 
         if (!isValid) {
+          recordLoginFailure(normalizedEmail);
+          await recordAuditLog({
+            actorId: user.id,
+            actorEmail: user.email,
+            actorRole: user.role,
+            action: "AUTH_LOGIN_FAILED",
+            entityType: "User",
+            entityId: user.id,
+            metadata: { reason: "INVALID_PASSWORD" },
+          });
           throw new Error("Invalid credentials");
         }
 
+        resetLoginRateLimit(normalizedEmail);
+        await recordAuditLog({
+          actorId: user.id,
+          actorEmail: user.email,
+          actorRole: user.role,
+          action: "AUTH_LOGIN_SUCCESS",
+          entityType: "User",
+          entityId: user.id,
+        });
+
         return user as any;
-      }
-    })
+      },
+    }),
   ],
   session: {
     strategy: "jwt",
+    maxAge: 12 * 60 * 60, // 12 hours session validity
   },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        // For Google OAuth, the profile() returns role "CANDIDATE" by default,
-        // but the actual DB user may already be ADMIN/RECRUITER (created by superadmin).
-        // Always fetch the real role from DB to ensure correct RBAC.
         const dbUser = await prisma.user.findUnique({
           where: { email: user.email! },
           select: { role: true, id: true },
@@ -77,7 +120,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
       }
       return session;
-    }
+    },
   },
   pages: {
     signIn: "/login",

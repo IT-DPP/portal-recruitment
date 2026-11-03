@@ -80,5 +80,27 @@ Dari hasil inventaris container aktif di VM yang dibagikan IT Leader:
    - Verifikasi `npx tsc --noEmit` lulus dengan **0 error**.
 
 ### Status
-Menunggu review dan persetujuan IT Leader di akhir Fase 2 sebelum masuk ke Fase 3.
+Disetujui oleh IT Leader, dipisahkan ke branch lokal `docs/phase-1` dan `feat/phase-2-foundation`, serta dilanjutkan ke Fase 3 di branch baru `feat/phase-3-mvp`.
+
+---
+
+## 2026-11-03 — Fase 3: MVP Polish, Audit Log (UU PDP), Rate Limiting & Konsolidasi Storage R2
+
+### Apa yang dikerjakan
+1. **Sistem Audit Log & Kepatuhan UU PDP (`R-09` Resolved):**
+   - Menambahkan model `AuditLog` secara *non-breaking* di [`prisma/schema.prisma`](../prisma/schema.prisma) beserta migrasi SQL [`prisma/migrations/20261103043000_add_audit_log/migration.sql`](../prisma/migrations/20261103043000_add_audit_log/migration.sql).
+   - Membuat service [`lib/audit-log.ts`](../lib/audit-log.ts) dengan sanitasi otomatis field rahasia (`password`, `token`, `secret` $\rightarrow$ `[REDACTED]`).
+   - Mencatat jejak audit otomatis untuk login sukses/gagal/rate-limited, pembuatan/update/reset password/penghapusan user, pembuatan Job Order, perpindahan tahap pipeline, blacklist kandidat, serta upload/akses dokumen.
+   - Membuat endpoint [`app/api/audit-logs/route.ts`](../app/api/audit-logs/route.ts) dan halaman UI [`app/dashboard/settings/audit-logs/page.tsx`](../app/dashboard/settings/audit-logs/page.tsx) lengkap dengan filter & **Export CSV**, serta menambahkannya ke menu Settings di [`components/layout/Sidebar.tsx`](../components/layout/Sidebar.tsx).
+2. **Penyatuan Storage ke Cloudflare R2 (`ADR-004` & `R-03`/`S-04` Resolved):**
+   - Memperbarui [`lib/s3.ts`](../lib/s3.ts) agar mendukung token R2 *least-privilege* (tidak memanggil `CreateBucketCommand` di endpoint Cloudflare R2) dan menambahkan `uploadBufferToS3` serta `isS3Configured`.
+   - Memperbarui [`app/actions/upload.ts`](../app/actions/upload.ts) agar setiap pemanggilan `uploadBase64File` otomatis menyimpan objek ke Cloudflare R2/S3 dan mengembalikan URL terproteksi `/api/file?key=...` saat S3/R2 terkonfigurasi.
+3. **Penyempurnaan User Management & Proteksi Brute-Force (`ADR-003` & `R-06` Mitigated):**
+   - Membuat rate limiter [`lib/rate-limit.ts`](../lib/rate-limit.ts) dan memasangnya di [`lib/auth.ts`](../lib/auth.ts) (maksimal 5 percobaan login gagal per 15 menit per email).
+   - Menyempurnakan [`app/dashboard/settings/users/page.tsx`](../app/dashboard/settings/users/page.tsx) dan [`app/api/users/[id]/route.ts`](../app/api/users/%5Bid%5D/route.ts) agar Super Admin dapat mengubah nama, email, departemen, role, serta me-reset password user dengan validasi minimal 8 karakter.
+4. **Verifikasi & Unit Testing:**
+   - Menambahkan unit test rate limiter dan sanitizer audit log di [`lib/__tests__/security-foundation.test.ts`](../lib/__tests__/security-foundation.test.ts) (**6/6 PASS**) dan verifikasi `npx tsc --noEmit` (**0 error**).
+
+### Status
+Menunggu review dan persetujuan IT Leader di akhir Fase 3 sebelum masuk ke Fase 4.
 

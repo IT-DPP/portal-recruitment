@@ -72,6 +72,11 @@ export default function UsersMaster() {
     }
     
     setIsSubmitting(true);
+    if (formData.password && formData.password.length < 8) {
+      modal.alert("Peringatan", "Password minimal harus 8 karakter.");
+      setIsSubmitting(false);
+      return;
+    }
     if (isEditing) {
       try {
         const res = await fetch(`/api/users/${isEditing}`, {
@@ -79,6 +84,7 @@ export default function UsersMaster() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: formData.name,
+            email: formData.email,
             department: formData.department,
             role: formData.role,
             password: formData.password || undefined
@@ -146,10 +152,6 @@ export default function UsersMaster() {
   };
 
   const startEdit = (item: any) => {
-    if (item.email === 'admin@example.com') {
-        modal.alert("Info", "Akun admin utama dilindungi oleh sistem.");
-        return;
-    }
     setIsEditing(item.id);
     setFormData({ 
       name: item.name || '', 
@@ -219,8 +221,7 @@ export default function UsersMaster() {
                     type="email" 
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    disabled={!!isEditing}
-                    className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black disabled:bg-gray-100 disabled:text-gray-500"
+                    className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black"
                     placeholder="Enter email"
                   />
                 </div>
@@ -229,7 +230,8 @@ export default function UsersMaster() {
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black"
+                    disabled={isEditing === (session?.user as any)?.id}
+                    className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:outline-none focus:border-primary text-black disabled:bg-gray-100 disabled:text-gray-500"
                   >
                     <option value="ADMIN">Admin</option>
                     <option value="RECRUITER">Recruiter</option>

@@ -32,10 +32,11 @@
 
 ## 3. Hasil & Dampak Terukur (Target & Realisasi per Fase)
 
-### Capaian Saat Ini (Akhir Fase 2 — Foundation & Security Hardening)
-- **Penutupan Celah Keamanan Kritis (Zero Regression):** Menutup 5 risiko kritis/tinggi (`R-01` Unauthenticated User API, `R-02` Unguarded Server Actions, `R-03` Unvalidated Base64 Upload, `R-04` File Download IDOR, `R-07` Public Portal Exposure via Feature Flags) dengan `0` error TypeScript dan unit test terotomatisasi.
-- **Penyelarasan Container di Shared VM:** Memetakan 17 container eksisting di VM Azure Non-Odoo, mencegah tabrakan port produksi pada port `3000`/`3001`/`5432`/`5433` dengan mengalokasikan port `3020` (App) dan `127.0.0.1:5435` (PostgreSQL), serta menyelaraskan `Dockerfile` ke standar `node:20-slim` + `HEALTHCHECK`.
-- **Efisiensi Anggaran Infrastruktur:** Merancang arsitektur deployment dengan tambahan OPEX mendekati **US\$0 – US\$2/bulan** (memakai VM existing + R2 free/low tier), menghemat estimasi **US\$65 – US\$140/bulan** dibanding membeli layanan cloud managed baru.
+### Capaian Saat Ini (Akhir Fase 3 — MVP Polish, Audit Log & R2 Consolidation)
+- **Kepatuhan UU PDP & Jejak Audit End-to-End:** Mengimplementasikan sistem `AuditLog` terpusat (lengkap dengan penyensoran data sensitif otomatis dan fitur Export CSV di halaman Admin) yang merekam aktivitas login, manajemen user, pembuatan Job Order, perpindahan tahap kandidat, blacklist, dan akses dokumen.
+- **Konsolidasi Penyimpanan ke Cloudflare R2:** Menyatukan jalur upload dokumen agar langsung tersimpan di Cloudflare R2 dengan token *least-privilege* dan diakses melalui endpoint terautentikasi `/api/file`, menjadikan container aplikasi *stateless*.
+- **Penguatan Manajemen User & Mitigasi Tanpa MFA:** Memungkinkan Super Admin mengubah profil/email dan me-reset password staf secara aman ($\ge 8$ karakter, `bcrypt` cost 12) disertai proteksi *rate-limiting* (maks 5 gagal / 15 menit).
+- **Penyelarasan Container di Shared VM:** Memetakan 17 container eksisting di VM Azure Non-Odoo, mencegah tabrakan port produksi dengan mengalokasikan port `3020` (App) dan `127.0.0.1:5435` (PostgreSQL).
 
 ### Target Metrik Bisnis Saat Go-Live (Fase 6)
 - **100% Job Order & kandidat baru** tercatat terpusat di portal (menghentikan pembuatan tracker spreadsheet baru).

@@ -323,6 +323,24 @@ model Interview {
   application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 }
 
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String?
+  actorEmail  String?
+  actorRole   String?
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
 enum UserRole {
   ADMIN
   RECRUITER

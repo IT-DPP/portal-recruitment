@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { requireAdminSession } from "@/lib/auth-guard";
+import { recordAuditLog } from "@/lib/audit-log";
 
 const VALID_ROLES = new Set(["ADMIN", "RECRUITER", "CANDIDATE"]);
 
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
 
     if (typeof password !== "string" || password.length < 8) {
       return NextResponse.json(
-        { message: "Password must be at least 8 characters long" },
+        { message: "Password minimal harus 8 karakter" },
         { status: 400 }
       );
     }
@@ -85,6 +86,21 @@ export async function POST(req: Request) {
         department: department ? String(department).trim() : null,
         role,
         password: hashedPassword,
+      },
+    });
+
+    await recordAuditLog({
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      actorRole: auth.user.role,
+      action: "USER_CREATED",
+      entityType: "User",
+      entityId: newUser.id,
+      metadata: {
+        targetEmail: newUser.email,
+        targetName: newUser.name,
+        targetRole: newUser.role,
+        department: newUser.department,
       },
     });
 

@@ -4,6 +4,8 @@ import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { requireRole, MAX_UPLOAD_SIZE_BYTES } from "@/lib/auth-guard";
+import { isS3Configured, uploadBufferToS3 } from "@/lib/s3";
+import { recordAuditLog } from "@/lib/audit-log";
 
 const ALLOWED_MIME_TO_EXT: Record<string, string> = {
   "application/pdf": ".pdf",
@@ -15,7 +17,7 @@ const ALLOWED_MIME_TO_EXT: Record<string, string> = {
 export async function uploadBase64File(
   base64Data: string,
   filename: string
-): Promise<{ success: boolean; url?: string; error?: string }> {
+): Promise<{ success: boolean; url?: string; objectKey?: string; error?: string }> {
   try {
     const auth = await requireRole(["ADMIN", "RECRUITER", "CANDIDATE"]);
     if (!auth.authorized) {
@@ -48,10 +50,39 @@ export async function uploadBase64File(
       };
     }
 
-    // Generate unique filename with strictly validated extension
     const uniqueFilename = `${uuidv4()}${mappedExt}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
 
+    // Primary path (ADR-004): Store directly in Cloudflare R2 / S3 when configured
+    if (isS3Configured()) {
+      const namespace =
+        auth.user.role === "CANDIDATE"
+          ? `candidates/${auth.user.id}/uploads`
+          : `staff-uploads/${auth.user.id}`;
+      const objectKey = `${namespace}/${uniqueFilename}`;
+
+      await uploadBufferToS3(objectKey, buffer, detectedMime);
+
+      await recordAuditLog({
+        actorId: auth.user.id,
+        actorEmail: auth.user.email,
+        actorRole: auth.user.role,
+        action: "DOCUMENT_UPLOADED",
+        entityType: "S3Object",
+        entityId: objectKey,
+        metadata: {
+          originalFilename: filename,
+          mimeType: detectedMime,
+          sizeBytes: buffer.byteLength,
+          storage: "S3_R2",
+        },
+      });
+
+      const protectedUrl = `/api/file?key=${encodeURIComponent(objectKey)}`;
+      return { success: true, url: protectedUrl, objectKey };
+    }
+
+    // Local fallback only when S3/R2 env is not configured in local dev
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
