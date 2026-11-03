@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "./auth";
 
-export type AllowedRole = "ADMIN" | "RECRUITER" | "CANDIDATE";
+export type AllowedRole = "ADMIN" | "RECRUITER" | "CANDIDATE" | "USER";
 
 export interface AuthenticatedUser {
   id: string;
