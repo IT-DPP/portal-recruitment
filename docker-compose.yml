@@ -3,17 +3,19 @@ services:
     image: postgres:15-alpine
     container_name: recruitment_portal_db
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
-      POSTGRES_DB: ${POSTGRES_DB:-recruitment_db}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      # Bound to localhost on port 5435 to avoid conflict with be_ehs_db (5432) and be_dashboard_db (5433)
+      # Bound to localhost on DB_HOST_PORT (5435) to avoid conflict with be_ehs_db (5432) and be_dashboard_db (5433)
       - "127.0.0.1:${DB_HOST_PORT:-5435}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-recruitment_db}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,58 +29,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
-      PORT: 3020
-      # Always point to internal 'db:5432' service inside Docker network unless DOCKER_DATABASE_URL is explicitly set
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@db:5432/${POSTGRES_DB:-recruitment_db}?schema=public}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3020}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      S3_ENDPOINT: ${S3_ENDPOINT:-}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-portal-recruitment}
-      S3_REGION: ${S3_REGION:-auto}
-      FEATURE_CANDIDATE_PORTAL: ${FEATURE_CANDIDATE_PORTAL:-false}
-      FEATURE_PUBLIC_JOBS: ${FEATURE_PUBLIC_JOBS:-false}
-      RUN_ESSENTIAL_SEED: ${RUN_ESSENTIAL_SEED:-true}
-      RUN_DUMMY_SEED: ${RUN_DUMMY_SEED:-false}
+      PORT: ${PORT:-3020}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
     ports:
-      # Exposed on port 3020 to avoid conflict with crm-frontend (3000) and be_dashboard (3001)
-      - "${APP_HOST_PORT:-3020}:3020"
-
-  # Optional local S3-compatible storage (activate with: docker compose --profile local-minio up -d)
-  # Not started by default on VM where Cloudflare R2 is used.
-  minio:
-    image: minio/minio
-    container_name: recruitment_portal_minio
-    profiles: ["local-minio"]
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
-    ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
-    volumes:
-      - minio_data:/data
-
-  minio-setup:
-    image: minio/mc
-    container_name: recruitment_portal_minio_setup
-    profiles: ["local-minio"]
-    depends_on:
-      - minio
-    entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set myminio http://minio:9000 $${S3_ACCESS_KEY:-minioadmin} $${S3_SECRET_KEY:-minioadmin};
-      /usr/bin/mc mb myminio/$${S3_BUCKET_NAME:-recruitment-bucket} --ignore-existing;
-      exit 0;
-      "
+      # Exposed on APP_HOST_PORT (3020) to avoid conflict with crm-frontend (3000) and be_dashboard (3001)
+      - "${APP_HOST_PORT:-3020}:${PORT:-3020}"
 
 volumes:
   postgres_data:
-  minio_data:
