@@ -102,5 +102,5 @@ Disetujui oleh IT Leader, dipisahkan ke branch lokal `docs/phase-1` dan `feat/ph
    - Menambahkan unit test rate limiter dan sanitizer audit log di [`lib/__tests__/security-foundation.test.ts`](../lib/__tests__/security-foundation.test.ts) (**6/6 PASS**) dan verifikasi `npx tsc --noEmit` (**0 error**).
 
 ### Status
-Menunggu review dan persetujuan IT Leader di akhir Fase 3 sebelum masuk ke Fase 4.
+Disetujui oleh IT Leader. Aplikasi telah berhasil diverifikasi di lokal (PostgreSQL lokal + Google OAuth + Cloudflare R2 `portal-recruitment`) dan berhasil di-deploy secara live di VM Azure Non-Odoo pada domain **`https://recruitment.dpp.co.id`** (dilengkapi DNS A Record cPanel, Nginx Reverse Proxy, dan sertifikat SSL Let's Encrypt/Certbot).
 

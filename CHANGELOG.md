@@ -11,9 +11,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `lib/audit-log.ts` service with automatic sensitive-field redaction (`sanitizeAuditMetadata`) and fail-safe logging (`recordAuditLog`).
 - `app/api/audit-logs/route.ts` and `/dashboard/settings/audit-logs` Admin UI with search, action filtering, and CSV export (`§4.9` & `§8` Brief).
 - `lib/rate-limit.ts` in-memory brute-force protection integrated into NextAuth `CredentialsProvider` (`5` failed attempts / `15` minutes lockout).
+- `app/api/file/upload/route.ts` same-origin upload endpoint supporting Cloudflare R2 (`portal-recruitment` bucket) and local disk fallback without browser CORS issues.
+- `lib/dummy-file-generator.ts` on-the-fly PDF 1.4 and SVG avatar generator for seeded candidate records.
+- `prisma/ensure-db.ts` and `prisma/load-env.ts` for automated local database provisioning and seed script environment loading.
+- `deploy/nginx/recruitment.dpp.co.id.conf` Nginx reverse proxy configuration and `docs/VM_AND_CPANEL_SETUP.md` deployment runbook for `https://recruitment.dpp.co.id`.
 
 ### Changed
-- `lib/s3.ts` and `app/actions/upload.ts`: routed `uploadBase64File` directly to Cloudflare R2 / S3 (`uploadBufferToS3`) with protected `/api/file?key=...` URLs when S3 is configured, and skipped `CreateBucketCommand` on non-local endpoints to support least-privilege R2 tokens (`ADR-004`).
+- `lib/s3.ts`, `app/api/file/route.ts`, and `app/actions/upload.ts`: routed uploads and inline file previews directly through Cloudflare R2 (`getObjectFromS3`, `uploadBufferToS3`) with local and dummy fallback.
+- `Dockerfile`, `entrypoint.sh`, and `docker-compose.yml`: removed legacy MinIO containers and hardcoded fallback credentials, bundled full `@prisma` runtime scope, and precompiled Prisma seed scripts (`seed-essential.js` & `seed-dummy.js`) into the runner image.
 - `app/dashboard/settings/users/page.tsx` & `app/api/users/[id]/route.ts`: enabled Super Admin to edit user email, name, department, role, and reset passwords (including primary admin password rotation) with uniqueness and $\ge 8$ character validation.
 - Expanded unit test suite in `lib/__tests__/security-foundation.test.ts` to 6 passing tests.
 
