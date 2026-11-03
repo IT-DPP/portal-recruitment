@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import {
-  getPresignedDownloadUrl,
-  headS3Object,
-  isS3Configured,
-} from "@/lib/s3";
+import { getObjectFromS3, isS3Configured } from "@/lib/s3";
 import prisma from "@/lib/prisma";
 import { requireRole, isObjectKeyOwnedByUser } from "@/lib/auth-guard";
 import { recordAuditLog } from "@/lib/audit-log";
@@ -60,41 +56,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 1. Check local disk storage (public/uploads/<key>)
-    const uploadsRoot = path.resolve(process.cwd(), "public", "uploads");
-    const localFilePath = path.resolve(uploadsRoot, key);
-    if (
-      localFilePath.startsWith(uploadsRoot + path.sep) &&
-      fs.existsSync(localFilePath)
-    ) {
-      const buffer = await fs.promises.readFile(localFilePath);
-      const mimeType = getMimeTypeFromKey(key);
-      const fileName = path.basename(key);
+    const fileName = path.basename(key);
 
-      await recordAuditLog({
-        actorId: auth.user.id,
-        actorEmail: auth.user.email,
-        actorRole: auth.user.role,
-        action: "DOCUMENT_ACCESSED",
-        entityType: "LocalObject",
-        entityId: key,
-      });
-
-      return new NextResponse(buffer, {
-        status: 200,
-        headers: {
-          "Content-Type": mimeType,
-          "Content-Disposition": `inline; filename="${fileName}"`,
-          "Cache-Control": "private, max-age=3600",
-        },
-      });
-    }
-
-    // 2. Check remote S3 / Cloudflare R2 if configured
+    // 1. Check remote S3 / Cloudflare R2 if configured
     if (isS3Configured()) {
-      const existsInS3 = await headS3Object(key);
-      if (existsInS3) {
-        const url = await getPresignedDownloadUrl(key);
+      const r2Object = await getObjectFromS3(key);
+      if (r2Object) {
+        const mimeType = r2Object.contentType || getMimeTypeFromKey(key);
 
         await recordAuditLog({
           actorId: auth.user.id,
@@ -105,8 +73,44 @@ export async function GET(request: NextRequest) {
           entityId: key,
         });
 
-        return NextResponse.redirect(url);
+        return new NextResponse(new Uint8Array(r2Object.buffer), {
+          status: 200,
+          headers: {
+            "Content-Type": mimeType,
+            "Content-Disposition": `inline; filename="${fileName}"`,
+            "Cache-Control": "private, max-age=3600",
+          },
+        });
       }
+    }
+
+    // 2. Check local disk storage (public/uploads/<key>)
+    const uploadsRoot = path.resolve(process.cwd(), "public", "uploads");
+    const localFilePath = path.resolve(uploadsRoot, key);
+    if (
+      localFilePath.startsWith(uploadsRoot + path.sep) &&
+      fs.existsSync(localFilePath)
+    ) {
+      const buffer = await fs.promises.readFile(localFilePath);
+      const mimeType = getMimeTypeFromKey(key);
+
+      await recordAuditLog({
+        actorId: auth.user.id,
+        actorEmail: auth.user.email,
+        actorRole: auth.user.role,
+        action: "DOCUMENT_ACCESSED",
+        entityType: "LocalObject",
+        entityId: key,
+      });
+
+      return new NextResponse(new Uint8Array(buffer), {
+        status: 200,
+        headers: {
+          "Content-Type": mimeType,
+          "Content-Disposition": `inline; filename="${fileName}"`,
+          "Cache-Control": "private, max-age=3600",
+        },
+      });
     }
 
     // 3. Built-in fallback for seeded dummy documents & candidate avatars
@@ -129,15 +133,13 @@ export async function GET(request: NextRequest) {
     }
 
     const pdfBuffer = generateDummyPdfBuffer(key);
-    const fileName = path.basename(key).endsWith(".pdf")
-      ? path.basename(key)
-      : `${path.basename(key)}.pdf`;
+    const pdfName = fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`;
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${fileName}"`,
+        "Content-Disposition": `inline; filename="${pdfName}"`,
         "Cache-Control": "private, max-age=3600",
       },
     });

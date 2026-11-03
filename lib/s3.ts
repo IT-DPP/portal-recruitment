@@ -117,10 +117,39 @@ export async function headS3Object(objectKey: string): Promise<boolean> {
   }
 }
 
+export async function getObjectFromS3(
+  objectKey: string
+): Promise<{ buffer: Buffer; contentType?: string } | null> {
+  try {
+    const response = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: objectKey,
+      })
+    );
+    if (!response.Body) return null;
+    const byteArray = await response.Body.transformToByteArray();
+    return {
+      buffer: Buffer.from(byteArray),
+      contentType: response.ContentType,
+    };
+  } catch (error: any) {
+    if (
+      error?.name === "NoSuchKey" ||
+      error?.name === "NotFound" ||
+      error?.$metadata?.httpStatusCode === 404
+    ) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export async function getPresignedDownloadUrl(objectKey: string) {
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
     Key: objectKey,
+    ResponseContentDisposition: "inline",
   });
 
   const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
