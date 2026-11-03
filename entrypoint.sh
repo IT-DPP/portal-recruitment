@@ -11,3 +11,4 @@ fi
 
 echo "[Entrypoint] Starting Next.js standalone server on port ${PORT:-3020}..."
 exec node server.js
+

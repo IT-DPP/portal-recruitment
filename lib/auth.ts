@@ -18,7 +18,7 @@ export const authOptions: NextAuthOptions = {
         return {
           id: profile.sub,
           name: profile.name,
-          email: profile.email,
+          email: profile.email?.toLowerCase(),
           image: profile.picture,
           role: "CANDIDATE",
         };
@@ -92,6 +92,7 @@ export const authOptions: NextAuthOptions = {
           action: "AUTH_LOGIN_SUCCESS",
           entityType: "User",
           entityId: user.id,
+          metadata: { provider: "credentials" },
         });
 
         return user as any;
@@ -103,13 +104,27 @@ export const authOptions: NextAuthOptions = {
     maxAge: 12 * 60 * 60, // 12 hours session validity
   },
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && user?.email) {
+        await recordAuditLog({
+          actorId: user.id,
+          actorEmail: user.email,
+          actorRole: (user as any).role || "CANDIDATE",
+          action: "AUTH_LOGIN_SUCCESS",
+          entityType: "User",
+          entityId: user.id,
+          metadata: { provider: "google" },
+        });
+      }
+      return true;
+    },
     async jwt({ token, user }) {
-      if (user) {
+      if (user && user.email) {
         const dbUser = await prisma.user.findUnique({
-          where: { email: user.email! },
+          where: { email: user.email.toLowerCase() },
           select: { role: true, id: true },
         });
-        token.role = dbUser?.role || (user as any).role;
+        token.role = dbUser?.role || (user as any).role || "CANDIDATE";
         token.id = dbUser?.id || user.id;
       }
       return token;
@@ -124,6 +139,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
