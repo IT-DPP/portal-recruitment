@@ -43,9 +43,9 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   // Track if Dashboard menu is expanded
   const [isDashboardOpen, setIsDashboardOpen] = useState(
     pathname === "/dashboard" ||
-      pathname.includes("/dashboard/executive") ||
-      pathname.includes("/dashboard/geosource") ||
-      pathname.includes("/dashboard/calendar"),
+    pathname.includes("/dashboard/executive") ||
+    pathname.includes("/dashboard/geosource") ||
+    pathname.includes("/dashboard/calendar"),
   );
 
   const userRole = (session?.user as any)?.role?.toLowerCase() || null;
@@ -91,14 +91,13 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         <div className="pb-1">
           <button
             onClick={() => setIsDashboardOpen(!isDashboardOpen)}
-            className={`w-full flex items-center justify-between px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-              pathname === "/dashboard" ||
-              pathname.includes("/dashboard/executive") ||
-              pathname.includes("/dashboard/geosource") ||
-              pathname.includes("/dashboard/calendar")
+            className={`w-full flex items-center justify-between px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${pathname === "/dashboard" ||
+                pathname.includes("/dashboard/executive") ||
+                pathname.includes("/dashboard/geosource") ||
+                pathname.includes("/dashboard/calendar")
                 ? "text-primary font-bold"
                 : "text-on-surface-variant hover:bg-surface-container-low"
-            } ${isCollapsed ? "justify-center px-0" : ""}`}
+              } ${isCollapsed ? "justify-center px-0" : ""}`}
             title={isCollapsed ? "Dashboard" : undefined}
           >
             <div
@@ -125,12 +124,11 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
             <div className="bg-surface-container-low/30 py-1">
               <Link
                 href="/dashboard/executive"
-                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
-                  pathname.includes("/dashboard/executive") ||
-                  pathname === "/dashboard"
+                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/dashboard/executive") ||
+                    pathname === "/dashboard"
                     ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
                     : "text-on-surface-variant hover:bg-surface-container-low"
-                }`}
+                  }`}
               >
                 <span className="font-sans text-[11px] font-semibold">
                   Executive Dashboard
@@ -138,11 +136,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
               </Link>
               <Link
                 href="/dashboard/geosource"
-                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
-                  pathname.includes("/dashboard/geosource")
+                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/dashboard/geosource")
                     ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
                     : "text-on-surface-variant hover:bg-surface-container-low"
-                }`}
+                  }`}
               >
                 <span className="font-sans text-[11px] font-semibold">
                   GeoSource Dashboard
@@ -150,11 +147,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
               </Link>
               <Link
                 href="/dashboard/calendar"
-                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
-                  pathname.includes("/dashboard/calendar")
+                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/dashboard/calendar")
                     ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
                     : "text-on-surface-variant hover:bg-surface-container-low"
-                }`}
+                  }`}
               >
                 <span className="font-sans text-[11px] font-semibold">
                   Calendar
@@ -166,11 +162,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
 
         <Link
           href="/dashboard/job-openings"
-          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-            pathname.includes("/dashboard/job-openings")
+          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/dashboard/job-openings")
               ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
               : "text-on-surface-variant hover:bg-surface-container-low"
-          } ${isCollapsed ? "justify-center px-0" : ""}`}
+            } ${isCollapsed ? "justify-center px-0" : ""}`}
           title={isCollapsed ? "Job Openings" : undefined}
         >
           <Briefcase
@@ -185,11 +180,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
 
         <Link
           href="/dashboard/pipeline"
-          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-            pathname.includes("/dashboard/pipeline")
+          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/dashboard/pipeline")
               ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
               : "text-on-surface-variant hover:bg-surface-container-low"
-          } ${isCollapsed ? "justify-center px-0" : ""}`}
+            } ${isCollapsed ? "justify-center px-0" : ""}`}
           title={isCollapsed ? "Pipeline" : undefined}
         >
           <Database
@@ -202,11 +196,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
 
         <Link
           href="/dashboard/archived-candidates"
-          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-            pathname.includes("/dashboard/archived-candidates")
+          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/dashboard/archived-candidates")
               ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
               : "text-on-surface-variant hover:bg-surface-container-low"
-          } ${isCollapsed ? "justify-center px-0" : ""}`}
+            } ${isCollapsed ? "justify-center px-0" : ""}`}
           title={isCollapsed ? "Archived Candidates" : undefined}
         >
           <Archive
@@ -221,11 +214,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
 
         <Link
           href="/dashboard/blacklist"
-          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-            pathname.includes("/dashboard/blacklist")
+          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/dashboard/blacklist")
               ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
               : "text-on-surface-variant hover:bg-surface-container-low"
-          } ${isCollapsed ? "justify-center px-0" : ""}`}
+            } ${isCollapsed ? "justify-center px-0" : ""}`}
           title={isCollapsed ? "Blacklist" : undefined}
         >
           <UserX className={`${isCollapsed ? "" : "mr-3"} w-5 h-5 shrink-0`} />
@@ -236,11 +228,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
 
         <Link
           href="/dashboard/talent-pool"
-          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-            pathname.includes("/dashboard/talent-pool")
+          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/dashboard/talent-pool")
               ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
               : "text-on-surface-variant hover:bg-surface-container-low"
-          } ${isCollapsed ? "justify-center px-0" : ""}`}
+            } ${isCollapsed ? "justify-center px-0" : ""}`}
           title={isCollapsed ? "Talent Pool" : undefined}
         >
           <Contact
@@ -253,11 +244,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
 
         <Link
           href="/dashboard/interviews"
-          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-            pathname.includes("/dashboard/interviews")
+          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/dashboard/interviews")
               ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
               : "text-on-surface-variant hover:bg-surface-container-low"
-          } ${isCollapsed ? "justify-center px-0" : ""}`}
+            } ${isCollapsed ? "justify-center px-0" : ""}`}
           title={isCollapsed ? "Interviews" : undefined}
         >
           <Users className={`${isCollapsed ? "" : "mr-3"} w-5 h-5 shrink-0`} />
@@ -268,11 +258,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
 
         <Link
           href="/dashboard/generate-documents"
-          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-            pathname.includes("/dashboard/generate-documents")
+          className={`w-full flex items-center px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/dashboard/generate-documents")
               ? "text-primary font-bold border-r-4 border-primary bg-surface-container-low/50"
               : "text-on-surface-variant hover:bg-surface-container-low"
-          } ${isCollapsed ? "justify-center px-0" : ""}`}
+            } ${isCollapsed ? "justify-center px-0" : ""}`}
           title={isCollapsed ? "Generate Documents" : undefined}
         >
           <FileText
@@ -289,11 +278,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         <div className="pt-2">
           <button
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-            className={`w-full flex items-center justify-between px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${
-              pathname.includes("/settings")
+            className={`w-full flex items-center justify-between px-6 py-3 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/settings")
                 ? "text-primary font-bold"
                 : "text-on-surface-variant hover:bg-surface-container-low"
-            } ${isCollapsed ? "justify-center px-0" : ""}`}
+              } ${isCollapsed ? "justify-center px-0" : ""}`}
             title={isCollapsed ? "Settings" : undefined}
           >
             <div
@@ -320,11 +308,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
             <div className="bg-surface-container-low/30 py-1">
               <Link
                 href="/dashboard/settings/master-data"
-                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
-                  isMasterDataActive
+                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${isMasterDataActive
                     ? "text-primary font-bold bg-surface-container-low/50"
                     : "text-on-surface-variant hover:bg-surface-container-low"
-                }`}
+                  }`}
               >
                 <Database className="mr-2 w-4 h-4 shrink-0" />
                 <span className="font-sans text-[11px] font-semibold">
@@ -335,11 +322,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                 <>
                   <Link
                     href="/dashboard/settings/users"
-                    className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
-                      pathname.includes("/settings/users")
+                    className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/settings/users")
                         ? "text-primary font-bold bg-surface-container-low/50"
                         : "text-on-surface-variant hover:bg-surface-container-low"
-                    }`}
+                      }`}
                   >
                     <Users className="mr-2 w-4 h-4 shrink-0" />
                     <span className="font-sans text-[11px] font-semibold">
@@ -348,11 +334,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                   </Link>
                   <Link
                     href="/dashboard/settings/audit-logs"
-                    className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
-                      pathname.includes("/settings/audit-logs")
+                    className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/settings/audit-logs")
                         ? "text-primary font-bold bg-surface-container-low/50"
                         : "text-on-surface-variant hover:bg-surface-container-low"
-                    }`}
+                      }`}
                   >
                     <ShieldAlert className="mr-2 w-4 h-4 shrink-0" />
                     <span className="font-sans text-[11px] font-semibold">
@@ -363,11 +348,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
               )}
               <Link
                 href="/dashboard/settings/sla"
-                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${
-                  pathname.includes("/settings/sla")
+                className={`w-full flex items-center pl-14 pr-6 py-2 transition-colors duration-200 text-left focus:outline-none ${pathname.includes("/settings/sla")
                     ? "text-primary font-bold bg-surface-container-low/50"
                     : "text-on-surface-variant hover:bg-surface-container-low"
-                }`}
+                  }`}
               >
                 <Clock className="mr-2 w-4 h-4 shrink-0" />
                 <span className="font-sans text-[11px] font-semibold">
