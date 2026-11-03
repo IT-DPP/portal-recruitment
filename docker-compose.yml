@@ -30,7 +30,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3020
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres123@db:5432/recruitment_db?schema=public}
+      # Always point to internal 'db:5432' service inside Docker network unless DOCKER_DATABASE_URL is explicitly set
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@db:5432/${POSTGRES_DB:-recruitment_db}?schema=public}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3020}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
@@ -38,10 +39,12 @@ services:
       S3_ENDPOINT: ${S3_ENDPOINT:-}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-recruitment-bucket}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-portal-recruitment}
       S3_REGION: ${S3_REGION:-auto}
       FEATURE_CANDIDATE_PORTAL: ${FEATURE_CANDIDATE_PORTAL:-false}
       FEATURE_PUBLIC_JOBS: ${FEATURE_PUBLIC_JOBS:-false}
+      RUN_ESSENTIAL_SEED: ${RUN_ESSENTIAL_SEED:-true}
+      RUN_DUMMY_SEED: ${RUN_DUMMY_SEED:-false}
     ports:
       # Exposed on port 3020 to avoid conflict with crm-frontend (3000) and be_dashboard (3001)
       - "${APP_HOST_PORT:-3020}:3020"

@@ -21,7 +21,7 @@ function getMimeTypeFromKey(key: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireRole(["ADMIN", "RECRUITER", "CANDIDATE"]);
+  const auth = await requireRole(["ADMIN", "RECRUITER", "CANDIDATE", "USER"]);
   if (!auth.authorized) {
     return new NextResponse(auth.error, { status: auth.status });
   }
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Prevent IDOR (R-04): Candidates can only access their own files
-  if (auth.user.role === "CANDIDATE") {
+  if (auth.user.role === "CANDIDATE" || auth.user.role === "USER") {
     let isOwner = isObjectKeyOwnedByUser(key, auth.user.id);
 
     if (!isOwner) {

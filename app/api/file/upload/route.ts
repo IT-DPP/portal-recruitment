@@ -16,7 +16,7 @@ const ALLOWED_TYPES = new Set([
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export async function PUT(request: NextRequest) {
-  const auth = await requireRole(["ADMIN", "RECRUITER", "CANDIDATE"]);
+  const auth = await requireRole(["ADMIN", "RECRUITER", "CANDIDATE", "USER"]);
   if (!auth.authorized) {
     return new NextResponse(auth.error, { status: auth.status });
   }
@@ -28,7 +28,7 @@ export async function PUT(request: NextRequest) {
 
   // Candidates may only upload inside their own namespace or applications folder
   if (
-    auth.user.role === "CANDIDATE" &&
+    (auth.user.role === "CANDIDATE" || auth.user.role === "USER") &&
     !isObjectKeyOwnedByUser(key, auth.user.id) &&
     !key.startsWith("applications/")
   ) {
