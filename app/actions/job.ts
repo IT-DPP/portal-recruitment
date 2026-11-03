@@ -5,9 +5,12 @@ import { revalidatePath } from "next/cache";
 import { JobOpeningInput, JobOpeningSchema } from "@/lib/validations/job";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireStaffSession } from "@/lib/auth-guard";
 
 export async function getJobOpenings() {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const data = await prisma.jobOpening.findMany({
       include: {
         position: true,
@@ -27,6 +30,8 @@ export async function getJobOpenings() {
 
 export async function getCalendarData() {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const jobs = await prisma.jobOpening.findMany({
       select: {
         id: true,
@@ -70,31 +75,31 @@ export async function getCalendarData() {
       if (a.stageData) {
         let sd: any = typeof a.stageData === "string" ? JSON.parse(a.stageData) : a.stageData;
         if (sd.hrInterview && sd.hrInterview.date) {
-           historyEvents.push({
-             stageId: 'stage_2',
-             stageName: 'Interview HR (Scheduled)',
-             date: sd.hrInterview.date,
-             note: 'Jadwal Interview HR',
-             isSchedule: true
-           });
+          historyEvents.push({
+            stageId: 'stage_2',
+            stageName: 'Interview HR (Scheduled)',
+            date: sd.hrInterview.date,
+            note: 'Jadwal Interview HR',
+            isSchedule: true
+          });
         }
         if (sd.userInterview && sd.userInterview.date) {
-           historyEvents.push({
-             stageId: 'stage_5',
-             stageName: 'Interview User (Scheduled)',
-             date: sd.userInterview.date,
-             note: 'Jadwal Interview User',
-             isSchedule: true
-           });
+          historyEvents.push({
+            stageId: 'stage_5',
+            stageName: 'Interview User (Scheduled)',
+            date: sd.userInterview.date,
+            note: 'Jadwal Interview User',
+            isSchedule: true
+          });
         }
         if (sd.testSkill && sd.testSkill.date) {
-           historyEvents.push({
-             stageId: 'stage_4',
-             stageName: 'Test Skill (Scheduled)',
-             date: sd.testSkill.date,
-             note: 'Jadwal Test Skill',
-             isSchedule: true
-           });
+          historyEvents.push({
+            stageId: 'stage_4',
+            stageName: 'Test Skill (Scheduled)',
+            date: sd.testSkill.date,
+            note: 'Jadwal Test Skill',
+            isSchedule: true
+          });
         }
       }
 
@@ -127,6 +132,8 @@ export async function getCalendarData() {
 
 export async function createJobOpening(data: JobOpeningInput) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const parsed = JobOpeningSchema.safeParse(data);
     if (!parsed.success) {
       const errorMessages = parsed.error.issues.map((i) => i.message).join(", ");
@@ -152,7 +159,7 @@ export async function createJobOpening(data: JobOpeningInput) {
         departmentName,
       },
     });
-    
+
     revalidatePath("/dashboard/job-openings");
     return { success: true, data: result };
   } catch (error) {
@@ -163,6 +170,8 @@ export async function createJobOpening(data: JobOpeningInput) {
 
 export async function getJobById(id: string) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const job = await prisma.jobOpening.findUnique({
       where: { id },
       include: {
@@ -189,6 +198,8 @@ export async function getJobById(id: string) {
 
 export async function updateJobOpening(id: string, data: Partial<JobOpeningInput>) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const existingJob = await prisma.jobOpening.findUnique({ where: { id } });
     if (!existingJob) {
       return { success: false, error: "Lowongan tidak ditemukan" };
@@ -247,6 +258,8 @@ export async function updateJobOpening(id: string, data: Partial<JobOpeningInput
 
 export async function publishJobOpening(id: string) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const job = await prisma.jobOpening.findUnique({
       where: { id },
       include: { site: true },
@@ -255,7 +268,7 @@ export async function publishJobOpening(id: string) {
     if (job.status !== "DRAFT") return { success: false, error: "Hanya lowongan Draft yang bisa dipublish" };
 
     const stages = await prisma.masterPipelineStage.findMany({ orderBy: { orderIndex: 'asc' } });
-    
+
     // Determine which SLA to use
     let useSiteSla = false;
     if (job.site && job.site.useSpecificSla) {
@@ -365,7 +378,7 @@ export async function getPublicJobs(search?: string, provinceId?: string, cityId
 export async function getPublicJobById(id: string) {
   try {
     const job = await prisma.jobOpening.findFirst({
-      where: { 
+      where: {
         id,
         status: "ACTIVE"
       },
@@ -388,6 +401,8 @@ export async function getPublicJobById(id: string) {
 
 export async function publishJob(jobId: string, timelines: any[]) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const job = await prisma.jobOpening.update({
       where: { id: jobId },
       data: {
@@ -426,9 +441,9 @@ export async function publishJob(jobId: string, timelines: any[]) {
 }
 
 export async function updateApplicationStage(appId: string, targetStageId: string, note?: string) {
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return { success: false, error: "Unauthorized" };
+  const auth = await requireStaffSession();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
   }
 
   try {
@@ -487,7 +502,7 @@ export async function updateApplicationStage(appId: string, targetStageId: strin
 
     revalidatePath(`/dashboard/pipeline`);
     revalidatePath(`/dashboard/job-openings/${app.jobId}`);
-    
+
     return { success: true, data: updatedApp };
   } catch (error) {
     console.error("updateApplicationStage Error:", error);
@@ -496,9 +511,9 @@ export async function updateApplicationStage(appId: string, targetStageId: strin
 }
 
 export async function updateApplicationStageData(appId: string, stageData: any) {
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return { success: false, error: "Unauthorized" };
+  const auth = await requireStaffSession();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
   }
 
   try {
@@ -511,7 +526,7 @@ export async function updateApplicationStageData(appId: string, stageData: any) 
 
     revalidatePath(`/dashboard/pipeline`);
     revalidatePath(`/dashboard/job-openings/${updatedApp.jobId}`);
-    
+
     return { success: true, data: updatedApp };
   } catch (error) {
     console.error("updateApplicationStageData Error:", error);
@@ -521,6 +536,8 @@ export async function updateApplicationStageData(appId: string, stageData: any) 
 
 export async function getApplicationForVerify(jobId: string, candidateProfileId: string) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const app = await prisma.application.findFirst({
       where: {
         jobId,
@@ -635,9 +652,9 @@ export async function applyToJob(jobId: string) {
 }
 
 export async function blacklistCandidate(candidateProfileId: string, note: string) {
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return { success: false, error: "Unauthorized" };
+  const auth = await requireStaffSession();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
   }
 
   try {
@@ -662,6 +679,8 @@ export async function blacklistCandidate(candidateProfileId: string, note: strin
 
 export async function getBlacklistedCandidates() {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const profiles = await prisma.candidateProfile.findMany({
       where: { isBlacklisted: true },
       include: {
@@ -723,11 +742,13 @@ export async function getBlacklistedCandidates() {
 
 export async function getInterviewsDashboardData() {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const stages = await prisma.masterPipelineStage.findMany({
       orderBy: { orderIndex: "asc" }
     });
 
-    const interviewStages = stages.filter(s => 
+    const interviewStages = stages.filter(s =>
       s.name.toLowerCase().includes("interview") || s.id === "stage_2" || s.id === "stage_5"
     );
     const interviewStageIds = interviewStages.map(s => s.id);
@@ -801,7 +822,7 @@ export async function getInterviewsDashboardData() {
         const dt = (d.documentType || "").toLowerCase();
         return dt === "photo" || dt === "pas foto" || dt.includes("photo") || dt.includes("pas foto");
       });
-      const photoUrl = photoDoc?.objectKey 
+      const photoUrl = photoDoc?.objectKey
         ? `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}`
         : photoDoc?.fileUrl || app.candidateProfile.user?.image || null;
 

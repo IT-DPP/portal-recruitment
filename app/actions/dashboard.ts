@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { requireStaffSession } from "@/lib/auth-guard";
 
 export interface DashboardJob {
   id: string;
@@ -73,6 +74,11 @@ export interface DashboardInstitute {
  */
 export async function getExecutiveDashboardData() {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) {
+      return { success: false, error: auth.error };
+    }
+
     const [rawJobs, rawApps, rawSites, rawCustomers] = await Promise.all([
       prisma.jobOpening.findMany({
         select: {
@@ -252,6 +258,11 @@ export async function getExecutiveDashboardData() {
  */
 export async function getGeoSourceDashboardData() {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) {
+      return { success: false, error: auth.error };
+    }
+
     const [rawSites, rawInstitutes, rawJobs, rawApps] = await Promise.all([
       prisma.masterSite.findMany({
         select: {

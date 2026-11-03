@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
+import { requireStaffSession } from "@/lib/auth-guard"
 import { ProvinceInput, ProvinceSchema, CityInput, CitySchema, CustomerInput, CustomerSchema, PositionInput, PositionSchema, DepartmentInput, DepartmentSchema, SiteInput, SiteSchema, InstituteInput, InstituteSchema, RequestTypeInput, RequestTypeSchema, CertificationInput, CertificationSchema, RejectionMessageInput, RejectionMessageSchema, ClinicInput, ClinicSchema } from "@/lib/validations/master"
 
 export async function getProvinces() {
@@ -17,6 +18,8 @@ export async function getProvinces() {
 
 export async function createProvince(data: ProvinceInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = ProvinceSchema.safeParse(data)
     if (!parsed.success) {
       return { success: false, error: "Validasi gagal: " + parsed.error.message }
@@ -35,6 +38,8 @@ export async function createProvince(data: ProvinceInput) {
 
 export async function updateProvince(id: string, data: ProvinceInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = ProvinceSchema.safeParse(data)
     if (!parsed.success) {
       return { success: false, error: "Validasi gagal: " + parsed.error.message }
@@ -54,6 +59,8 @@ export async function updateProvince(id: string, data: ProvinceInput) {
 
 export async function deleteProvince(id: string) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.masterProvince.delete({
       where: { id }
     })
@@ -83,6 +90,8 @@ export async function getCities() {
 
 export async function createCity(data: CityInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = CitySchema.safeParse(data)
     if (!parsed.success) {
       return { success: false, error: "Validasi gagal: " + parsed.error.message }
@@ -102,6 +111,8 @@ export async function createCity(data: CityInput) {
 
 export async function updateCity(id: string, data: CityInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = CitySchema.safeParse(data)
     if (!parsed.success) {
       return { success: false, error: "Validasi gagal: " + parsed.error.message }
@@ -122,6 +133,8 @@ export async function updateCity(id: string, data: CityInput) {
 
 export async function deleteCity(id: string) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.masterCity.delete({
       where: { id }
     })
@@ -148,6 +161,8 @@ export async function getCustomers() {
 
 export async function createCustomer(data: CustomerInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = CustomerSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const result = await prisma.masterCustomer.create({ data: parsed.data })
@@ -160,6 +175,8 @@ export async function createCustomer(data: CustomerInput) {
 
 export async function updateCustomer(id: string, data: CustomerInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = CustomerSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const result = await prisma.masterCustomer.update({ where: { id }, data: parsed.data })
@@ -172,6 +189,8 @@ export async function updateCustomer(id: string, data: CustomerInput) {
 
 export async function deleteCustomer(id: string) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.masterCustomer.delete({ where: { id } })
     revalidatePath("/dashboard/settings/master-data/customer")
     return { success: true }
@@ -204,6 +223,8 @@ export async function getDepartments() {
 
 export async function createDepartment(data: DepartmentInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = DepartmentSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const result = await prisma.masterDepartment.create({ data: parsed.data })
@@ -216,6 +237,8 @@ export async function createDepartment(data: DepartmentInput) {
 
 export async function updateDepartment(id: string, data: DepartmentInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = DepartmentSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const result = await prisma.masterDepartment.update({ where: { id }, data: parsed.data })
@@ -228,6 +251,8 @@ export async function updateDepartment(id: string, data: DepartmentInput) {
 
 export async function deleteDepartment(id: string) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.masterDepartment.delete({ where: { id } })
     revalidatePath("/dashboard/settings/master-data/department")
     return { success: true }
@@ -238,6 +263,8 @@ export async function deleteDepartment(id: string) {
 
 export async function createPosition(data: PositionInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = PositionSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const result = await prisma.masterPosition.create({ data: parsed.data })
@@ -250,6 +277,8 @@ export async function createPosition(data: PositionInput) {
 
 export async function updatePosition(id: string, data: PositionInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = PositionSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const result = await prisma.masterPosition.update({ where: { id }, data: parsed.data })
@@ -262,6 +291,8 @@ export async function updatePosition(id: string, data: PositionInput) {
 
 export async function deletePosition(id: string) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.masterPosition.delete({ where: { id } })
     revalidatePath("/dashboard/settings/master-data/positions")
     return { success: true }
@@ -288,6 +319,8 @@ export async function getSites() {
 
 export async function createSite(data: SiteInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = SiteSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const { siteSlas, ...siteData } = parsed.data;
@@ -315,6 +348,8 @@ export async function createSite(data: SiteInput) {
 
 export async function updateSite(id: string, data: SiteInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = SiteSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const { siteSlas, ...siteData } = parsed.data;
@@ -349,6 +384,8 @@ export async function updateSite(id: string, data: SiteInput) {
 
 export async function deleteSite(id: string) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.masterSite.delete({ where: { id } })
     revalidatePath("/dashboard/settings/master-data/sites-operation")
     return { success: true }
@@ -372,6 +409,8 @@ export async function getInstitutes() {
 
 export async function createInstitute(data: InstituteInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = InstituteSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const payload = { ...parsed.data, code: parsed.data.code || null }
@@ -385,6 +424,8 @@ export async function createInstitute(data: InstituteInput) {
 
 export async function updateInstitute(id: string, data: InstituteInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = InstituteSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const payload = { ...parsed.data, code: parsed.data.code || null }
@@ -398,6 +439,8 @@ export async function updateInstitute(id: string, data: InstituteInput) {
 
 export async function deleteInstitute(id: string) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.masterInstitute.delete({ where: { id } })
     revalidatePath("/dashboard/settings/master-data/institute")
     return { success: true }
@@ -421,6 +464,8 @@ export async function getRequestTypes() {
 
 export async function createRequestType(data: RequestTypeInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = RequestTypeSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const result = await prisma.masterRequestType.create({ data: parsed.data })
@@ -433,6 +478,8 @@ export async function createRequestType(data: RequestTypeInput) {
 
 export async function updateRequestType(id: string, data: RequestTypeInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = RequestTypeSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const result = await prisma.masterRequestType.update({ where: { id }, data: parsed.data })
@@ -445,6 +492,8 @@ export async function updateRequestType(id: string, data: RequestTypeInput) {
 
 export async function deleteRequestType(id: string) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.masterRequestType.delete({ where: { id } })
     revalidatePath("/dashboard/settings/master-data/request-type")
     return { success: true }
@@ -468,6 +517,8 @@ export async function getCertifications() {
 
 export async function createCertification(data: CertificationInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = CertificationSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const payload = { ...parsed.data, code: parsed.data.code || null }
@@ -481,6 +532,8 @@ export async function createCertification(data: CertificationInput) {
 
 export async function updateCertification(id: string, data: CertificationInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = CertificationSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const payload = { ...parsed.data, code: parsed.data.code || null }
@@ -494,6 +547,8 @@ export async function updateCertification(id: string, data: CertificationInput) 
 
 export async function deleteCertification(id: string) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.masterCertification.delete({ where: { id } })
     revalidatePath("/dashboard/settings/master-data/certification")
     return { success: true }
@@ -520,6 +575,8 @@ export async function getRejectionMessages() {
 
 export async function createRejectionMessage(data: RejectionMessageInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = RejectionMessageSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const payload = { ...parsed.data, code: parsed.data.code || null }
@@ -533,6 +590,8 @@ export async function createRejectionMessage(data: RejectionMessageInput) {
 
 export async function updateRejectionMessage(id: string, data: RejectionMessageInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = RejectionMessageSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const payload = { ...parsed.data, code: parsed.data.code || null }
@@ -546,6 +605,8 @@ export async function updateRejectionMessage(id: string, data: RejectionMessageI
 
 export async function deleteRejectionMessage(id: string) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.masterRejectionMessage.delete({ where: { id } })
     revalidatePath("/dashboard/settings/master-data/rejection-message")
     return { success: true }
@@ -584,6 +645,8 @@ export async function getPipelineStages() {
 
 export async function updateGlobalSla(payload: { id: string; slaDays: number; reminderDays: number }[]) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.$transaction(
       payload.map(item => 
         prisma.masterPipelineStage.update({
@@ -617,6 +680,8 @@ export async function getClinics() {
 
 export async function createClinic(data: ClinicInput) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const parsed = ClinicSchema.safeParse(data);
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message };
 
@@ -640,6 +705,8 @@ export async function createClinic(data: ClinicInput) {
 
 export async function updateClinic(id: string, data: ClinicInput) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     const parsed = ClinicSchema.safeParse(data);
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message };
 
@@ -664,6 +731,8 @@ export async function updateClinic(id: string, data: ClinicInput) {
 
 export async function deleteClinic(id: string) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
     await prisma.masterClinic.delete({ where: { id } });
     revalidatePath("/dashboard/settings/master-data/clinics");
     revalidatePath("/dashboard/generate-documents");

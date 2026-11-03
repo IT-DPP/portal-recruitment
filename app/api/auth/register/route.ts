@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-
-const prisma = new PrismaClient();
+import { isCandidatePortalEnabled } from "@/lib/feature-flags";
 
 export async function POST(req: Request) {
   try {
+    if (!isCandidatePortalEnabled()) {
+      return NextResponse.json(
+        { message: "Registrasi portal kandidat sedang dinonaktifkan." },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const { email, password } = body;
 
@@ -16,16 +22,18 @@ export async function POST(req: Request) {
       );
     }
 
-    if (password.length < 6) {
+    if (typeof password !== "string" || password.length < 8) {
       return NextResponse.json(
-        { message: "Password must be at least 6 characters long" },
+        { message: "Password must be at least 8 characters long" },
         { status: 400 }
       );
     }
 
+    const normalizedEmail = String(email).trim().toLowerCase();
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -36,12 +44,12 @@ export async function POST(req: Request) {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user (default role is CANDIDATE per schema default, but let's be explicit)
+    // Create user (explicitly CANDIDATE)
     const newUser = await prisma.user.create({
       data: {
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         password: hashedPassword,
         role: "CANDIDATE",
       },

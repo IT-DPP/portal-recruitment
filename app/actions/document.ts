@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { requireStaffSession } from "@/lib/auth-guard";
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 600): Promise<T> {
   let lastError: any;
@@ -46,6 +47,10 @@ export type DocumentGenerationDataResult = {
 
 export async function getDocumentGenerationData(): Promise<DocumentGenerationDataResult> {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) {
+      return { success: false, error: auth.error };
+    }
     return await withRetry(async () => {
       const [jobs, applications, customers, sites, stages, clinics, provinces] = await Promise.all([
         prisma.jobOpening.findMany({
@@ -143,6 +148,10 @@ export async function saveCandidateDocumentData(
   docType: "offering" | "bast" | "mcu",
   data: Record<string, any>
 ) {
+  const auth = await requireStaffSession();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
     return { success: false, error: "Unauthorized" };
@@ -214,6 +223,10 @@ export async function saveCandidateDocumentData(
 export async function batchSaveBastData(
   entries: { appId: string; data: Record<string, any> }[]
 ) {
+  const auth = await requireStaffSession();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
     return { success: false, error: "Unauthorized" };

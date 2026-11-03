@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { requireAdminSession } from "@/lib/auth-guard";
 
-const prisma = new PrismaClient();
+const VALID_ROLES = new Set(["ADMIN", "RECRUITER", "CANDIDATE"]);
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = await requireAdminSession();
+    if (!auth.authorized) {
+      return NextResponse.json({ message: auth.error }, { status: auth.status });
+    }
+
     const { id } = await params;
     const body = await req.json();
     const { name, department, role, password } = body;
@@ -14,13 +20,32 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ message: "User ID is required" }, { status: 400 });
     }
 
-    const updateData: any = {};
+    // Prevent admin from demoting their own account
+    if (id === auth.user.id && role !== undefined && role !== "ADMIN") {
+      return NextResponse.json(
+        { message: "Tidak dapat menurunkan role akun Admin yang sedang digunakan" },
+        { status: 403 }
+      );
+    }
+
+    const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (department !== undefined) updateData.department = department;
-    if (role !== undefined) updateData.role = role;
-    
+    if (role !== undefined) {
+      if (!VALID_ROLES.has(role)) {
+        return NextResponse.json({ message: "Invalid user role" }, { status: 400 });
+      }
+      updateData.role = role;
+    }
+
     if (password) {
-      updateData.password = await bcrypt.hash(password, 10);
+      if (typeof password !== "string" || password.length < 8) {
+        return NextResponse.json(
+          { message: "Password must be at least 8 characters long" },
+          { status: 400 }
+        );
+      }
+      updateData.password = await bcrypt.hash(password, 12);
     }
 
     const updatedUser = await prisma.user.update({
@@ -32,12 +57,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         email: true,
         role: true,
         department: true,
-      }
+      },
     });
 
     return NextResponse.json({
       message: "User updated successfully",
-      user: updatedUser
+      user: updatedUser,
     });
   } catch (error) {
     console.error("PUT user error:", error);
@@ -47,28 +72,38 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = await requireAdminSession();
+    if (!auth.authorized) {
+      return NextResponse.json({ message: auth.error }, { status: auth.status });
+    }
+
     const { id } = await params;
 
     if (!id) {
       return NextResponse.json({ message: "User ID is required" }, { status: 400 });
     }
 
-    // Protection for superadmin (optional based on logic, we'll check if the user is the primary admin)
+    if (id === auth.user.id) {
+      return NextResponse.json(
+        { message: "Tidak dapat menghapus akun Admin yang sedang digunakan" },
+        { status: 403 }
+      );
+    }
+
     const userToDelete = await prisma.user.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!userToDelete) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    // Basic protection against deleting the main admin
     if (userToDelete.email === "admin@example.com") {
       return NextResponse.json({ message: "Cannot delete the primary admin account" }, { status: 403 });
     }
 
     await prisma.user.delete({
-      where: { id }
+      where: { id },
     });
 
     return NextResponse.json({ message: "User deleted successfully" });

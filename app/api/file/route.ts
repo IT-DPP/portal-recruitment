@@ -1,20 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPresignedDownloadUrl } from "@/lib/s3";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { requireRole, isObjectKeyOwnedByUser } from "@/lib/auth-guard";
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  
-  if (!session || !session.user) {
-    return new NextResponse("Unauthorized", { status: 401 });
+  const auth = await requireRole(["ADMIN", "RECRUITER", "CANDIDATE"]);
+  if (!auth.authorized) {
+    return new NextResponse(auth.error, { status: auth.status });
   }
 
   const searchParams = request.nextUrl.searchParams;
   const key = searchParams.get("key");
 
-  if (!key) {
-    return new NextResponse("Missing file key", { status: 400 });
+  if (!key || key.includes("..")) {
+    return new NextResponse("Invalid or missing file key", { status: 400 });
+  }
+
+  // Prevent IDOR (R-04): Candidates can only access their own files
+  if (auth.user.role === "CANDIDATE") {
+    let isOwner = isObjectKeyOwnedByUser(key, auth.user.id);
+
+    if (!isOwner) {
+      const docRecord = await prisma.candidateDocument.findFirst({
+        where: {
+          objectKey: key,
+          candidateProfile: {
+            userId: auth.user.id,
+          },
+        },
+        select: { id: true },
+      });
+      isOwner = !!docRecord;
+    }
+
+    if (!isOwner) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
   }
 
   try {

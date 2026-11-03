@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
 import { getPresignedUploadUrl, deleteS3Object, getPresignedDownloadUrl } from "@/lib/s3"
 import { v4 as uuidv4 } from "uuid"
+import { isObjectKeyOwnedByUser, validateUploadMetadata } from "@/lib/auth-guard"
 
 export async function getCandidateProfile() {
   const session = await getServerSession(authOptions)
@@ -211,16 +212,31 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
 
 export async function getUploadUrl(fileName: string, contentType: string, folderPath?: string) {
   const session = await getServerSession(authOptions)
-  if (!session || !session.user || !(session.user as any).id) {
+  const userId = (session?.user as any)?.id as string | undefined;
+  const userRole = (session?.user as any)?.role as string | undefined;
+  if (!session || !session.user || !userId) {
     return { success: false, error: "Unauthorized" }
   }
 
-  const extension = fileName.split('.').pop()
+  const metaCheck = validateUploadMetadata(fileName, contentType);
+  if (!metaCheck.valid) {
+    return { success: false, error: metaCheck.error };
+  }
+
+  const extension = metaCheck.extension;
   const sanitizedFileName = fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
   
-  let basePath = `candidates/${(session.user as any).id}/profile`;
+  let basePath = `candidates/${userId}/profile`;
   if (folderPath) {
-    basePath = folderPath;
+    const cleanFolder = folderPath.replace(/^\/+|\/+$/g, "");
+    if (cleanFolder.includes("..")) {
+      return { success: false, error: "Folder path tidak valid" };
+    }
+    // Candidates can only upload inside their own namespace
+    if (userRole === "CANDIDATE" && !cleanFolder.startsWith(`candidates/${userId}`)) {
+      return { success: false, error: "Forbidden folder path" };
+    }
+    basePath = cleanFolder;
   }
   
   const objectKey = `${basePath}/${sanitizedFileName}-${uuidv4()}.${extension}`;
@@ -237,8 +253,27 @@ export async function getUploadUrl(fileName: string, contentType: string, folder
 
 export async function getPreviewUrl(objectKey: string) {
   const session = await getServerSession(authOptions)
-  if (!session || !session.user || !(session.user as any).id) {
+  const userId = (session?.user as any)?.id as string | undefined;
+  const userRole = (session?.user as any)?.role as string | undefined;
+  if (!session || !session.user || !userId) {
     return { success: false, error: "Unauthorized" }
+  }
+
+  if (!objectKey || objectKey.includes("..")) {
+    return { success: false, error: "Object key tidak valid" };
+  }
+
+  if (userRole === "CANDIDATE" && !isObjectKeyOwnedByUser(objectKey, userId)) {
+    const docRecord = await prisma.candidateDocument.findFirst({
+      where: {
+        objectKey,
+        candidateProfile: { userId },
+      },
+      select: { id: true },
+    });
+    if (!docRecord) {
+      return { success: false, error: "Forbidden" };
+    }
   }
 
   try {
