@@ -4,12 +4,15 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   HeadBucketCommand,
+  HeadObjectCommand,
   CreateBucketCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const endpoint = process.env.S3_ENDPOINT || "http://localhost:9000";
-const region = process.env.S3_REGION || (endpoint.includes("r2.cloudflarestorage.com") ? "auto" : "us-east-1");
+const region =
+  process.env.S3_REGION ||
+  (endpoint.includes("r2.cloudflarestorage.com") ? "auto" : "us-east-1");
 
 const s3Client = new S3Client({
   region,
@@ -24,10 +27,23 @@ const s3Client = new S3Client({
 const BUCKET_NAME = process.env.S3_BUCKET_NAME || "recruitment-bucket";
 
 /**
- * Check whether S3 / Cloudflare R2 storage is explicitly configured via environment variables.
+ * Check whether a real S3 / Cloudflare R2 storage endpoint is configured.
+ * Returns false if using the default unconfigured localhost:9000 + minioadmin placeholder
+ * (unless FORCE_LOCAL_MINIO=true is explicitly set).
  */
 export function isS3Configured(): boolean {
-  return Boolean(process.env.S3_ENDPOINT && process.env.S3_ACCESS_KEY && process.env.S3_SECRET_KEY);
+  const ep = process.env.S3_ENDPOINT;
+  const ak = process.env.S3_ACCESS_KEY;
+  const sk = process.env.S3_SECRET_KEY;
+  if (!ep || !ak || !sk) return false;
+
+  const isDefaultPlaceholder =
+    (ep === "http://localhost:9000" || ep === "http://127.0.0.1:9000") &&
+    ak === "minioadmin" &&
+    sk === "minioadmin" &&
+    process.env.FORCE_LOCAL_MINIO !== "true";
+
+  return !isDefaultPlaceholder;
 }
 
 function isLocalMinioEndpoint(url: string): boolean {
@@ -57,7 +73,10 @@ async function ensureBucketExists() {
   }
 }
 
-export async function getPresignedUploadUrl(objectKey: string, contentType: string) {
+export async function getPresignedUploadUrl(
+  objectKey: string,
+  contentType: string
+) {
   await ensureBucketExists();
   const command = new PutObjectCommand({
     Bucket: BUCKET_NAME,
@@ -82,6 +101,20 @@ export async function uploadBufferToS3(
     ContentType: contentType,
   });
   await s3Client.send(command);
+}
+
+export async function headS3Object(objectKey: string): Promise<boolean> {
+  try {
+    await s3Client.send(
+      new HeadObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: objectKey,
+      })
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function getPresignedDownloadUrl(objectKey: string) {

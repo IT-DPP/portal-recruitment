@@ -232,8 +232,12 @@ export async function getUploadUrl(fileName: string, contentType: string, folder
     if (cleanFolder.includes("..")) {
       return { success: false, error: "Folder path tidak valid" };
     }
-    // Candidates can only upload inside their own namespace
-    if (userRole === "CANDIDATE" && !cleanFolder.startsWith(`candidates/${userId}`)) {
+    // Candidates can only upload inside their own namespace or application stage folder
+    if (
+      userRole === "CANDIDATE" &&
+      !cleanFolder.startsWith(`candidates/${userId}`) &&
+      !cleanFolder.startsWith("applications/")
+    ) {
       return { success: false, error: "Forbidden folder path" };
     }
     basePath = cleanFolder;
@@ -242,12 +246,12 @@ export async function getUploadUrl(fileName: string, contentType: string, folder
   const objectKey = `${basePath}/${sanitizedFileName}-${uuidv4()}.${extension}`;
 
   try {
-    const url = await getPresignedUploadUrl(objectKey, contentType)
-    const publicUrl = `/api/file?key=${encodeURIComponent(objectKey)}`
-    return { success: true, uploadUrl: url, objectKey, publicUrl }
+    const uploadUrl = `/api/file/upload?key=${encodeURIComponent(objectKey)}&type=${encodeURIComponent(contentType)}`;
+    const publicUrl = `/api/file?key=${encodeURIComponent(objectKey)}`;
+    return { success: true, uploadUrl, objectKey, publicUrl };
   } catch (error) {
-    console.error("Error generating presigned URL:", error)
-    return { success: false, error: "Gagal generate upload URL" }
+    console.error("Error generating upload URL:", error);
+    return { success: false, error: "Gagal generate upload URL" };
   }
 }
 
@@ -276,13 +280,8 @@ export async function getPreviewUrl(objectKey: string) {
     }
   }
 
-  try {
-    const url = await getPresignedDownloadUrl(objectKey)
-    return { success: true, url }
-  } catch (error) {
-    console.error("Error generating presigned download URL:", error)
-    return { success: false, error: "Gagal generate preview URL" }
-  }
+  const url = `/api/file?key=${encodeURIComponent(objectKey)}`;
+  return { success: true, url };
 }
 
 export async function deleteCandidateDocument(documentType: string) {
