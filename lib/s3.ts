@@ -54,3 +54,22 @@ export async function deleteS3Object(objectKey: string) {
   });
   await s3Client.send(command);
 }
+
+export async function getS3ObjectBuffer(objectKey: string): Promise<{ buffer: Buffer; contentType: string } | null> {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: objectKey,
+    });
+    const response = await s3Client.send(command);
+    if (!response.Body) return null;
+    const byteArray = await response.Body.transformToByteArray();
+    return {
+      buffer: Buffer.from(byteArray),
+      contentType: response.ContentType || "application/octet-stream",
+    };
+  } catch (error) {
+    console.warn(`[S3] Error fetching object buffer for key '${objectKey}':`, error);
+    return null;
+  }
+}

@@ -8,6 +8,9 @@ import {
   generateMcuDocx,
   generateMcuBatchDocx,
   generateBastExcel,
+  generateBastZipPackage,
+  generateBastStatementLetterPDF,
+  BastZipProgress,
   getBase64FromUrl,
   McuLetterData,
   McuBatchDocumentData,
@@ -53,6 +56,10 @@ import {
   Building,
   Briefcase,
   ExternalLink,
+  FolderArchive,
+  Archive,
+  Clock,
+  FileCheck,
 } from "lucide-react";
 
 
@@ -269,6 +276,9 @@ export default function GenerateDocumentsClient({
   const [bastInputs, setBastInputs] = useState<Record<string, any>>({});
   const [isSavingBast, setIsSavingBast] = useState(false);
   const [isGeneratingBastExcel, setIsGeneratingBastExcel] = useState(false);
+  const [isGeneratingBastZip, setIsGeneratingBastZip] = useState(false);
+  const [bastZipProgress, setBastZipProgress] = useState<BastZipProgress | null>(null);
+  const [isGeneratingStatementPdf, setIsGeneratingStatementPdf] = useState(false);
 
   // -------------------------------------------------------------------------
   // 3. MCU STATES (Prototype Surat Pengantar MCU Batch)
@@ -656,6 +666,64 @@ export default function GenerateDocumentsClient({
     setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
+  const getCandidateDocStatus = (app: any) => {
+    const docs = app?.candidateProfile?.documents || [];
+    const certDoc = docs.find((d: any) => {
+      const t = (d.documentType || "").toLowerCase();
+      return t.includes("sertifikat") || t.includes("bnsp");
+    });
+
+    let stageData: any = {};
+    try {
+      stageData =
+        typeof app?.stageData === "string"
+          ? JSON.parse(app.stageData)
+          : app?.stageData || {};
+    } catch (e) {
+      stageData = {};
+    }
+
+    const bnspVal = stageData?.bnspValidation;
+    const hasValidationFile = !!bnspVal?.file;
+    const isValidationApproved = bnspVal?.isApproved;
+
+    return {
+      hasCert: !!certDoc,
+      hasValidation: hasValidationFile,
+      isApproved: isValidationApproved,
+    };
+  };
+
+  const getBastRowsData = () => {
+    return bastSelectedApps
+      .map((appId, index) => {
+        const app = applications.find((a) => a.id === appId);
+        if (!app) return null;
+        const job = jobs.find((j) => j.id === app.jobId);
+        const cand = app.candidateProfile;
+        const inputs = bastInputs[appId] || {};
+        const site = sites.find((s) => s.id === job?.siteId);
+
+        return {
+          no: index + 1,
+          noRequest: job?.noRegistrasi || "-",
+          noB1: job?.noB1 || "-",
+          tanggalTerimaB1: job?.tanggalMasuk || "-",
+          nama: cand?.user?.name || cand?.nik || "-",
+          nik: cand?.nik || "-",
+          posisi: job?.posisi || "-",
+          status: inputs.status || "LOKAL",
+          nrpDpp: inputs.nrp || "-",
+          areaKerja: site?.name || job?.location || "-",
+          awalKontrak: inputs.start || "-",
+          akhirKontrak: inputs.end || "-",
+          linkSertifikat: inputs.link || "-",
+          validasi: inputs.validasi || "Valid",
+        };
+      })
+      .filter(Boolean);
+  };
+
   const handleDownloadExcelBAST = async () => {
     if (bastSelectedApps.length === 0) {
       alert("Pilih minimal satu kandidat yang ingin disertakan dalam BAST.");
@@ -665,34 +733,7 @@ export default function GenerateDocumentsClient({
     setIsGeneratingBastExcel(true);
     try {
       const currentCustomer = customers.find((c) => c.id === bastCustomerId);
-
-      const rows = bastSelectedApps
-        .map((appId, index) => {
-          const app = applications.find((a) => a.id === appId);
-          if (!app) return null;
-          const job = jobs.find((j) => j.id === app.jobId);
-          const cand = app.candidateProfile;
-          const inputs = bastInputs[appId] || {};
-          const site = sites.find((s) => s.id === job?.siteId);
-
-          return {
-            no: index + 1,
-            noRequest: job?.noRegistrasi || "-",
-            noB1: job?.noB1 || "-",
-            tanggalTerimaB1: job?.tanggalMasuk || "-",
-            nama: cand?.user?.name || cand?.nik || "-",
-            nik: cand?.nik || "-",
-            posisi: job?.posisi || "-",
-            status: inputs.status || "LOKAL",
-            nrpDpp: inputs.nrp || "-",
-            areaKerja: site?.name || job?.location || "-",
-            awalKontrak: inputs.start || "-",
-            akhirKontrak: inputs.end || "-",
-            linkSertifikat: inputs.link || "-",
-            validasi: inputs.validasi || "Valid",
-          };
-        })
-        .filter(Boolean);
+      const rows = getBastRowsData();
 
       await generateBastExcel(rows, {
         customerName: currentCustomer?.name || "Customer",
@@ -705,6 +746,96 @@ export default function GenerateDocumentsClient({
       alert("Terjadi kesalahan saat memproses file Excel BAST.");
     } finally {
       setIsGeneratingBastExcel(false);
+    }
+  };
+
+  const handleDownloadStatementPdfBAST = async () => {
+    if (bastSelectedApps.length === 0) {
+      alert("Pilih minimal satu kandidat yang ingin disertakan dalam Surat Pernyataan BAST.");
+      return;
+    }
+
+    setIsGeneratingStatementPdf(true);
+    try {
+      const currentCustomer = customers.find((c) => c.id === bastCustomerId);
+      const rows = getBastRowsData();
+
+      await generateBastStatementLetterPDF(rows, {
+        customerName: currentCustomer?.name || "Customer",
+        month: bastMonth,
+        nomorBast: bastNomorSurat,
+        logoUrl: "/logo_company.png",
+      });
+    } catch (err: any) {
+      console.error("Error generating Surat Pernyataan BAST PDF:", err);
+      alert("Terjadi kesalahan saat memproses Surat Pernyataan BAST PDF: " + (err?.message || err));
+    } finally {
+      setIsGeneratingStatementPdf(false);
+    }
+  };
+
+  const handleDownloadZipBAST = async () => {
+    if (bastSelectedApps.length === 0) {
+      alert("Pilih minimal satu kandidat yang ingin disertakan dalam paket BAST.");
+      return;
+    }
+
+    setIsGeneratingBastZip(true);
+    setBastZipProgress({
+      step: 1,
+      totalSteps: 5,
+      message: "Menginisialisasi paket BAST...",
+      percent: 5,
+    });
+
+    try {
+      const currentCustomer = customers.find((c) => c.id === bastCustomerId);
+      const rows = getBastRowsData();
+
+      const candidateItems = bastSelectedApps
+        .map((appId) => {
+          const app = applications.find((a) => a.id === appId);
+          if (!app) return null;
+          const cand = app.candidateProfile;
+          const inputs = bastInputs[appId] || {};
+          const job = jobs.find((j) => j.id === app.jobId);
+          const site = sites.find((s) => s.id === job?.siteId);
+
+          return {
+            appId: app.id,
+            nama: cand?.user?.name || cand?.nik || "Kandidat",
+            nik: cand?.nik || "-",
+            nrp: inputs.nrp || "",
+            posisi: job?.posisi || "-",
+            areaKerja: site?.name || job?.location || "-",
+          };
+        })
+        .filter(Boolean) as any[];
+
+      const res = await generateBastZipPackage(
+        rows,
+        candidateItems,
+        {
+          customerName: currentCustomer?.name || "Customer",
+          month: bastMonth,
+          nomorBast: bastNomorSurat,
+          logoUrl: "/logo_company.png",
+        },
+        (progress) => {
+          setBastZipProgress(progress);
+        }
+      );
+
+      setFeedbackMsg({
+        type: "success",
+        text: `Paket BAST (.zip) berhasil diunduh (${res.totalCandidates} kandidat).`,
+      });
+    } catch (err: any) {
+      console.error("Error generating ZIP BAST:", err);
+      alert("Terjadi kesalahan saat membuat paket BAST: " + (err?.message || err));
+    } finally {
+      setIsGeneratingBastZip(false);
+      setBastZipProgress(null);
     }
   };
 
@@ -1751,6 +1882,12 @@ export default function GenerateDocumentsClient({
                           </th>
                           <th className="px-3 py-3 font-semibold">NIK</th>
                           <th className="px-3 py-3 font-semibold">Posisi</th>
+                          <th className="px-3 py-3 font-semibold text-center">
+                            Sertifikat
+                          </th>
+                          <th className="px-3 py-3 font-semibold text-center">
+                            Validasi Recruiter
+                          </th>
                           <th className="px-3 py-3 font-semibold">Status</th>
                           <th className="px-3 py-3 font-semibold min-w-[120px]">
                             NRP DPP
@@ -1773,7 +1910,7 @@ export default function GenerateDocumentsClient({
                         {filteredBastCandidates.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={11}
+                              colSpan={13}
                               className="px-4 py-8 text-center text-on-surface-variant italic"
                             >
                               Tidak ada kandidat lolos pada lowongan yang
@@ -1788,6 +1925,7 @@ export default function GenerateDocumentsClient({
                             const isSelected = bastSelectedApps.includes(
                               app.id,
                             );
+                            const docStatus = getCandidateDocStatus(app);
 
                             return (
                               <tr
@@ -1822,6 +1960,40 @@ export default function GenerateDocumentsClient({
                                 </td>
                                 <td className="px-3 py-2.5 whitespace-nowrap text-on-surface">
                                   {job?.posisi || "-"}
+                                </td>
+                                <td className="px-3 py-2.5 whitespace-nowrap text-center">
+                                  {docStatus.hasCert ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      Tersedia
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                                      <Clock className="w-3 h-3 text-slate-400" />
+                                      Belum Ada
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2.5 whitespace-nowrap text-center">
+                                  {docStatus.hasValidation ? (
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                        docStatus.isApproved
+                                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                                          : "bg-amber-50 text-amber-700 border-amber-200"
+                                      }`}
+                                    >
+                                      <CheckCircle2 className="w-3 h-3" />
+                                      {docStatus.isApproved
+                                        ? "Approved"
+                                        : "Terlampir"}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                                      <Clock className="w-3 h-3 text-slate-400" />
+                                      Belum Ada
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="px-3 py-2.5">
                                   <input
@@ -1924,33 +2096,98 @@ export default function GenerateDocumentsClient({
               )}
 
               {/* Action Buttons for BAST */}
-              <div className="pt-4 border-t border-table-border flex items-center justify-between">
-                <span className="text-xs text-on-surface-variant font-medium">
-                  {bastSelectedApps.length} kandidat siap diekspor ke Excel BAST
-                </span>
-                <div className="flex items-center gap-3">
+              <div className="pt-4 border-t border-table-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-on-surface">
+                      {bastSelectedApps.length} kandidat siap diserahterimakan
+                    </span>
+                    {bastSelectedApps.length > 0 && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary">
+                        Periode: {bastMonth || "-"}
+                      </span>
+                    )}
+                  </div>
+                  {bastSelectedApps.length > 0 && (() => {
+                    const statuses = bastSelectedApps.map((id) => {
+                      const a = applications.find((x) => x.id === id);
+                      return a ? getCandidateDocStatus(a) : null;
+                    });
+                    const missingCert = statuses.filter((s) => !s?.hasCert).length;
+                    const missingVal = statuses.filter((s) => !s?.hasValidation).length;
+
+                    if (missingCert > 0 || missingVal > 0) {
+                      return (
+                        <p className="text-[11px] text-amber-700 flex items-center gap-1.5 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                          <span>
+                            Audit Alert: {missingCert} sertifikat & {missingVal} bukti validasi belum lengkap. File catatan audit otomatis akan disertakan dalam ZIP.
+                          </span>
+                        </p>
+                      );
+                    }
+                    return (
+                      <p className="text-[11px] text-emerald-700 flex items-center gap-1.5 font-medium">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+                        <span>Seluruh berkas sertifikat dan bukti validasi kandidat terpilih lengkap.</span>
+                      </p>
+                    );
+                  })()}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
                   <button
                     onClick={handleBatchSaveBast}
                     disabled={bastSelectedApps.length === 0 || isSavingBast}
-                    className="px-4 py-2 bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+                    className="px-3.5 py-2 bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-2xs"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    <span>Simpan Perubahan ke DB</span>
+                    <span>{isSavingBast ? "Menyimpan..." : "Simpan ke DB"}</span>
                   </button>
+
+                  <button
+                    onClick={handleDownloadStatementPdfBAST}
+                    disabled={bastSelectedApps.length === 0 || isGeneratingStatementPdf}
+                    className="px-3.5 py-2 bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-2xs"
+                    title="Unduh Surat Pernyataan Serah Terima Resmi (PDF)"
+                  >
+                    {isGeneratingStatementPdf ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <FileText className="w-3.5 h-3.5 text-rose-600" />
+                    )}
+                    <span>Surat Pernyataan (.pdf)</span>
+                  </button>
+
                   <button
                     onClick={handleDownloadExcelBAST}
                     disabled={bastSelectedApps.length === 0 || isGeneratingBastExcel}
-                    className="px-5 py-2.5 text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
+                    className="px-3.5 py-2 bg-surface border border-emerald-300 hover:bg-emerald-50 text-emerald-800 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-2xs"
+                    title="Unduh Lembar Kerja Excel Rekapitulasi BAST"
                   >
                     {isGeneratingBastExcel ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                    ) : (
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                    )}
+                    <span>Excel BAST (.xlsx)</span>
+                  </button>
+
+                  <button
+                    onClick={handleDownloadZipBAST}
+                    disabled={bastSelectedApps.length === 0 || isGeneratingBastZip}
+                    className="px-5 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
+                    title="Unduh 1 Bundel ZIP: Excel BAST, Surat Pernyataan PDF, Folder Sertifikat, dan Folder Validasi"
+                  >
+                    {isGeneratingBastZip ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Menyiapkan Excel BAST...</span>
+                        <span>Menyiapkan ZIP...</span>
                       </>
                     ) : (
                       <>
-                        <FileSpreadsheet className="w-4 h-4" />
-                        <span>Download Excel BAST (.xlsx)</span>
+                        <FolderArchive className="w-4 h-4" />
+                        <span>Download Paket Lengkap BAST (.zip)</span>
                       </>
                     )}
                   </button>
@@ -2872,6 +3109,117 @@ export default function GenerateDocumentsClient({
           showSignature={true}
         />
       </div>
+
+      {/* BAST ZIP Package Generation Progress Modal */}
+      {isGeneratingBastZip && bastZipProgress && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-surface-container-lowest border border-table-border rounded-2xl shadow-xl max-w-md w-full p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <FolderArchive className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-on-surface">
+                  Menyiapkan Paket Dokumen BAST (.zip)
+                </h3>
+                <p className="text-xs text-on-surface-variant font-mono">
+                  {bastNomorSurat || "DPP/247/BASTMP/IX/2026"}
+                </p>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-on-surface">
+                  Langkah {bastZipProgress.step} dari {bastZipProgress.totalSteps}
+                </span>
+                <span className="font-bold text-primary">
+                  {bastZipProgress.percent}%
+                </span>
+              </div>
+              <div className="w-full h-2.5 bg-surface-container-high rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${bastZipProgress.percent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Status Steps */}
+            <div className="space-y-2.5 bg-surface-container-low p-3.5 rounded-xl border border-table-border text-xs">
+              <div className="flex items-center gap-2">
+                {bastZipProgress.step > 1 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : bastZipProgress.step === 1 ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                )}
+                <span className={bastZipProgress.step === 1 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                  1. Format Spreadsheet Excel BAST
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {bastZipProgress.step > 2 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : bastZipProgress.step === 2 ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                )}
+                <span className={bastZipProgress.step === 2 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                  2. Surat Pernyataan Serah Terima Manpower (PDF)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {bastZipProgress.step > 3 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : bastZipProgress.step === 3 ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                )}
+                <span className={bastZipProgress.step === 3 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                  3. Mengumpulkan Berkas Sertifikat Kandidat
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {bastZipProgress.step > 4 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : bastZipProgress.step === 4 ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                )}
+                <span className={bastZipProgress.step === 4 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                  4. Mengumpulkan Berkas Bukti Validasi Recruiter
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {bastZipProgress.step >= 5 && bastZipProgress.percent === 100 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : bastZipProgress.step === 5 ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                )}
+                <span className={bastZipProgress.step === 5 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                  5. Mengompresi dan Mengunduh Bundel ZIP
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-center text-on-surface-variant italic">
+              {bastZipProgress.message || "Mohon menunggu hingga seluruh berkas terkumpul..."}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1800,15 +1800,14 @@ const formatExcelDate = (val: any): string => {
 };
 
 /**
- * Generate Excel BAST Document with official layout, kop surat, logo, and formatted table
+ * Build Excel BAST Workbook and return ArrayBuffer & Blob for downloading or archiving
  */
-export const generateBastExcel = async (
+export const buildBastExcelWorkbook = async (
   rows: any[],
   meta?: BastExcelMeta
-) => {
+): Promise<{ buffer: ArrayBuffer; blob: Blob; fileName: string }> => {
   if (!rows || rows.length === 0) {
-    alert("Tidak ada data untuk diekspor ke Excel.");
-    return;
+    throw new Error("Tidak ada data untuk diekspor ke Excel.");
   }
 
   const wb = new ExcelJS.Workbook();
@@ -2087,7 +2086,7 @@ export const generateBastExcel = async (
   closingCell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
   ws.getRow(closingRowIndex).height = 26;
 
-  // 9. Generate & Trigger Download via file-saver
+  // 9. Generate Buffer
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -2097,5 +2096,595 @@ export const generateBastExcel = async (
   const cleanCustomer = meta?.customerName
     ? meta.customerName.replace(/[^a-zA-Z0-9]/g, "_")
     : "All";
-  saveAs(blob, `BAST_${cleanCustomer}_${cleanMonth}.xlsx`);
+  const fileName = `BAST_${cleanCustomer}_${cleanMonth}.xlsx`;
+
+  return { buffer, blob, fileName };
+};
+
+/**
+ * Generate Excel BAST Document with official layout, kop surat, logo, and formatted table
+ */
+export const generateBastExcel = async (
+  rows: any[],
+  meta?: BastExcelMeta
+) => {
+  try {
+    const { blob, fileName } = await buildBastExcelWorkbook(rows, meta);
+    saveAs(blob, fileName);
+  } catch (error: any) {
+    console.error("Error generating Excel BAST:", error);
+    alert(error?.message || "Terjadi kesalahan saat memproses file Excel BAST.");
+  }
+};
+
+export interface BastStatementPdfMeta {
+  nomorBast?: string;
+  customerName?: string;
+  month?: string;
+  date?: string;
+  logoUrl?: string;
+  pihakPertamaName?: string;
+  pihakPertamaTitle?: string;
+  pihakKeduaName?: string;
+  pihakKeduaTitle?: string;
+}
+
+/**
+ * Format date to Indonesian formal wording
+ */
+const formatIndonesianDate = (dateObj: Date): string => {
+  const months = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+  const day = dateObj.getDate();
+  const month = months[dateObj.getMonth()];
+  const year = dateObj.getFullYear();
+  return `${day} ${month} ${year}`;
+};
+
+/**
+ * Convert number to Indonesian words (terbilang)
+ */
+const angkaTerbilang = (n: number): string => {
+  const words = [
+    "", "Satu", "Dua", "Tiga", "Empat", "Lima",
+    "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"
+  ];
+  if (n < 12) return words[n];
+  if (n < 20) return `${angkaTerbilang(n - 10)} Belas`;
+  if (n < 100) return `${angkaTerbilang(Math.floor(n / 10))} Puluh ${angkaTerbilang(n % 10)}`.trim();
+  if (n < 200) return `Seratus ${angkaTerbilang(n - 100)}`.trim();
+  if (n < 1000) return `${angkaTerbilang(Math.floor(n / 100))} Ratus ${angkaTerbilang(n % 100)}`.trim();
+  return String(n);
+};
+
+/**
+ * Build official Surat Pernyataan BAST Manpower Handover PDF Document
+ */
+export const buildBastStatementLetterPdfBlob = async (
+  rows: any[],
+  meta?: BastStatementPdfMeta
+): Promise<{ blob: Blob; buffer: ArrayBuffer; fileName: string }> => {
+  const jsPdfModule = await import("jspdf");
+  const jsPDFClass =
+    typeof jsPdfModule.jsPDF === "function"
+      ? jsPdfModule.jsPDF
+      : typeof jsPdfModule.default === "function"
+      ? jsPdfModule.default
+      : (jsPdfModule as any);
+
+  const doc = new jsPDFClass({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginX = 18;
+  const contentWidth = pageWidth - marginX * 2;
+  const now = new Date();
+  const tanggalSurat = meta?.date || formatIndonesianDate(now);
+  const cleanCustomer = meta?.customerName || "Customer Partner";
+  const nomorBast = meta?.nomorBast?.trim() || "DPP/247/BASTMP/IX/2026";
+
+  // Function to render Kop Surat Header
+  const renderKopSurat = async (pageDoc: any) => {
+    try {
+      const logoUrl = meta?.logoUrl || "/logo_company.png";
+      const logoB64 = await getBase64FromUrl(logoUrl);
+      if (logoB64) {
+        pageDoc.addImage(logoB64, "PNG", marginX, 10, 24, 18);
+      }
+    } catch (e) {
+      console.warn("Logo embedding skipped:", e);
+    }
+
+    pageDoc.setFont("helvetica", "bold");
+    pageDoc.setFontSize(13);
+    pageDoc.setTextColor(15, 76, 129); // #0F4C81 DPP primary blue
+    pageDoc.text("PT DIAN PANDU PRATAMA", marginX + 30, 16);
+
+    pageDoc.setFont("helvetica", "normal");
+    pageDoc.setFontSize(8.5);
+    pageDoc.setTextColor(60, 60, 60);
+    pageDoc.text(
+      "Jl. Jababeka XII, Harja Mekar, Kec. Cikarang Utara, Kabupaten Bekasi, Jawa Barat 17530",
+      marginX + 30,
+      21
+    );
+    pageDoc.text(
+      "No Telp: (021) 8935016 | Email: dpp.all@dpp.co.id | Website: www.dpp.co.id",
+      marginX + 30,
+      25.5
+    );
+
+    // Double divider line
+    pageDoc.setDrawColor(15, 76, 129);
+    pageDoc.setLineWidth(0.8);
+    pageDoc.line(marginX, 31, marginX + contentWidth, 31);
+    pageDoc.setLineWidth(0.2);
+    pageDoc.line(marginX, 32.2, marginX + contentWidth, 32.2);
+  };
+
+  await renderKopSurat(doc);
+
+  // Document Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(20, 20, 20);
+  const titleText = "SURAT PERNYATAAN & BERITA ACARA SERAH TERIMA MANPOWER";
+  doc.text(titleText, pageWidth / 2, 40, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.text(`Nomor: ${nomorBast}`, pageWidth / 2, 45, { align: "center" });
+
+  // Preamble
+  let cursorY = 53;
+  doc.setFontSize(9);
+  doc.setTextColor(30, 30, 30);
+
+  const openingText =
+    `Pada hari ini, ${tanggalSurat}, bertempat di Cikarang, Jawa Barat, kami yang bertanda tangan di bawah ini:`;
+  doc.text(openingText, marginX, cursorY);
+  cursorY += 6;
+
+  // Pihak Pertama & Kedua Box
+  doc.setFont("helvetica", "bold");
+  doc.text("1.  PIHAK PERTAMA", marginX, cursorY);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    ":  PT DIAN PANDU PRATAMA, bertindak selaku Penyedia Jasa Manpower / Tenaga Kerja.",
+    marginX + 36,
+    cursorY
+  );
+  cursorY += 5;
+
+  doc.setFont("helvetica", "bold");
+  doc.text("2.  PIHAK KEDUA", marginX, cursorY);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    `:  ${cleanCustomer.toUpperCase()}, bertindak selaku Pengguna Jasa Manpower (Client).`,
+    marginX + 36,
+    cursorY
+  );
+  cursorY += 8;
+
+  // Pernyataan
+  doc.setFont("helvetica", "bold");
+  doc.text(
+    "Dengan ini PIHAK PERTAMA dan PIHAK KEDUA secara bersama-sama menyatakan dan menyepakati bahwa:",
+    marginX,
+    cursorY
+  );
+  cursorY += 6;
+
+  doc.setFont("helvetica", "normal");
+  const clauses = [
+    `1.  PIHAK PERTAMA telah melaksanakan dan menyelesaikan seluruh tahapan proses rekrutmen, seleksi administrasi, verifikasi keaslian sertifikasi kompetensi keahlian/BNSP, uji keahlian teknis, dan evaluasi medis (Medical Check-Up Fit to Work) terhadap calon tenaga kerja sesuai dengan kualifikasi standar yang disyaratkan oleh PIHAK KEDUA.`,
+    `2.  PIHAK PERTAMA menyerahkan kepada PIHAK KEDUA, dan PIHAK KEDUA menerima secara resmi sejumlah ${rows.length} (${angkaTerbilang(rows.length)}) orang Tenaga Kerja terlampir untuk ditempatkan pada posisi dan lokasi operasional yang disepakati.`,
+    `3.  Seluruh berkas dokumen pendukung berupa Sertifikat Kompetensi Asli milik kandidat serta Bukti Audit Validasi Sertifikat oleh Recruiter telah disertakan lengkap sebagai bagian yang tidak terpisahkan dari Berita Acara Serah Terima ini.`,
+    `4.  Terhitung sejak tanggal awal kontrak/penempatan masing-masing tenaga kerja, maka proses operasional serta perhitungan biaya penagihan (billing rate / invoicing) atas penyediaan manpower ini resmi berlaku.`
+  ];
+
+  clauses.forEach((clause) => {
+    const splitClause = doc.splitTextToSize(clause, contentWidth);
+    doc.text(splitClause, marginX, cursorY);
+    cursorY += splitClause.length * 4.3 + 2;
+  });
+
+  cursorY += 2;
+
+  // Compact Summary Table of Manpower
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(15, 76, 129);
+  doc.text(`RINGKASAN TENAGA KERJA YANG DISERAH TERIMAKAN (${rows.length} ORANG):`, marginX, cursorY);
+  cursorY += 5;
+
+  // Table header
+  const colX = [marginX, marginX + 8, marginX + 38, marginX + 88, marginX + 130, marginX + 155];
+  const colWidths = [8, 30, 50, 42, 25, 19];
+
+  doc.setFillColor(189, 215, 238); // Soft blue header
+  doc.rect(marginX, cursorY, contentWidth, 6, "F");
+  doc.setDrawColor(180, 180, 180);
+  doc.rect(marginX, cursorY, contentWidth, 6, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(0, 0, 0);
+  doc.text("NO", colX[0] + 4, cursorY + 4.2, { align: "center" });
+  doc.text("NRP DPP", colX[1] + 2, cursorY + 4.2);
+  doc.text("NAMA LENGKAP", colX[2] + 2, cursorY + 4.2);
+  doc.text("POSISI JABATAN", colX[3] + 2, cursorY + 4.2);
+  doc.text("AREA / SITE", colX[4] + 2, cursorY + 4.2);
+  doc.text("AWAL PKWT", colX[5] + 2, cursorY + 4.2);
+  cursorY += 6;
+
+  // Render first 8 candidates on Page 1 or summary
+  const previewRows = rows.slice(0, 7);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+
+  previewRows.forEach((r, idx) => {
+    const isEven = idx % 2 === 0;
+    if (isEven) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(marginX, cursorY, contentWidth, 5, "F");
+    }
+    doc.setDrawColor(220, 220, 220);
+    doc.rect(marginX, cursorY, contentWidth, 5, "S");
+
+    const nama = (r.nama || "-").length > 25 ? (r.nama || "-").substring(0, 24) + ".." : r.nama || "-";
+    const pos = (r.posisi || "-").length > 22 ? (r.posisi || "-").substring(0, 21) + ".." : r.posisi || "-";
+    const site = (r.areaKerja || "-").length > 13 ? (r.areaKerja || "-").substring(0, 12) + ".." : r.areaKerja || "-";
+
+    doc.text(String(idx + 1), colX[0] + 4, cursorY + 3.6, { align: "center" });
+    doc.text(String(r.nrpDpp || "-"), colX[1] + 2, cursorY + 3.6);
+    doc.text(nama.toUpperCase(), colX[2] + 2, cursorY + 3.6);
+    doc.text(pos.toUpperCase(), colX[3] + 2, cursorY + 3.6);
+    doc.text(site.toUpperCase(), colX[4] + 2, cursorY + 3.6);
+    doc.text(formatExcelDate(r.awalKontrak), colX[5] + 2, cursorY + 3.6);
+    cursorY += 5;
+  });
+
+  if (rows.length > 7) {
+    doc.setFillColor(241, 245, 249);
+    doc.rect(marginX, cursorY, contentWidth, 5, "F");
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.setTextColor(80, 80, 80);
+    doc.text(
+      `* Dan ${rows.length - 7} tenaga kerja lainnya sebagaimana tertera lengkap pada Dokumen Lampiran Excel BAST.`,
+      marginX + 4,
+      cursorY + 3.6
+    );
+    cursorY += 7;
+  } else {
+    cursorY += 3;
+  }
+
+  // Closing Sentence
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 30, 30);
+  const closingText =
+    "Demikian Surat Pernyataan & Berita Acara Serah Terima Manpower ini dibuat dengan sebenar-benarnya dalam rangkap 2 (dua) bermaterai cukup dan mempunyai kekuatan hukum yang sama bagi Para Pihak.";
+  const splitClosing = doc.splitTextToSize(closingText, contentWidth);
+  doc.text(splitClosing, marginX, cursorY);
+  cursorY += splitClosing.length * 4.2 + 6;
+
+  // Signature Block
+  const sigCol1X = marginX + 15;
+  const sigCol2X = marginX + contentWidth - 65;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.text("PIHAK PERTAMA,", sigCol1X, cursorY);
+  doc.text("PIHAK KEDUA,", sigCol2X, cursorY);
+  cursorY += 4.5;
+
+  doc.setFont("helvetica", "normal");
+  doc.text("PT Dian Pandu Pratama", sigCol1X, cursorY);
+  doc.text(cleanCustomer, sigCol2X, cursorY);
+  cursorY += 7;
+
+  // Materai box on Pihak Pertama side
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineDashPattern([1, 1], 0);
+  doc.rect(sigCol1X + 2, cursorY, 24, 14, "S");
+  doc.setFontSize(6.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text("MATERAI", sigCol1X + 14, cursorY + 6.5, { align: "center" });
+  doc.text("Rp 10.000", sigCol1X + 14, cursorY + 10, { align: "center" });
+  doc.setLineDashPattern([], 0); // reset dash
+
+  cursorY += 20;
+
+  // Signature lines & names
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(0, 0, 0);
+
+  const pihak1Name = meta?.pihakPertamaName || "(  HR & Recruitment Manager  )";
+  const pihak2Name = meta?.pihakKeduaName || "(  Authorized Site Representative  )";
+
+  doc.text(pihak1Name, sigCol1X, cursorY);
+  doc.text(pihak2Name, sigCol2X, cursorY);
+  cursorY += 4;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(70, 70, 70);
+  doc.text("PT Dian Pandu Pratama", sigCol1X, cursorY);
+  doc.text(cleanCustomer, sigCol2X, cursorY);
+
+  const cleanNum = nomorBast.replace(/[^a-zA-Z0-9]/g, "_");
+  const fileName = `Surat_Pernyataan_BAST_${cleanNum}.pdf`;
+  const buffer = doc.output("arraybuffer");
+  const blob = new Blob([buffer], { type: "application/pdf" });
+
+  return { blob, buffer, fileName };
+};
+
+/**
+ * Generate and trigger download for Surat Pernyataan BAST PDF
+ */
+export const generateBastStatementLetterPDF = async (
+  rows: any[],
+  meta?: BastStatementPdfMeta
+) => {
+  try {
+    const { blob, fileName } = await buildBastStatementLetterPdfBlob(rows, meta);
+    saveAs(blob, fileName);
+  } catch (error: any) {
+    console.error("Error generating Surat Pernyataan BAST PDF:", error);
+    alert(error?.message || "Terjadi kesalahan saat memproses Surat Pernyataan BAST PDF.");
+  }
+};
+
+export interface BastCandidateItem {
+  appId: string;
+  nama: string;
+  nik: string;
+  nrp?: string;
+  posisi?: string;
+  areaKerja?: string;
+}
+
+export interface BastZipProgress {
+  step: number;
+  totalSteps: number;
+  message: string;
+  percent: number;
+}
+
+/**
+ * Generate complete BAST ZIP Package containing:
+ * 1. 01_Excel_BAST/ (Excel file with Kop Surat & Candidate Table)
+ * 2. 02_Surat_Pernyataan/ (PDF Handover Statement Letter)
+ * 3. 03_Dokumen_Sertifikat_Kandidat/ (Original candidate certificates)
+ * 4. 04_Bukti_Validasi_Recruiter/ (Recruiter audit validation proofs)
+ * 5. CATATAN_KELENGKAPAN_DOKUMEN.txt (Audit report for missing files if any)
+ */
+export const generateBastZipPackage = async (
+  rows: any[],
+  candidates: BastCandidateItem[],
+  meta?: BastExcelMeta,
+  onProgress?: (p: BastZipProgress) => void
+) => {
+  if (!rows || rows.length === 0) {
+    throw new Error("Pilih minimal satu kandidat untuk diekspor ke paket BAST.");
+  }
+
+  const JSZipModule = await import("jszip");
+  const JSZipClass = (JSZipModule as any).default || JSZipModule;
+  const zip = new JSZipClass();
+
+  const totalSteps = 5;
+  const missingCertificates: string[] = [];
+  const missingValidations: string[] = [];
+
+  // Helper sanitization
+  const sanitize = (str: string) =>
+    (str || "Dokumen").replace(/[\/\\?%*:|"<>]/g, "_").trim();
+
+  // STEP 1: Generate Excel BAST
+  onProgress?.({
+    step: 1,
+    totalSteps,
+    message: "Menyiapkan file spreadsheet Excel BAST...",
+    percent: 15,
+  });
+
+  const { buffer: excelBuffer, fileName: excelFileName } =
+    await buildBastExcelWorkbook(rows, meta);
+  const excelFolder = zip.folder("01_Excel_BAST");
+  excelFolder.file(excelFileName, excelBuffer);
+
+  // STEP 2: Generate Surat Pernyataan BAST PDF
+  onProgress?.({
+    step: 2,
+    totalSteps,
+    message: "Membuat Surat Pernyataan Serah Terima Manpower (PDF)...",
+    percent: 30,
+  });
+
+  const { buffer: pdfBuffer, fileName: pdfFileName } =
+    await buildBastStatementLetterPdfBlob(rows, {
+      nomorBast: meta?.nomorBast,
+      customerName: meta?.customerName,
+      month: meta?.month,
+      logoUrl: meta?.logoUrl,
+    });
+  const pdfFolder = zip.folder("02_Surat_Pernyataan");
+  pdfFolder.file(pdfFileName, pdfBuffer);
+
+  // STEP 3: Download Candidate Certificates
+  onProgress?.({
+    step: 3,
+    totalSteps,
+    message: `Mengumpulkan berkas sertifikat kandidat (0/${candidates.length})...`,
+    percent: 45,
+  });
+
+  const certFolder = zip.folder("03_Dokumen_Sertifikat_Kandidat");
+  for (let i = 0; i < candidates.length; i++) {
+    const cand = candidates[i];
+    const nrpTag = cand.nrp ? sanitize(cand.nrp) : `NIK_${sanitize(cand.nik)}`;
+    const nameTag = sanitize(cand.nama);
+
+    try {
+      const res = await fetch(
+        `/api/documents/bast-file-proxy?appId=${cand.appId}&docType=candidate_cert`
+      );
+
+      if (res.ok) {
+        const arrayBuf = await res.arrayBuffer();
+        const cType = res.headers.get("content-type") || "";
+        const ext = cType.includes("pdf") ? "pdf" : "jpg";
+        const fname = `${nrpTag}_${nameTag}_Sertifikat.${ext}`;
+        certFolder.file(fname, arrayBuf);
+      } else {
+        missingCertificates.push(
+          `${cand.nama} (NRP: ${cand.nrp || "-"}, NIK: ${cand.nik}) - Belum ada sertifikat terunggah`
+        );
+      }
+    } catch (e) {
+      missingCertificates.push(
+        `${cand.nama} (NRP: ${cand.nrp || "-"}, NIK: ${cand.nik}) - Gagal mengunduh berkas`
+      );
+    }
+
+    const currentPercent = 45 + Math.round(((i + 1) / candidates.length) * 20);
+    onProgress?.({
+      step: 3,
+      totalSteps,
+      message: `Mengumpulkan berkas sertifikat kandidat (${i + 1}/${candidates.length})...`,
+      percent: currentPercent,
+    });
+  }
+
+  // STEP 4: Download Recruiter Validation Proofs
+  onProgress?.({
+    step: 4,
+    totalSteps,
+    message: `Mengumpulkan berkas bukti validasi recruiter (0/${candidates.length})...`,
+    percent: 70,
+  });
+
+  const validFolder = zip.folder("04_Bukti_Validasi_Recruiter");
+  for (let i = 0; i < candidates.length; i++) {
+    const cand = candidates[i];
+    const nrpTag = cand.nrp ? sanitize(cand.nrp) : `NIK_${sanitize(cand.nik)}`;
+    const nameTag = sanitize(cand.nama);
+
+    try {
+      const res = await fetch(
+        `/api/documents/bast-file-proxy?appId=${cand.appId}&docType=recruiter_validation`
+      );
+
+      if (res.ok) {
+        const arrayBuf = await res.arrayBuffer();
+        const cType = res.headers.get("content-type") || "";
+        const ext = cType.includes("pdf") ? "pdf" : "jpg";
+        const fname = `${nrpTag}_${nameTag}_BuktiValidasi.${ext}`;
+        validFolder.file(fname, arrayBuf);
+      } else {
+        missingValidations.push(
+          `${cand.nama} (NRP: ${cand.nrp || "-"}, NIK: ${cand.nik}) - Bukti validasi belum diunggah recruiter`
+        );
+      }
+    } catch (e) {
+      missingValidations.push(
+        `${cand.nama} (NRP: ${cand.nrp || "-"}, NIK: ${cand.nik}) - Gagal mengunduh berkas validasi`
+      );
+    }
+
+    const currentPercent = 70 + Math.round(((i + 1) / candidates.length) * 20);
+    onProgress?.({
+      step: 4,
+      totalSteps,
+      message: `Mengumpulkan berkas bukti validasi recruiter (${i + 1}/${candidates.length})...`,
+      percent: currentPercent,
+    });
+  }
+
+  // Audit text log if any documents were missing
+  const reportLines = [
+    "================================================================================",
+    "CATATAN AUDIT KELENGKAPAN BERKAS PAKET BAST MANPOWER",
+    "PT DIAN PANDU PRATAMA",
+    "================================================================================",
+    `Nomor BAST    : ${meta?.nomorBast || "-"}`,
+    `Customer      : ${meta?.customerName || "-"}`,
+    `Periode       : ${meta?.month || "-"}`,
+    `Tanggal Unduh : ${new Date().toLocaleString("id-ID")}`,
+    `Total Kandidat: ${candidates.length} orang`,
+    "",
+    "STATUS BERKAS SERTIFIKAT KANDIDAT:",
+    missingCertificates.length === 0
+      ? "  [OK] Seluruh kandidat memiliki berkas sertifikat lengkap."
+      : missingCertificates.map((m) => `  [BELUM LENGKAP] ${m}`).join("\n"),
+    "",
+    "STATUS BUKTI VALIDASI SERTIFIKAT OLEH RECRUITER (STAGE ADMINISTRASI):",
+    missingValidations.length === 0
+      ? "  [OK] Seluruh kandidat memiliki bukti validasi lengkap."
+      : missingValidations.map((m) => `  [BELUM LENGKAP] ${m}`).join("\n"),
+    "",
+    "================================================================================",
+    "Catatan ini dihasilkan secara otomatis oleh sistem E-Recruitment PT Dian Pandu Pratama",
+    "sebagai lampiran transparansi audit kelayakan dokumen serah terima manpower.",
+    "================================================================================"
+  ];
+  zip.file("CATATAN_KELENGKAPAN_DOKUMEN.txt", reportLines.join("\n"));
+
+  // STEP 5: Compression & Finalizing
+  onProgress?.({
+    step: 5,
+    totalSteps,
+    message: "Mengompresi berkas ke dalam format ZIP...",
+    percent: 92,
+  });
+
+  const zipBlob = await zip.generateAsync(
+    {
+      type: "blob",
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 },
+    },
+    (metadata: { percent: number }) => {
+      onProgress?.({
+        step: 5,
+        totalSteps,
+        message: `Mengompresi berkas ZIP (${Math.round(metadata.percent)}%)...`,
+        percent: 90 + Math.round(metadata.percent * 0.08),
+      });
+    }
+  );
+
+  onProgress?.({
+    step: 5,
+    totalSteps,
+    message: "Pengunduhan selesai!",
+    percent: 100,
+  });
+
+  const cleanMonth = meta?.month ? meta.month.replace("-", "_") : "Report";
+  const cleanCustomer = meta?.customerName
+    ? meta.customerName.replace(/[^a-zA-Z0-9]/g, "_")
+    : "All";
+  const zipFileName = `BAST_PACKAGE_${cleanCustomer}_${cleanMonth}.zip`;
+
+  saveAs(zipBlob, zipFileName);
+
+  return {
+    success: true,
+    totalCandidates: candidates.length,
+    missingCertificatesCount: missingCertificates.length,
+    missingValidationsCount: missingValidations.length,
+  };
 };
