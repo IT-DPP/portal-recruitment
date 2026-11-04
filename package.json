@@ -14,7 +14,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:setup": "npm run db:ensure && npm run db:generate && npm run db:migrate:deploy && npm run db:seed:essential",
     "db:seed:essential": "ts-node -r ./prisma/load-env.ts --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} prisma/seed-essential.ts",
-    "db:seed:dummy": "ts-node -r ./prisma/load-env.ts --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} prisma/seed-dummy.ts"
+    "db:seed:dummy": "ts-node -r ./prisma/load-env.ts --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} prisma/seed-dummy.ts",
+    "qa:generate-excel": "ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} scripts/generate-qa-testcases.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1143.0",
