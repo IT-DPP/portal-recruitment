@@ -1,140 +1,94 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { 
   Users, 
   Search, 
   Filter, 
   X, 
-  ChevronLeft, 
-  ChevronRight, 
   Plus,
-  User as UserIcon
+  User as UserIcon,
+  Loader2
 } from "lucide-react";
+import PaginationBar from "@/components/ui/PaginationBar";
+import { useDebounce } from "@/hooks/useDebounce";
+import { getPaginatedTalentPool } from "@/app/actions/job";
 
-function formatCandidates(initialList: any[]) {
-  const sorted = [...initialList].sort((a, b) => {
-    const nameA = a.user?.name || a.fullName || "";
-    const nameB = b.user?.name || b.fullName || "";
-    return nameA.localeCompare(nameB);
-  });
-
-  return sorted.map(c => {
-    const photoDoc = c.documents?.find((d: any) => (d.documentType || "").toLowerCase() === "photo" || (d.documentType || "").toLowerCase() === "pas foto");
-    const photoUrl = photoDoc?.objectKey 
-      ? `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}`
-      : photoDoc?.fileUrl || c.user?.image || null;
-
-    const lastApp = c.applications?.[0];
-    const lastJobApplied = lastApp?.job?.positionName || lastApp?.job?.position?.name || null;
-    let lastStage = null;
-    if (lastApp) {
-      if (lastApp.status === "HIRED") {
-        lastStage = "Hired";
-      } else if (lastApp.status === "REJECTED") {
-        lastStage = `Ditolak (${lastApp.currentStage?.name || "Seleksi"})`;
-      } else {
-        lastStage = lastApp.currentStage?.name || "Active Screening";
-      }
-    }
-
-    return {
-      ...c,
-      fullName: c.user?.name || c.fullName || "Unknown",
-      email: c.user?.email || c.email || "-",
-      whatsapp: c.whatsapp || "-",
-      city: c.domicileAddress || c.city || "-",
-      lastJobApplied: lastJobApplied || "Belum Ada Lamaran",
-      lastStage: lastStage || "Belum Melamar",
-      hasApplied: !!lastApp,
-      filePhoto: photoUrl ? { base64: photoUrl } : null
-    };
-  });
+interface TalentPoolClientProps {
+  initialCandidates?: any[];
+  initialPagination?: {
+    totalItems: number;
+    totalPages: number;
+    currentPage: number;
+    limit: number;
+  };
 }
 
-export default function TalentPoolClient({ initialCandidates = [] }: { initialCandidates?: any[] }) {
-  const [candidates, setCandidates] = useState<any[]>(() => formatCandidates(initialCandidates));
+export default function TalentPoolClient({
+  initialCandidates = [],
+  initialPagination = { totalItems: 0, totalPages: 1, currentPage: 1, limit: 10 }
+}: TalentPoolClientProps) {
+  const [candidates, setCandidates] = useState<any[]>(initialCandidates);
+  const [pagination, setPagination] = useState(initialPagination);
   
   // Search & Filter state
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 400);
+
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filterEducation, setFilterEducation] = useState("");
-  
-  const [activeFilters, setActiveFilters] = useState({
-    education: "",
-  });
+  const [activeEducation, setActiveEducation] = useState("");
 
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(initialPagination.currentPage || 1);
+  const [itemsPerPage, setItemsPerPage] = useState(initialPagination.limit || 10);
+  const [isPending, startTransition] = useTransition();
 
+  const [hasMounted, setHasMounted] = useState(false);
+
+  // Fetch data on search, filter, or page change
   useEffect(() => {
-    setCandidates(formatCandidates(initialCandidates));
-  }, [initialCandidates]);
+    if (!hasMounted) {
+      setHasMounted(true);
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await getPaginatedTalentPool({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: debouncedSearch,
+        education: activeEducation,
+      });
+
+      if (res.success && res.data) {
+        setCandidates(res.data);
+        if (res.pagination) {
+          setPagination(res.pagination);
+        }
+      }
+    });
+  }, [currentPage, itemsPerPage, debouncedSearch, activeEducation, hasMounted]);
 
   const handleApplyFilter = () => {
-    setActiveFilters({
-      education: filterEducation,
-    });
+    setActiveEducation(filterEducation);
     setCurrentPage(1);
     setIsFilterModalOpen(false);
   };
 
   const clearFilters = () => {
     setFilterEducation("");
-    setActiveFilters({
-      education: "",
-    });
+    setActiveEducation("");
     setCurrentPage(1);
     setIsFilterModalOpen(false);
   };
 
-  const filteredCandidates = candidates.filter(candidate => {
-    let match = true;
-    
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const name = (candidate.fullName || "").toLowerCase();
-      const nik = candidate.nik || "";
-      const email = (candidate.email || "").toLowerCase();
-      const phone = candidate.whatsapp || "";
-      const job = (candidate.lastJobApplied || "").toLowerCase();
-      if (!name.includes(q) && !nik.includes(q) && !email.includes(q) && !phone.includes(q) && !job.includes(q)) {
-        match = false;
-      }
-    }
-
-    if (activeFilters.education) {
-      const edu = (candidate.latestEducation || "").toUpperCase();
-      const filt = activeFilters.education.toUpperCase();
-      const isMatch =
-        edu === filt ||
-        edu.startsWith(filt) ||
-        (filt === "SMA/SMK" && (edu.includes("SMA") || edu.includes("SMK") || edu.includes("SLTA")));
-      if (!isMatch) {
-        match = false;
-      }
-    }
-
-    return match;
-  });
-
-  const totalPages = Math.ceil(filteredCandidates.length / itemsPerPage) || 1;
-  const paginatedCandidates = filteredCandidates.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
-  };
-
-  const goToPrevPage = () => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
-  };
-
-  const hasActiveFilters = activeFilters.education !== "";
+  const hasActiveFilters = activeEducation !== "";
 
   return (
     <div className="w-full min-w-0 space-y-6 pb-12 flex flex-col h-[calc(100vh-100px)]">
+      {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0 shrink-0">
         <div className="shrink-0">
           <h2 className="text-2xl font-bold text-primary tracking-tight flex items-center gap-2">
@@ -147,134 +101,153 @@ export default function TalentPoolClient({ initialCandidates = [] }: { initialCa
 
         <div className="flex flex-col sm:flex-row items-center gap-3 min-w-0 w-full lg:w-auto shrink-0">
           <div className="relative min-w-0 flex-1 w-full sm:w-auto sm:max-w-xs">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
             <input
               type="text"
-              placeholder="Cari nama / NIK..."
-              value={searchQuery}
+              placeholder="Cari nama, NIK, kontak, posisi..."
+              value={searchInput}
               onChange={(e) => {
-                setSearchQuery(e.target.value);
+                setSearchInput(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-10 pr-4 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow bg-white"
+              className="w-full pl-10 pr-9 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow bg-white text-slate-900 shadow-2xs"
             />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput("");
+                  setCurrentPage(1);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => setIsFilterModalOpen(true)}
-              className="flex-1 sm:flex-none px-4 py-2 bg-white border border-outline-variant text-on-surface font-semibold rounded-xl hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2 shadow-sm whitespace-nowrap"
-            >
-              <Filter className="w-4 h-4" /> 
-              Filters
-              {hasActiveFilters && (
-                <span className="flex h-2 w-2 rounded-full bg-primary relative -top-1 -right-1"></span>
-              )}
-            </button>
-            <Link
-              href="/dashboard/talent-pool/add"
-              className="flex-1 sm:flex-none bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary-container transition-colors flex items-center justify-center gap-2 shadow-sm whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" /> Add Talent
-            </Link>
-          </div>
+
+          <button
+            onClick={() => setIsFilterModalOpen(true)}
+            className={`px-4 py-2 border rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0 ${
+              hasActiveFilters
+                ? "bg-primary text-white border-primary shadow-xs"
+                : "bg-white border-outline-variant text-on-surface hover:bg-surface-container-low shadow-2xs"
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            <span>Filter</span>
+            {hasActiveFilters && (
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            )}
+          </button>
+
+          <Link
+            href="/dashboard/talent-pool/add"
+            className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-container transition-colors flex items-center justify-center gap-2 shrink-0 shadow-xs"
+          >
+            <Plus className="w-4 h-4" /> Add Candidate
+          </Link>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-xl shadow-sm border border-table-border">
-        <div className="flex-1 overflow-auto custom-scrollbar">
+      {/* Main Table Container */}
+      <div className="flex-1 overflow-hidden flex flex-col bg-white border border-table-border rounded-xl shadow-sm">
+        <div className="flex-1 overflow-auto custom-scrollbar relative">
+          {isPending && (
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-2xs z-20 flex items-center justify-center">
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-md border border-slate-200 text-sm font-semibold text-primary">
+                <Loader2 className="w-4 h-4 animate-spin" /> Memuat data...
+              </div>
+            </div>
+          )}
+
           <table className="w-full text-sm text-left">
             <thead className="bg-surface-container-lowest sticky top-0 z-10 text-xs uppercase font-bold text-on-surface-variant border-b border-table-border">
               <tr>
-                <th className="px-6 py-4 whitespace-nowrap">Kandidat</th>
-                <th className="px-6 py-4 whitespace-nowrap">Kontak</th>
-                <th className="px-6 py-4 whitespace-nowrap">Lowongan Terakhir</th>
-                <th className="px-6 py-4 whitespace-nowrap">Tahapan Terakhir</th>
-                <th className="px-6 py-4 whitespace-nowrap">Pendidikan</th>
-                <th className="px-6 py-4 whitespace-nowrap">Asal Kota</th>
-                <th className="px-6 py-4 text-center whitespace-nowrap">Status Data</th>
+                <th className="px-6 py-4">Kandidat</th>
+                <th className="px-6 py-4">Pendidikan</th>
+                <th className="px-6 py-4">Kontak & Lokasi</th>
+                <th className="px-6 py-4">Lamaran Terakhir</th>
+                <th className="px-6 py-4 text-center">Status Terakhir</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-table-border">
-              {paginatedCandidates.length > 0 ? (
-                paginatedCandidates.map((candidate) => (
-                  <tr key={candidate.id} className="hover:bg-surface-container-lowest transition-colors group">
+            <tbody className="divide-y divide-table-border font-medium text-slate-800">
+              {candidates.length > 0 ? (
+                candidates.map((candidate) => (
+                  <tr key={candidate.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0 overflow-hidden border border-outline-variant/30">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
                           {candidate.filePhoto?.base64 ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={candidate.filePhoto.base64} alt="avatar" className="w-full h-full object-cover" />
+                            <img 
+                              src={candidate.filePhoto.base64} 
+                              alt={candidate.fullName} 
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
-                            <UserIcon className="w-5 h-5 text-on-surface-variant" />
+                            <UserIcon className="w-5 h-5 text-slate-400" />
                           )}
                         </div>
                         <div>
-                          <p className="font-bold text-black text-sm">{candidate.fullName || "Unknown"}</p>
-                          <p className="text-[11px] text-on-surface-variant font-mono mt-0.5">{candidate.nik || "No NIK"}</p>
+                          <div className="font-bold text-slate-900 leading-tight">
+                            {candidate.fullName}
+                          </div>
+                          <div className="text-xs text-on-surface-variant mt-0.5">
+                            NIK: {candidate.nik || "-"}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="font-medium text-black text-sm">{candidate.email || "-"}</p>
-                      <p className="text-xs text-on-surface-variant font-mono mt-0.5">{candidate.whatsapp || "-"}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`font-semibold ${candidate.hasApplied ? 'text-primary' : 'text-slate-400 italic text-xs'}`}>
-                        {candidate.lastJobApplied}
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                        {candidate.latestEducation || "Tidak Ditentukan"}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                        candidate.lastStage === "Hired" ? "bg-green-50 text-green-700 border-green-200" :
-                        candidate.lastStage?.startsWith("Ditolak") ? "bg-red-50 text-red-700 border-red-200" :
-                        candidate.hasApplied ? "bg-blue-50 text-blue-700 border-blue-200" :
-                        "bg-slate-100 text-slate-500 border-slate-200"
-                      }`}>
-                        {candidate.lastStage || "Belum Melamar"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {candidate.latestEducation ? (
-                        <div>
-                          <span className="font-bold text-primary text-xs bg-primary/10 px-2 py-0.5 rounded">
-                            {candidate.latestEducation}
-                          </span>
-                          <p className="text-xs text-on-surface-variant mt-1 max-w-[150px] truncate" title={candidate.educationInstitution}>
-                            {candidate.educationInstitution || "-"}
-                          </p>
+                      {candidate.educationInstitution && (
+                        <div className="text-xs text-slate-500 mt-1 truncate max-w-[200px]" title={candidate.educationInstitution}>
+                          {candidate.educationInstitution}
                         </div>
-                      ) : (
-                        <span className="text-on-surface-variant">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {candidate.city ? (
-                        <p className="text-sm font-medium">{candidate.city}</p>
-                      ) : (
-                        <span className="text-on-surface-variant">-</span>
-                      )}
+                      <div className="text-xs text-slate-700 font-medium">
+                        {candidate.email}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        WA: {candidate.whatsapp}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-0.5 truncate max-w-[150px]">
+                        {candidate.city}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-slate-800">
+                        {candidate.lastJobApplied}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {candidate.hasApplied ? "Melalui Portal" : "Ditambahkan Manual"}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {candidate.isTalentPool ? (
-                        <span className="inline-block px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded border border-emerald-200">
-                          Recruiter Input
-                        </span>
-                      ) : (
-                        <span className="inline-block px-2.5 py-1 bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider rounded border border-blue-200">
-                          Registered
-                        </span>
-                      )}
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold ${
+                        candidate.lastStage === "Hired" 
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
+                          : candidate.lastStage?.includes("Ditolak") 
+                          ? "bg-rose-50 text-rose-700 border border-rose-200" 
+                          : "bg-slate-100 text-slate-700 border border-slate-200"
+                      }`}>
+                        {candidate.lastStage}
+                      </span>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center text-on-surface-variant">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <Users className="w-12 h-12 opacity-20" />
-                      <p className="text-base font-semibold text-black">Tidak Ada Kandidat</p>
-                      <p className="text-sm">Tidak ada data kandidat yang ditemukan atau sesuai dengan filter.</p>
-                    </div>
+                  <td colSpan={5} className="px-6 py-16 text-center text-on-surface-variant">
+                    <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p className="text-base font-semibold text-slate-700">Tidak ada kandidat ditemukan</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      Coba sesuaikan kata kunci pencarian atau filter pendidikan Anda.
+                    </p>
                   </td>
                 </tr>
               )}
@@ -282,52 +255,20 @@ export default function TalentPoolClient({ initialCandidates = [] }: { initialCa
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        {filteredCandidates.length > 0 && (
-          <div className="p-4 border-t border-table-border bg-surface-bright flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
-            <div className="text-sm text-on-surface-variant">
-              Menampilkan <span className="font-bold text-black">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-bold text-black">{Math.min(currentPage * itemsPerPage, filteredCandidates.length)}</span> dari <span className="font-bold text-black">{filteredCandidates.length}</span> kandidat
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-on-surface-variant">Baris per halaman:</span>
-                <select 
-                  value={itemsPerPage} 
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="px-2 py-1 border border-outline-variant rounded text-sm outline-none focus:border-primary bg-white"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1}
-                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <span className="text-sm font-semibold min-w-[3rem] text-center">
-                  {currentPage} / {totalPages}
-                </span>
-                <button
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Unified Standard Pagination Bar */}
+        <PaginationBar
+          currentPage={currentPage}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={(newLimit) => {
+            setItemsPerPage(newLimit);
+            setCurrentPage(1);
+          }}
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          isLoading={isPending}
+        />
       </div>
 
       {/* Filter Modal */}

@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+"use client";
 
-interface TableControlsProps {
+import React, { useEffect, useState } from "react";
+import { Search, X } from "lucide-react";
+import PaginationBar from "./PaginationBar";
+
+export interface TableControlsProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   page: number;
@@ -12,6 +15,9 @@ interface TableControlsProps {
   totalItems: number;
   startIndex: number;
   endIndex: number;
+  searchPlaceholder?: string;
+  rowsPerPageOptions?: number[];
+  isLoading?: boolean;
   children?: React.ReactNode;
 }
 
@@ -26,73 +32,80 @@ export default function TableControls({
   totalItems,
   startIndex,
   endIndex,
-  children
+  searchPlaceholder = "Cari data...",
+  rowsPerPageOptions = [10, 25, 50, 100],
+  isLoading = false,
+  children,
 }: TableControlsProps) {
   const [localSearch, setLocalSearch] = useState(searchQuery);
+
+  // Sync internal search state if parent searchQuery changes externally
+  useEffect(() => {
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
 
   // Debounce effect
   useEffect(() => {
     const timer = setTimeout(() => {
       if (localSearch !== searchQuery) {
         setSearchQuery(localSearch);
+        setPage(1); // Reset to page 1 on search change
       }
-    }, 300);
+    }, 350);
     return () => clearTimeout(timer);
-  }, [localSearch, searchQuery, setSearchQuery]);
+  }, [localSearch, searchQuery, setSearchQuery, setPage]);
+
+  const handleClear = () => {
+    setLocalSearch("");
+    setSearchQuery("");
+    setPage(1);
+  };
 
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 py-4 px-6 bg-surface-container-lowest border-b border-table-border">
-      <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-        <div className="relative w-full sm:w-64">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-on-surface-variant" />
-        </div>
-        <input
-          type="text"
-          className="block w-full pl-10 pr-3 py-2 border border-outline-variant rounded-md leading-5 bg-white placeholder-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-colors"
-          placeholder="Cari data..."
-          value={localSearch}
-          onChange={(e) => setLocalSearch(e.target.value)}
-        />
-      </div>
-        {children && <div className="flex items-center gap-4 w-full sm:w-auto">{children}</div>}
-      </div>
-
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-on-surface-variant">Tampilkan:</span>
-          <select
-            value={rowsPerPage}
-            onChange={(e) => setRowsPerPage(Number(e.target.value))}
-            className="border border-outline-variant rounded px-2 py-1 text-sm bg-white focus:outline-none focus:border-primary"
-          >
-            <option value={5}>5</option>
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2 text-sm text-on-surface-variant">
-          <span>{totalItems === 0 ? 0 : startIndex}-{endIndex} dari {totalItems}</span>
-          <div className="flex gap-1 ml-2">
-            <button
-              onClick={() => setPage(page - 1)}
-              disabled={page === 1}
-              className="p-1 rounded hover:bg-surface-container-high disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setPage(page + 1)}
-              disabled={page === totalPages || totalPages === 0}
-              className="p-1 rounded hover:bg-surface-container-high disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+    <div className="flex flex-col w-full bg-white border-b border-table-border">
+      {/* Top Search & Filter Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 py-3.5 px-6 bg-surface-container-lowest">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto flex-1 max-w-xl">
+          <div className="relative w-full">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant">
+              <Search className="h-4 w-4" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-9 pr-8 py-2 border border-outline-variant rounded-xl leading-5 bg-white placeholder-on-surface-variant text-slate-900 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm transition-all shadow-2xs"
+              placeholder={searchPlaceholder}
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+            />
+            {localSearch && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
+          {children && (
+            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+              {children}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Bottom Pagination Bar Component */}
+      <PaginationBar
+        currentPage={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        itemsPerPage={rowsPerPage}
+        onPageChange={setPage}
+        onItemsPerPageChange={setRowsPerPage}
+        rowsPerPageOptions={rowsPerPageOptions}
+        isLoading={isLoading}
+      />
     </div>
   );
 }

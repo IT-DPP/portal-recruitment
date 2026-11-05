@@ -1,24 +1,46 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import {
   Plus,
   Search,
   FileText,
-  ChevronRight,
-  ChevronLeft,
   LayoutGrid,
   List,
   MapPin,
   Filter,
   X,
+  Loader2,
 } from "lucide-react";
-import { useClientTable } from "@/hooks/useClientTable";
+import PaginationBar from "@/components/ui/PaginationBar";
+import { useDebounce } from "@/hooks/useDebounce";
+import { getPaginatedJobOpenings } from "@/app/actions/job";
 
-export default function JobClient({ initialData, customers }: { initialData: any[], customers: any[] }) {
+interface JobClientProps {
+  initialData?: any[];
+  initialPagination?: {
+    totalItems: number;
+    totalPages: number;
+    currentPage: number;
+    limit: number;
+  };
+  customers?: any[];
+}
+
+export default function JobClient({
+  initialData = [],
+  initialPagination = { totalItems: 0, totalPages: 1, currentPage: 1, limit: 10 },
+  customers = []
+}: JobClientProps) {
+  const [jobs, setJobs] = useState<any[]>(initialData);
+  const [pagination, setPagination] = useState(initialPagination);
   const [viewMode, setViewMode] = useState<"table" | "card">("card");
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  // Search input & debounce
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 400);
 
   // Advanced Filters
   const [filterStatus, setFilterStatus] = useState("");
@@ -33,6 +55,39 @@ export default function JobClient({ initialData, customers }: { initialData: any
     endDate: "",
   });
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(initialPagination.currentPage || 1);
+  const [itemsPerPage, setItemsPerPage] = useState(initialPagination.limit || 10);
+  const [isPending, startTransition] = useTransition();
+
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    if (!hasMounted) {
+      setHasMounted(true);
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await getPaginatedJobOpenings({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: debouncedSearch,
+        status: activeFilters.status,
+        customerId: activeFilters.customer,
+        startDate: activeFilters.startDate,
+        endDate: activeFilters.endDate,
+      });
+
+      if (res.success && res.data) {
+        setJobs(res.data);
+        if (res.pagination) {
+          setPagination(res.pagination);
+        }
+      }
+    });
+  }, [currentPage, itemsPerPage, debouncedSearch, activeFilters, hasMounted]);
+
   const getDynamicGlobalStatus = (job: any) => {
     const s = (job.status || "").toUpperCase();
     if (s === "DRAFT") return "Draft";
@@ -42,51 +97,6 @@ export default function JobClient({ initialData, customers }: { initialData: any
     return job.status || "";
   };
 
-  const preFilteredData = useMemo(() => {
-    return initialData.filter((job) => {
-      let match = true;
-      if (activeFilters.status && getDynamicGlobalStatus(job).toLowerCase() !== activeFilters.status.toLowerCase()) {
-        match = false;
-      }
-      if (activeFilters.customer && job.customerId !== activeFilters.customer) {
-        match = false;
-      }
-      if (activeFilters.startDate || activeFilters.endDate) {
-        const jobDate = new Date(job.tanggalMasuk);
-        jobDate.setHours(0, 0, 0, 0);
-        
-        if (activeFilters.startDate) {
-          const sDate = new Date(activeFilters.startDate);
-          sDate.setHours(0, 0, 0, 0);
-          if (jobDate < sDate) match = false;
-        }
-        if (activeFilters.endDate) {
-          const eDate = new Date(activeFilters.endDate);
-          eDate.setHours(0, 0, 0, 0);
-          if (jobDate > eDate) match = false;
-        }
-      }
-      return match;
-    });
-  }, [initialData, activeFilters]);
-
-  const {
-    searchQuery,
-    setSearchQuery,
-    page,
-    setPage,
-    rowsPerPage,
-    setRowsPerPage,
-    totalPages,
-    paginatedData,
-    totalItems,
-    startIndex,
-    endIndex,
-  } = useClientTable({
-    data: preFilteredData,
-    searchKeys: ["noRegistrasi", "positionName", "position.name", "departmentName", "department.name"],
-  });
-
   const handleApplyFilter = () => {
     setActiveFilters({
       status: filterStatus,
@@ -94,7 +104,7 @@ export default function JobClient({ initialData, customers }: { initialData: any
       startDate: filterStartDate,
       endDate: filterEndDate,
     });
-    setPage(1);
+    setCurrentPage(1);
     setIsFilterModalOpen(false);
   };
 
@@ -109,9 +119,16 @@ export default function JobClient({ initialData, customers }: { initialData: any
       startDate: "",
       endDate: "",
     });
-    setPage(1);
+    setCurrentPage(1);
     setIsFilterModalOpen(false);
   };
+
+  const hasActiveFilters = Boolean(
+    activeFilters.status ||
+    activeFilters.customer ||
+    activeFilters.startDate ||
+    activeFilters.endDate
+  );
 
   return (
     <div className="space-y-6 w-full min-w-0 flex flex-col h-[calc(100vh-100px)]">
@@ -134,23 +151,42 @@ export default function JobClient({ initialData, customers }: { initialData: any
         <div className="p-4 border-b border-table-border bg-surface-container-lowest flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
           <div className="flex items-center gap-3 w-full md:w-auto flex-1 max-w-lg">
             <div className="relative w-full">
-              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
               <input
                 type="text"
                 placeholder="Cari No Reg atau Posisi..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-outline-variant rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-black bg-white transition-shadow"
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-10 pr-9 py-2 border border-outline-variant rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-black bg-white transition-shadow shadow-2xs"
               />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput("");
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
             <button
               onClick={() => setIsFilterModalOpen(true)}
-              className="px-4 py-2 bg-white border border-outline-variant text-on-surface font-semibold rounded-xl hover:bg-surface-container-low transition-colors flex items-center gap-2 shadow-sm shrink-0 whitespace-nowrap"
+              className={`px-4 py-2 border font-semibold rounded-xl transition-colors flex items-center gap-2 shrink-0 whitespace-nowrap ${
+                hasActiveFilters
+                  ? "bg-primary text-white border-primary shadow-xs"
+                  : "bg-white border-outline-variant text-on-surface hover:bg-surface-container-low shadow-2xs"
+              }`}
             >
               <Filter className="w-4 h-4" /> 
               Filters
-              {(activeFilters.status || activeFilters.customer || activeFilters.startDate || activeFilters.endDate) && (
-                <span className="flex h-2 w-2 rounded-full bg-primary relative -top-1 -right-1"></span>
+              {hasActiveFilters && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               )}
             </button>
           </div>
@@ -158,34 +194,42 @@ export default function JobClient({ initialData, customers }: { initialData: any
             <button
               onClick={() => setViewMode("table")}
               className={`p-1.5 rounded transition-colors ${viewMode === "table" ? "bg-white shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface"}`}
+              title="Table View"
             >
               <List className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode("card")}
               className={`p-1.5 rounded transition-colors ${viewMode === "card" ? "bg-white shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface"}`}
+              title="Card View"
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto custom-scrollbar">
-          {paginatedData.length === 0 ? (
+        <div className="flex-1 overflow-auto custom-scrollbar relative">
+          {isPending && (
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-2xs z-20 flex items-center justify-center">
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-md border border-slate-200 text-sm font-semibold text-primary">
+                <Loader2 className="w-4 h-4 animate-spin" /> Memuat data lowongan...
+              </div>
+            </div>
+          )}
+
+          {jobs.length === 0 ? (
             <div className="py-20 text-center text-on-surface-variant flex flex-col items-center justify-center h-full">
               <div className="w-16 h-16 bg-surface-container-low rounded-full flex items-center justify-center mb-4">
                 <FileText className="w-8 h-8 text-primary/50" />
               </div>
               <p className="font-semibold text-black mb-1">Belum ada Job Openings</p>
               <p className="text-xs max-w-sm mb-4">Tidak ada lowongan yang sesuai dengan kriteria pencarian dan filter Anda.</p>
-              {!initialData.length && (
-                <Link
-                  href="/dashboard/job-openings/create"
-                  className="text-primary font-semibold hover:underline text-xs flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" /> Buat Lowongan Pertama
-                </Link>
-              )}
+              <Link
+                href="/dashboard/job-openings/create"
+                className="text-primary font-semibold hover:underline text-xs flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" /> Buat Lowongan Baru
+              </Link>
             </div>
           ) : (
             <div className="p-4 md:p-6">
@@ -202,9 +246,9 @@ export default function JobClient({ initialData, customers }: { initialData: any
                         <th className="px-6 py-4 text-center">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-table-border bg-white">
-                      {paginatedData.map((job) => (
-                        <tr key={job.id} className="hover:bg-table-row-hover transition-colors">
+                    <tbody className="divide-y divide-table-border bg-white font-medium text-slate-800">
+                      {jobs.map((job) => (
+                        <tr key={job.id} className="hover:bg-slate-50 transition-colors">
                           <td className="px-6 py-4 font-mono font-semibold text-primary">
                             {job.noRegistrasi}
                           </td>
@@ -241,7 +285,7 @@ export default function JobClient({ initialData, customers }: { initialData: any
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {paginatedData.map((job) => (
+                  {jobs.map((job) => (
                     <div key={job.id} className="bg-white border border-table-border rounded-xl p-5 hover:shadow-md transition-all flex flex-col group relative overflow-hidden">
                       <div className="absolute top-0 right-0">
                         <div className="text-white text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-lg shadow-sm bg-gray-500">
@@ -303,48 +347,20 @@ export default function JobClient({ initialData, customers }: { initialData: any
           )}
         </div>
 
-        {totalItems > 0 && (
-          <div className="p-4 border-t border-table-border bg-surface-bright flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
-            <div className="text-sm text-on-surface-variant">
-              Menampilkan <span className="font-bold text-black">{startIndex}</span> hingga <span className="font-bold text-black">{endIndex}</span> dari <span className="font-bold text-black">{totalItems}</span> lowongan
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-on-surface-variant">Baris:</span>
-                <select 
-                  value={rowsPerPage} 
-                  onChange={(e) => setRowsPerPage(Number(e.target.value))}
-                  className="px-2 py-1 border border-outline-variant rounded text-sm outline-none focus:border-primary bg-white"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage(page - 1)}
-                  disabled={page === 1}
-                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <span className="text-sm font-semibold min-w-[3rem] text-center">
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage(page + 1)}
-                  disabled={page === totalPages}
-                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Unified Standard Pagination Bar */}
+        <PaginationBar
+          currentPage={currentPage}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={(newLimit) => {
+            setItemsPerPage(newLimit);
+            setCurrentPage(1);
+          }}
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          isLoading={isPending}
+        />
       </div>
 
       {isFilterModalOpen && (

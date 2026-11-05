@@ -1,56 +1,21 @@
 import React from "react";
-import prisma from "@/lib/prisma";
 import ArchivedCandidatesClient from "./ArchivedCandidatesClient";
+import { getPaginatedArchivedCandidates } from "@/app/actions/job";
 
 export const dynamic = "force-dynamic";
 
 export default async function ArchivedCandidatesPage() {
-  const rejectedApps = await prisma.application.findMany({
-    where: {
-      status: "REJECTED",
-      candidateProfile: {
-        isBlacklisted: false
-      }
-    },
-    include: {
-      job: {
-        include: {
-          position: true
-        }
-      },
-      currentStage: true,
-      candidateProfile: {
-        include: {
-          user: true,
-          documents: true
-        }
-      },
-      history: {
-        orderBy: { date: "desc" }
-      }
-    },
-    orderBy: {
-      applicationDate: "desc"
-    }
-  });
+  const result = await getPaginatedArchivedCandidates({ page: 1, limit: 10 });
 
-  const jobs = await prisma.jobOpening.findMany({
-    where: {
-      id: {
-        in: rejectedApps.map(a => a.jobId)
+  return (
+    <ArchivedCandidatesClient
+      initialApplications={result.success ? result.data : []}
+      initialPositions={result.success ? result.allPositions : []}
+      initialPagination={
+        result.success
+          ? result.pagination
+          : { totalItems: 0, totalPages: 1, currentPage: 1, limit: 10 }
       }
-    },
-    select: {
-      id: true,
-      positionName: true,
-      position: true
-    }
-  });
-
-  const mappedJobs = jobs.map(j => ({
-    id: j.id,
-    posisi: j.positionName || j.position?.name
-  }));
-
-  return <ArchivedCandidatesClient initialApplications={rejectedApps} initialJobs={mappedJobs} />;
+    />
+  );
 }

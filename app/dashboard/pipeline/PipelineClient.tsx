@@ -1,11 +1,25 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { Search, Filter, X, User as UserIcon, Clock, AlertCircle } from "lucide-react";
+import { Search, Filter, X, User as UserIcon, AlertCircle, ChevronDown, Loader2 } from "lucide-react";
 import { useModal } from "@/components/providers/ModalProvider";
+import { useDebounce } from "@/hooks/useDebounce";
+import { getFilteredPipelineData } from "@/app/actions/job";
 
-export default function PipelineClient({ initialJobs, initialApplications, customers, stages }: { initialJobs: any[], initialApplications: any[], customers: any[], stages: any[] }) {
+interface PipelineClientProps {
+  initialJobs: any[];
+  initialApplications: any[];
+  customers: any[];
+  stages: any[];
+}
+
+export default function PipelineClient({
+  initialJobs,
+  initialApplications,
+  customers,
+  stages
+}: PipelineClientProps) {
   const modal = useModal();
   
   const [jobs, setJobs] = useState<any[]>(initialJobs || []);
@@ -13,9 +27,10 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
   const [candidateProfiles, setCandidateProfiles] = useState<Record<string, any>>({});
   
   // Search & Filters
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 400);
+
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  
   const [filterPosition, setFilterPosition] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
@@ -28,6 +43,11 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
     customer: ""
   });
 
+  // Stage-level pagination limits (e.g., show initial 15 cards per stage, expandable)
+  const [stageLimits, setStageLimits] = useState<Record<string, number>>({});
+  const [isPending, startTransition] = useTransition();
+  const [hasMounted, setHasMounted] = useState(false);
+
   useEffect(() => {
     setJobs(initialJobs || []);
   }, [initialJobs]);
@@ -36,10 +56,10 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
     setApplications(initialApplications || []);
   }, [initialApplications]);
 
-  useEffect(() => {
-    // Map profiles
+  // Map profiles helper
+  const mapProfiles = (apps: any[]) => {
     const profiles: Record<string, any> = {};
-    initialApplications.forEach((app: any) => {
+    apps.forEach((app: any) => {
        if (app.candidateProfile) {
          const photoDoc = app.candidateProfile.documents?.find((d: any) => {
            const dt = (d.documentType || "").toLowerCase();
@@ -58,8 +78,36 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
          };
        }
     });
-    setCandidateProfiles(profiles);
-  }, [initialApplications]);
+    return profiles;
+  };
+
+  useEffect(() => {
+    setCandidateProfiles(mapProfiles(applications));
+  }, [applications]);
+
+  // Server-side filter effect
+  useEffect(() => {
+    if (!hasMounted) {
+      setHasMounted(true);
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await getFilteredPipelineData({
+        search: debouncedSearch,
+        position: activeFilters.position,
+        customerId: activeFilters.customer,
+        startDate: activeFilters.startDate,
+        endDate: activeFilters.endDate,
+      });
+
+      if (res.success && res.data) {
+        setJobs(res.data.jobs);
+        setApplications(res.data.applications);
+        setCandidateProfiles(mapProfiles(res.data.applications));
+      }
+    });
+  }, [debouncedSearch, activeFilters, hasMounted]);
 
   const handleApplyFilter = () => {
     setActiveFilters({
@@ -85,64 +133,19 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
     setIsFilterModalOpen(false);
   };
 
-  // 1. Filter Jobs based on job criteria (position, date, customer)
-  const filteredJobs = jobs.filter(job => {
-    let match = true;
-    
-    // Only active jobs? User said: "lowongan yang sedang aktif"
-    if (job.status !== "ACTIVE") {
-      match = false;
-    }
+  // Helper to expand cards in a specific stage column
+  const handleLoadMoreInStage = (stageId: string) => {
+    setStageLimits(prev => ({
+      ...prev,
+      [stageId]: (prev[stageId] || 15) + 15
+    }));
+  };
 
-    if (activeFilters.position && !job.positionName?.toLowerCase().includes(activeFilters.position.toLowerCase())) {
-      match = false;
-    }
+  const validJobIds = new Set(jobs.map(j => j.id));
 
-    if (activeFilters.customer && job.customerId !== activeFilters.customer) {
-      match = false;
-    }
-
-    if (activeFilters.startDate || activeFilters.endDate) {
-      const jobDateStr = job.publishedDate || job.tanggalMasuk;
-      if (jobDateStr) {
-        const jobDate = new Date(jobDateStr);
-        jobDate.setHours(0,0,0,0);
-        
-        if (activeFilters.startDate) {
-          const sDate = new Date(activeFilters.startDate);
-          sDate.setHours(0,0,0,0);
-          if (jobDate < sDate) match = false;
-        }
-        
-        if (activeFilters.endDate) {
-          const eDate = new Date(activeFilters.endDate);
-          eDate.setHours(0,0,0,0);
-          if (jobDate > eDate) match = false;
-        }
-      } else {
-        // If it doesn't have a date and we filter by date, maybe exclude it?
-        match = false;
-      }
-    }
-
-    return match;
-  });
-
-  const validJobIds = new Set(filteredJobs.map(j => j.id));
-
-  // 2. Filter applications based on valid jobs AND candidate name search
+  // Filter applications based on valid jobs
   const filteredApps = applications.filter(app => {
     if (!validJobIds.has(app.jobId)) return false;
-
-    const profile = candidateProfiles[app.candidateProfileId];
-    if (searchQuery) {
-      if (!profile) return false;
-      const q = searchQuery.toLowerCase();
-      if (!profile.fullName?.toLowerCase().includes(q) && !profile.nik?.includes(q)) {
-        return false;
-      }
-    }
-
     return true;
   });
 
@@ -170,49 +173,76 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
 
   const getJobName = (jobId: string) => {
     const job = jobs.find(j => j.id === jobId);
-    return job ? job.positionName : jobId;
+    return job ? (job.positionName || job.position?.name || "General") : jobId;
   };
 
   const activePositions = Array.from(
-    new Set(jobs.filter((j) => j.status === "ACTIVE" && j.positionName).map((j) => j.positionName))
+    new Set(jobs.filter((j) => j.status === "ACTIVE" && (j.positionName || j.position?.name)).map((j) => j.positionName || j.position?.name))
   ).sort();
+
+  const hasActiveFilters = Boolean(
+    activeFilters.position || activeFilters.startDate || activeFilters.endDate || activeFilters.customer
+  );
 
   return (
     <div className="w-full min-w-0 space-y-6 pb-12 flex flex-col h-[calc(100vh-100px)]">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0 shrink-0">
         <div className="shrink-0">
           <h2 className="text-2xl font-bold text-primary tracking-tight">Pipeline Dashboard</h2>
-          <p className="text-sm text-on-surface-variant font-medium">Filter and monitor candidate pipelines across active jobs.</p>
+          <p className="text-sm text-on-surface-variant font-medium">Filter dan monitor pergerakan kandidat di seluruh tahapan rekrutmen aktif.</p>
         </div>
 
         <div className="flex items-center gap-3 min-w-0 w-full lg:w-auto">
           <div className="relative min-w-0 flex-1 max-w-sm">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
             <input
               type="text"
-              placeholder="Search candidate by name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow bg-white"
+              placeholder="Cari kandidat atau NIK..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full pl-10 pr-9 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow bg-white text-slate-900 shadow-2xs"
             />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
           <button
             onClick={() => setIsFilterModalOpen(true)}
-            className="px-4 py-2 bg-white border border-outline-variant text-on-surface font-semibold rounded-xl hover:bg-surface-container-low transition-colors flex items-center gap-2 shadow-sm shrink-0 whitespace-nowrap"
+            className={`px-4 py-2 border font-semibold rounded-xl transition-colors flex items-center gap-2 shadow-sm shrink-0 whitespace-nowrap ${
+              hasActiveFilters
+                ? "bg-primary text-white border-primary shadow-xs"
+                : "bg-white border-outline-variant text-on-surface hover:bg-surface-container-low shadow-2xs"
+            }`}
           >
             <Filter className="w-4 h-4" /> 
             Filters
-            {(activeFilters.position || activeFilters.startDate || activeFilters.endDate || activeFilters.customer) && (
-              <span className="flex h-2 w-2 rounded-full bg-primary relative -top-1 -right-1"></span>
+            {hasActiveFilters && (
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             )}
           </button>
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden flex gap-4 pb-4 px-1 custom-scrollbar">
+      {/* Kanban Board Container */}
+      <div className="flex-1 overflow-x-auto overflow-y-hidden flex gap-4 pb-4 px-1 custom-scrollbar relative">
+        {isPending && (
+          <div className="absolute top-4 right-4 z-30 flex items-center gap-2 bg-white/90 backdrop-blur-xs px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 text-xs font-semibold text-primary">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Memperbarui pipeline...
+          </div>
+        )}
+
         {stages.map((stage) => {
-          const stageApps = filteredApps.filter(a => a.currentStageId === stage.id);
+          const allStageApps = filteredApps.filter(a => a.currentStageId === stage.id);
+          const currentLimit = stageLimits[stage.id] || 15;
+          const visibleStageApps = allStageApps.slice(0, currentLimit);
+          const hasMore = allStageApps.length > currentLimit;
+          const remainingCount = allStageApps.length - currentLimit;
           
           return (
             <div 
@@ -223,13 +253,13 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
                 <div className="flex justify-between items-center mb-1">
                   <h4 className="font-bold text-sm text-on-surface truncate pr-2">{stage.name}</h4>
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                    {stageApps.length}
+                    {allStageApps.length}
                   </span>
                 </div>
               </div>
               
               <div className="p-3 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
-                {stageApps.map((app) => {
+                {visibleStageApps.map((app) => {
                   const profile = candidateProfiles[app.candidateProfileId] || {};
                   const status = getAppStatus(app);
                   const isAppOverdue = status === "overdue";
@@ -246,7 +276,6 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
                       <div className="flex gap-3">
                         <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0 overflow-hidden">
                           {profile.filePhoto?.base64 ? (
-                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={profile.filePhoto.base64} alt="avatar" className="w-full h-full object-cover" />
                           ) : (
                             <UserIcon className="w-5 h-5 text-on-surface-variant" />
@@ -290,7 +319,19 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
                     </div>
                   );
                 })}
-                {stageApps.length === 0 && (
+
+                {/* Stage Pagination / Load More button */}
+                {hasMore && (
+                  <button
+                    onClick={() => handleLoadMoreInStage(stage.id)}
+                    className="w-full py-2 px-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-primary flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                  >
+                    <span>Muat 15 lainnya (sisa {remainingCount})</span>
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
+                {allStageApps.length === 0 && (
                   <div className="text-center py-8 text-on-surface-variant text-sm border-2 border-dashed border-outline-variant rounded-xl opacity-50">
                     No candidates
                   </div>
@@ -319,7 +360,7 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
             
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-black mb-1.5">Posisi Job</label>
+                <label className="block text-sm font-semibold text-black mb-1.5">Posisi Lowongan</label>
                 <select
                   value={filterPosition}
                   onChange={(e) => setFilterPosition(e.target.value)}
@@ -327,16 +368,28 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
                 >
                   <option value="">Semua Posisi</option>
                   {activePositions.map((pos: any) => (
-                    <option key={pos} value={pos}>
-                      {pos}
-                    </option>
+                    <option key={pos} value={pos}>{pos}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-black mb-1.5">Customer / Klien</label>
+                <select
+                  value={filterCustomer}
+                  onChange={(e) => setFilterCustomer(e.target.value)}
+                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
+                >
+                  <option value="">Semua Customer</option>
+                  {customers.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-1.5">Start Date (Active)</label>
+                  <label className="block text-sm font-semibold text-black mb-1.5">Mulai Tanggal</label>
                   <input
                     type="date"
                     value={filterStartDate}
@@ -345,7 +398,7 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-1.5">End Date (Active)</label>
+                  <label className="block text-sm font-semibold text-black mb-1.5">Sampai Tanggal</label>
                   <input
                     type="date"
                     value={filterEndDate}
@@ -353,22 +406,6 @@ export default function PipelineClient({ initialJobs, initialApplications, custo
                     className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-black mb-1.5">Customer</label>
-                <select
-                  value={filterCustomer}
-                  onChange={(e) => setFilterCustomer(e.target.value)}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
-                >
-                  <option value="">Semua Customer</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
 

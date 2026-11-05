@@ -67,7 +67,7 @@ export default function JobDetailClient({
     }
     // Convert DB timeline to prototype shape if they exist
     if (initialJob.timeline && initialJob.timeline.length > 0) {
-      const formattedTimeline = initialJob.timeline.map((t: any) => ({
+      let formattedTimeline = initialJob.timeline.map((t: any) => ({
         id: t.stage.id,
         title: t.stage.name,
         status: t.status,
@@ -76,9 +76,21 @@ export default function JobDetailClient({
         completionDate: t.completionDate,
         overdueNotes: t.overdueNotes
       }));
+
+      // Filter out Test Skill / Technical Test stage if the job does not require it
+      if (!initialJob.requiresSkillTest) {
+        formattedTimeline = formattedTimeline.filter((t: any) => {
+          const isSkill = t.id === "stage_4" || 
+            (t.title || "").toLowerCase().includes("skill") || 
+            (t.title || "").toLowerCase().includes("technical");
+          return !isSkill;
+        });
+      }
+
       setJob({ ...initialJob, timeline: formattedTimeline, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionName || initialJob.position?.name || "Posisi Umum" });
     } else {
-      setJob({ ...initialJob, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionName || initialJob.position?.name || "Posisi Umum" });
+      const previewTimeline = calculateTimelines(initialJob.publishedDate || new Date().toISOString(), initialJob.requiresSkillTest);
+      setJob({ ...initialJob, timeline: previewTimeline, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionName || initialJob.position?.name || "Posisi Umum" });
     }
     setSlaConfig(config);
 
@@ -136,8 +148,12 @@ export default function JobDetailClient({
     let currentDate = new Date(publishDateStr);
 
     pipelineStages.forEach((s) => {
-      // Assuming Test Skill verification stage has a specific name or keyword
-      if (s.name.includes("Test Skill") && !needTestSkill) return;
+      // Check if this stage is Test Skill / Technical Test
+      const isSkillStage = s.id === "stage_4" || 
+        (s.name || "").toLowerCase().includes("skill") || 
+        (s.name || "").toLowerCase().includes("technical");
+
+      if (isSkillStage && !needTestSkill) return;
 
       const config = slaConfig[s.id] || { totalDays: 0 };
       const startDate = new Date(currentDate);

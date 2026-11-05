@@ -10,6 +10,56 @@ import { SiteMarker } from '@/components/dashboard/GeoMapComponent';
 import InstitutionRankingTable from '@/components/dashboard/InstitutionRankingTable';
 import { getGeoSourceDashboardData } from '@/app/actions/dashboard';
 
+// Helper to intelligently classify institution types
+const determineInstitutionType = (name: string, educationLevel?: string, givenType?: string): string => {
+  if (givenType && givenType.trim()) {
+    const gt = givenType.toUpperCase();
+    if (gt === 'BLK') return 'BLK';
+    if (gt === 'LPK') return 'LPK';
+    if (gt.includes('UNIV') || gt === 'UNIVERSITY' || gt === 'PERGURUAN TINGGI') return 'UNIVERSITY';
+    if (gt.includes('SMK') || gt.includes('VOCATIONAL')) return 'SMK';
+    if (gt.includes('SMA') || gt.includes('SLTA')) return 'SMA';
+  }
+
+  const nameUpper = (name || "").toUpperCase();
+  const eduUpper = (educationLevel || "").toUpperCase();
+
+  // 1. BLK / LPK check
+  if (nameUpper.includes("BLK") || nameUpper.includes("BALAI LATIHAN")) return "BLK";
+  if (nameUpper.includes("LPK") || nameUpper.includes("LEMBAGA PELATIHAN")) return "LPK";
+
+  // 2. University / Higher Education
+  if (
+    nameUpper.includes("UNIV") ||
+    nameUpper.includes("INSTITUT") ||
+    nameUpper.includes("POLITEKNIK") ||
+    nameUpper.includes("SEKOLAH TINGGI") ||
+    nameUpper.includes("AKADEMI") ||
+    nameUpper.includes("COLLEGE") ||
+    ["S1", "S2", "S3", "D4", "D3", "D2", "D1", "SARJANA", "MAGISTER", "DIPLOMA"].some(lvl => eduUpper.includes(lvl))
+  ) {
+    return "UNIVERSITY";
+  }
+
+  // 3. SMK / Kejuruan
+  if (nameUpper.includes("SMK") || eduUpper.includes("SMK") || nameUpper.includes("KEJURUAN")) {
+    return "SMK";
+  }
+
+  // 4. SMA / Sederajat
+  if (
+    nameUpper.includes("SMA") ||
+    nameUpper.includes("MAN ") ||
+    nameUpper.startsWith("MA ") ||
+    eduUpper.includes("SMA") ||
+    eduUpper.includes("SLTA")
+  ) {
+    return "SMA";
+  }
+
+  return "EDUCATIONAL";
+};
+
 export default function GeoSourceDashboard() {
   const [applications, setApplications] = useState<any[]>([]);
   const [candidates, setCandidates] = useState<any>({});
@@ -128,38 +178,80 @@ export default function GeoSourceDashboard() {
     });
   }, [applications, jobs, candidates, activeFilters]);
 
-  // Derive institution ranking data
+  // Derive comprehensive institution ranking data (Universitas, SMK, SMA, BLK, LPK)
   const institutionRankingData = useMemo(() => {
     const stats: Record<string, { total: number, accepted: number, active: number, type: string, name: string }> = {};
 
-    blks.forEach(b => {
-      let type = 'LPK';
-      if (b.type) {
-        type = b.type;
-      } else {
-        const nameUpper = b.name.toUpperCase();
-        if (nameUpper.includes('BLK')) type = 'BLK';
-        else if (nameUpper.includes('SMK') || nameUpper.includes('UNIV') || nameUpper.includes('POLITEKNIK') || nameUpper.includes('INSTITUT')) type = 'EDUCATIONAL';
+    const registerCandidateAt = (instName: string, instType: string, appStage: string) => {
+      const cleanName = instName.trim();
+      if (!cleanName) return;
+
+      if (!stats[cleanName]) {
+        stats[cleanName] = { 
+          total: 0, 
+          accepted: 0, 
+          active: 0, 
+          type: instType,
+          name: cleanName 
+        };
       }
-      
-      stats[b.name] = { 
-        total: 0, 
-        accepted: 0, 
-        active: 0, 
-        type,
-        name: b.name 
-      };
+
+      stats[cleanName].total++;
+      if (appStage === "stage_6" || appStage === "stage_7" || appStage === "HIRED") {
+        stats[cleanName].accepted++;
+      } else if (appStage !== "Rejected" && appStage !== "REJECTED") {
+        stats[cleanName].active++;
+      }
+    };
+
+    // Pre-populate MasterInstitutes (so known partners have correct initial types)
+    blks.forEach(b => {
+      if (b.name) {
+        const cleanName = b.name.trim();
+        const type = determineInstitutionType(b.name, undefined, b.type);
+        if (!stats[cleanName]) {
+          stats[cleanName] = { 
+            total: 0, 
+            accepted: 0, 
+            active: 0, 
+            type,
+            name: cleanName 
+          };
+        }
+      }
     });
 
+    // Process all candidates in filtered applications
     filteredApps.forEach(app => {
       const cand = candidates[app.candidateId];
-      if (cand && cand.trainingCenter && stats[cand.trainingCenter]) {
-        stats[cand.trainingCenter].total++;
-        if (app.currentStage === "stage_6" || app.currentStage === "stage_7") {
-           stats[cand.trainingCenter].accepted++;
-        } else if (app.currentStage !== "Rejected") {
-           stats[cand.trainingCenter].active++;
+      if (!cand) return;
+
+      let recordedAny = false;
+
+      // 1. Formal Education Institution (Universitas, Institut, Politeknik, SMK, SMA)
+      if (cand.educationInstitution && cand.educationInstitution.trim()) {
+        const formalType = determineInstitutionType(cand.educationInstitution, cand.latestEducation);
+        registerCandidateAt(cand.educationInstitution, formalType, app.currentStage);
+        recordedAny = true;
+      }
+
+      // 2. Training Center (BLK, LPK)
+      if (cand.trainingCenter && cand.trainingCenter.trim()) {
+        const tcName = cand.trainingCenter.trim();
+        const eduName = (cand.educationInstitution || "").trim();
+        // Avoid duplicating if candidate entered the same name in both fields
+        if (tcName.toLowerCase() !== eduName.toLowerCase()) {
+          const tcType = determineInstitutionType(cand.trainingCenter, undefined, cand.trainingCenterType || "BLK");
+          registerCandidateAt(cand.trainingCenter, tcType, app.currentStage);
+          recordedAny = true;
         }
+      }
+
+      // 3. Fallback: if only latestEducation is provided without specific institution name
+      if (!recordedAny && cand.latestEducation && cand.latestEducation.trim()) {
+        const fallbackName = `Lulusan ${cand.latestEducation.trim()}`;
+        const fallbackType = determineInstitutionType(fallbackName, cand.latestEducation);
+        registerCandidateAt(fallbackName, fallbackType, app.currentStage);
       }
     });
 
@@ -273,7 +365,7 @@ export default function GeoSourceDashboard() {
 
   const stats = [
     { title: "Total Site Operations", value: metrics.statsData.totalSites, icon: Building2, trend: "Fixed", trendUp: true },
-    { title: "BLK/LPK Institution", value: metrics.statsData.totalBlk, icon: School, trend: "Active", trendUp: true },
+    { title: "Sourcing Institutions", value: institutionRankingData.length || metrics.statsData.totalBlk, icon: School, trend: "Active", trendUp: true },
     { title: "Average Pass Rate", value: `${metrics.statsData.passRate}%`, icon: Percent, trend: "+2%", trendUp: true },
     { title: "Active Candidates", value: metrics.statsData.activeCandidates, icon: Activity, trend: "+12%", trendUp: true },
   ];

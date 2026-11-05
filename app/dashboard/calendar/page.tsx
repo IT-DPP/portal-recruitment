@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Calendar as CalendarIcon, Filter, X, Search } from "lucide-react";
 import AdvancedCalendar, { AdvancedCalendarEvent } from "@/components/dashboard/AdvancedCalendar";
 import { startOfDay } from "date-fns";
+import { useDebounce } from "@/hooks/useDebounce";
 
 // ─────────────────────────────────────────────
 // Types
@@ -44,6 +45,15 @@ export default function CalendarPage() {
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
   const [filterCandidate, setFilterCandidate] = useState("");
+  const debouncedCandidate = useDebounce(filterCandidate, 400);
+
+  // Sync debounced search to active filters
+  useEffect(() => {
+    setActiveFilters(prev => ({
+      ...prev,
+      candidateName: debouncedCandidate
+    }));
+  }, [debouncedCandidate]);
 
   // Event Modal states
   const [selectedEvent, setSelectedEvent] = useState<AdvancedCalendarEvent | null>(null);
@@ -261,15 +271,23 @@ export default function CalendarPage() {
         <div className="flex items-center gap-3">
           {/* Quick Search */}
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
             <input 
               type="text" 
               placeholder="Cari Kandidat..." 
               value={filterCandidate}
               onChange={(e) => setFilterCandidate(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleApplyFilter()}
-              className="pl-9 pr-4 py-2 text-sm border border-outline-variant rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary w-[200px]"
+              className="pl-9 pr-8 py-2 text-sm border border-outline-variant rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary w-[200px]"
             />
+            {filterCandidate && (
+              <button
+                type="button"
+                onClick={() => setFilterCandidate("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           
           <button
