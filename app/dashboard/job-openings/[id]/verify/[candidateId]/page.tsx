@@ -94,6 +94,7 @@ export default function AdvancedDocumentVerificationPage({
   const [messageText, setMessageText] = useState("");
   const [masterRejection, setMasterRejection] = useState<any[]>([]);
   const [showActionModal, setShowActionModal] = useState(false);
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [showBlacklistModal, setShowBlacklistModal] = useState(false);
   const [blacklistNote, setBlacklistNote] = useState("");
   const [showMoveJobModal, setShowMoveJobModal] = useState(false);
@@ -500,6 +501,40 @@ export default function AdvancedDocumentVerificationPage({
       }
     } catch (e) {}
     return { actor, actorEmail };
+  };
+
+  const handleDownloadZip = async () => {
+    try {
+      setIsDownloadingZip(true);
+      const res = await fetch(`/api/candidates/${unwrappedParams.candidateId}/documents-zip`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.message || "Gagal mengunduh berkas ZIP dokumen.");
+      }
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const contentDisposition = res.headers.get("content-disposition");
+      let fileName = `Dokumen_${(profile?.fullName || "Kandidat").replace(/[^a-zA-Z0-9_\-]/g, "_")}.zip`;
+      if (contentDisposition && contentDisposition.includes("filename=")) {
+        const match = contentDisposition.match(/filename="?([^";]+)"?/);
+        if (match && match[1]) fileName = match[1];
+      }
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setShowActionModal(false);
+    } catch (err: unknown) {
+      console.error("Download ZIP error:", err);
+      const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat mengunduh dokumen ZIP.";
+      window.alert(msg);
+    } finally {
+      setIsDownloadingZip(false);
+    }
   };
 
   const handleApproveNextStage = async () => {
@@ -2595,6 +2630,18 @@ export default function AdvancedDocumentVerificationPage({
               <button onClick={() => { setShowActionModal(false); handleApproveAll(); }} className="w-full px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm">
                 <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5" /> Approve All Stages</span>
                 <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadZip}
+                disabled={isDownloadingZip}
+                className="w-full px-5 py-3 border border-blue-500 text-blue-700 bg-blue-50 hover:bg-blue-100 font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm disabled:opacity-50"
+              >
+                <span className="flex items-center gap-2">
+                  <Download className={`w-5 h-5 text-blue-600 ${isDownloadingZip ? "animate-bounce" : ""}`} />
+                  {isDownloadingZip ? "Mengunduh Berkas ZIP..." : "Unduh Dokumen Pokok (.ZIP)"}
+                </span>
+                <span className="text-[11px] font-medium text-blue-600/90 bg-white/80 border border-blue-200 px-2 py-0.5 rounded shadow-2xs">KTP, CV, Ijazah, dll</span>
               </button>
               <button onClick={() => { setShowActionModal(false); setShowMessageModal(true); }} className="w-full px-5 py-3 border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm">
                 <MessageSquare className="w-5 h-5" /> Send Message

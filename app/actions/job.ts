@@ -27,16 +27,44 @@ export async function getJobOpenings() {
 
 export async function getCalendarData() {
   try {
-    const jobs = await prisma.jobOpening.findMany({
-      select: {
-        id: true,
-        noRegistrasi: true,
-        positionName: true,
-        position: { select: { name: true } },
-        status: true,
-        createdAt: true,
-      }
-    });
+    const [jobs, masterStages, apps] = await Promise.all([
+      prisma.jobOpening.findMany({
+        select: {
+          id: true,
+          noRegistrasi: true,
+          positionName: true,
+          position: { select: { name: true } },
+          status: true,
+          createdAt: true,
+        }
+      }),
+      prisma.masterPipelineStage.findMany({
+        orderBy: { orderIndex: "asc" }
+      }),
+      prisma.application.findMany({
+        include: {
+          currentStage: {
+            select: {
+              id: true,
+              name: true,
+              orderIndex: true,
+            }
+          },
+          candidateProfile: {
+            include: {
+              user: { select: { name: true, email: true } },
+              city: { select: { name: true } }
+            }
+          },
+          history: {
+            orderBy: { date: "asc" }
+          },
+          interviews: {
+            orderBy: { scheduledAt: "desc" }
+          }
+        }
+      })
+    ]);
 
     const mappedJobs = jobs.map((j) => ({
       id: j.id,
@@ -46,56 +74,143 @@ export async function getCalendarData() {
       publishedDate: j.createdAt.toISOString()
     }));
 
-    const apps = await prisma.application.findMany({
-      include: {
-        candidateProfile: {
-          include: {
-            user: { select: { name: true } }
-          }
-        },
-        history: true
-      }
-    });
+    const stageMap = new Map(masterStages.map((s) => [s.id, s]));
 
     const mappedApps = apps.map((a) => {
-      let historyEvents = a.history.map((h) => ({
-        stageId: h.stageId,
-        stageName: h.stageName,
-        date: h.date.toISOString(),
-        note: h.note,
-        isSchedule: false
-      }));
-
-      // Merge in scheduled dates from stageData
+      let sd: any = {};
       if (a.stageData) {
-        let sd: any = typeof a.stageData === "string" ? JSON.parse(a.stageData) : a.stageData;
-        if (sd.hrInterview && sd.hrInterview.date) {
-           historyEvents.push({
-             stageId: 'stage_2',
-             stageName: 'Interview HR (Scheduled)',
-             date: sd.hrInterview.date,
-             note: 'Jadwal Interview HR',
-             isSchedule: true
-           });
+        try {
+          sd = typeof a.stageData === "string" ? JSON.parse(a.stageData) : a.stageData;
+        } catch {
+          sd = {};
         }
-        if (sd.userInterview && sd.userInterview.date) {
-           historyEvents.push({
-             stageId: 'stage_5',
-             stageName: 'Interview User (Scheduled)',
-             date: sd.userInterview.date,
-             note: 'Jadwal Interview User',
-             isSchedule: true
-           });
-        }
-        if (sd.testSkill && sd.testSkill.date) {
-           historyEvents.push({
-             stageId: 'stage_4',
-             stageName: 'Test Skill (Scheduled)',
-             date: sd.testSkill.date,
-             note: 'Jadwal Test Skill',
-             isSchedule: true
-           });
-        }
+      }
+
+      // Map history entries with their stage orderIndex
+      const historyEvents = a.history.map((h) => {
+        const stageObj = h.stageId ? stageMap.get(h.stageId) : null;
+        return {
+          stageId: h.stageId,
+          stageName: h.stageName,
+          date: h.date.toISOString(),
+          note: h.note,
+          orderIndex: stageObj?.orderIndex ?? 999
+        };
+      });
+
+      // Helper to find date from history for a given stageId
+      const getHistoryDate = (sId: string) => {
+        const h = a.history.slice().reverse().find((hist) => hist.stageId === sId);
+        return h ? h.date.toISOString() : null;
+      };
+      const latestHistoryDate = a.history.length > 0 
+        ? a.history[a.history.length - 1].date.toISOString() 
+        : a.applicationDate.toISOString();
+
+      // Extract current active schedule strictly for candidate's current stage
+      let currentSchedule: {
+        stageId: string;
+        stageName: string;
+        type: 'hr' | 'user' | 'skill' | 'psikotes' | 'mcu' | 'offering' | 'administration' | 'other';
+        date: string;
+        note?: string;
+      } | null = null;
+
+      const currentStageId = a.currentStageId || "stage_1";
+      const currentStageObj = stageMap.get(currentStageId) || a.currentStage;
+      const stageNameLower = (currentStageObj?.name || "").toLowerCase();
+
+      if (currentStageId === "stage_2" || stageNameLower.includes("interview hr")) {
+        const date = sd.hrInterview?.date 
+          || a.interviews?.find(i => i.type.toUpperCase() === "HR")?.scheduledAt?.toISOString() 
+          || getHistoryDate("stage_2") 
+          || latestHistoryDate;
+        currentSchedule = {
+          stageId: currentStageId,
+          stageName: currentStageObj?.name || "Interview HR",
+          type: "hr",
+          date,
+          note: sd.hrInterview?.feedback || sd.hrInterview?.note || "Jadwal Interview HR"
+        };
+      } else if (currentStageId === "stage_3" || stageNameLower.includes("psikotes")) {
+        const date = sd.psikotes?.date 
+          || sd.psikotesData?.date 
+          || getHistoryDate("stage_3") 
+          || latestHistoryDate;
+        currentSchedule = {
+          stageId: currentStageId,
+          stageName: currentStageObj?.name || "Psikotes",
+          type: "psikotes",
+          date,
+          note: sd.psikotes?.notes || "Jadwal Psikotes"
+        };
+      } else if (currentStageId === "stage_4" || stageNameLower.includes("skill") || stageNameLower.includes("technical")) {
+        const date = sd.testSkill?.date 
+          || sd.testSkillData?.date 
+          || getHistoryDate("stage_4") 
+          || latestHistoryDate;
+        currentSchedule = {
+          stageId: currentStageId,
+          stageName: currentStageObj?.name || "Technical Test",
+          type: "skill",
+          date,
+          note: sd.testSkill?.note || "Jadwal Test Skill / Technical"
+        };
+      } else if (currentStageId === "stage_5" || stageNameLower.includes("interview user")) {
+        const date = sd.userInterview?.date 
+          || a.interviews?.find(i => i.type.toUpperCase() === "USER")?.scheduledAt?.toISOString() 
+          || getHistoryDate("stage_5") 
+          || latestHistoryDate;
+        currentSchedule = {
+          stageId: currentStageId,
+          stageName: currentStageObj?.name || "Interview User",
+          type: "user",
+          date,
+          note: sd.userInterview?.feedback || sd.userInterview?.note || "Jadwal Interview User"
+        };
+      } else if (currentStageId === "stage_6" || stageNameLower.includes("offering")) {
+        const date = sd.offeringLetter?.date 
+          || sd.offering?.date 
+          || sd.offeringData?.date 
+          || getHistoryDate("stage_6") 
+          || latestHistoryDate;
+        currentSchedule = {
+          stageId: currentStageId,
+          stageName: currentStageObj?.name || "Offering Letter",
+          type: "offering",
+          date,
+          note: sd.offeringLetter?.note || "Jadwal Offering Letter"
+        };
+      } else if (currentStageId === "stage_7" || stageNameLower.includes("mcu")) {
+        const date = sd.mcu?.date 
+          || sd.mcuData?.date 
+          || getHistoryDate("stage_7") 
+          || latestHistoryDate;
+        currentSchedule = {
+          stageId: currentStageId,
+          stageName: currentStageObj?.name || "MCU",
+          type: "mcu",
+          date,
+          note: sd.mcu?.note || "Jadwal Pelaksanaan MCU"
+        };
+      } else if (currentStageId === "stage_1" || stageNameLower.includes("screening") || stageNameLower.includes("administrasi")) {
+        const date = a.applicationDate.toISOString();
+        currentSchedule = {
+          stageId: currentStageId,
+          stageName: currentStageObj?.name || "Administrasi",
+          type: "administration",
+          date,
+          note: "Pengajuan Berkas Administrasi"
+        };
+      } else {
+        // Stages 8 (Training), 9 (Induction), 10 (PKWT), etc.
+        currentSchedule = {
+          stageId: currentStageId,
+          stageName: currentStageObj?.name || "Tahap Seleksi",
+          type: "other",
+          date: latestHistoryDate,
+          note: currentStageObj?.name || "Tahap Lanjutan"
+        };
       }
 
       return {
@@ -103,22 +218,40 @@ export async function getCalendarData() {
         jobId: a.jobId,
         candidateId: a.candidateProfileId,
         applicationDate: a.applicationDate.toISOString(),
-        currentStage: a.currentStageId,
+        status: a.status,
+        currentStageId: a.currentStageId,
+        currentStage: currentStageObj ? {
+          id: currentStageObj.id,
+          name: currentStageObj.name,
+          orderIndex: currentStageObj.orderIndex
+        } : null,
+        currentSchedule,
         history: historyEvents
       };
     });
 
-    const mappedCandidates: any = {};
+    const mappedCandidates: Record<string, any> = {};
     apps.forEach((a) => {
-      if (a.candidateProfile) {
+      if (a.candidateProfile && !mappedCandidates[a.candidateProfileId]) {
         mappedCandidates[a.candidateProfileId] = {
-          ...a.candidateProfile,
+          id: a.candidateProfile.id,
+          nik: a.candidateProfile.nik || "-",
           fullName: a.candidateProfile.user?.name || "Unknown",
+          email: a.candidateProfile.user?.email || "-",
+          whatsapp: a.candidateProfile.whatsapp || "-",
+          latestEducation: a.candidateProfile.latestEducation || "-",
+          city: a.candidateProfile.city?.name || a.candidateProfile.currentAddress || "-"
         };
       }
     });
 
-    return { success: true, jobs: mappedJobs, applications: mappedApps, candidates: mappedCandidates };
+    return {
+      success: true,
+      jobs: mappedJobs,
+      applications: mappedApps,
+      candidates: mappedCandidates,
+      stages: masterStages.map((s) => ({ id: s.id, name: s.name, orderIndex: s.orderIndex }))
+    };
   } catch (error: any) {
     console.error("getCalendarData Error:", error);
     return { success: false, error: "Gagal mengambil data kalender: " + (error?.message || String(error)) };
