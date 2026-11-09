@@ -61,6 +61,7 @@ import {
   Clock,
   FileCheck,
 } from "lucide-react";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 
 
 // -------------------------------------------------------------------------
@@ -440,6 +441,37 @@ export default function GenerateDocumentsClient({
     return jobApplications.filter(isOfferingOrAbove);
   }, [jobApplications]);
 
+  const jobOptions = useMemo(() => {
+    return eligibleJobs.map((job) => ({
+      value: job.id,
+      label: `${job.noRegistrasi || "LOWONGAN"} - ${job.posisi}`,
+      subLabel: `${job.customerName || "Customer"} • Site: ${job.location || "-"}${
+        job.noB1 && job.noB1 !== "-" ? ` • No B1: ${job.noB1}` : ""
+      }`,
+      badge: job.customerName || undefined,
+      badgeColor: "blue" as const,
+    }));
+  }, [eligibleJobs]);
+
+  const candidateOptions = useMemo(() => {
+    return eligibleCandidates.map((app) => {
+      const name = app.candidateProfile?.user?.name || "Kandidat";
+      const stageName = app.currentStage?.name || app.status || "Offering";
+      const nik = app.candidateProfile?.nik ? `NIK: ${app.candidateProfile.nik}` : "";
+      const phone = app.candidateProfile?.user?.phone
+        ? `Telp: ${app.candidateProfile.user.phone}`
+        : "";
+      const meta = [nik, phone].filter(Boolean).join(" • ");
+      return {
+        value: app.id,
+        label: name,
+        subLabel: meta || `Posisi: ${selectedJob?.posisi || "-"}`,
+        badge: stageName,
+        badgeColor: "green" as const,
+      };
+    });
+  }, [eligibleCandidates, selectedJob]);
+
   const selectedApp = useMemo(() => {
     return applications.find((a) => a.id === selectedAppId);
   }, [applications, selectedAppId]);
@@ -509,6 +541,15 @@ export default function GenerateDocumentsClient({
   // -------------------------------------------------------------------------
   // BAST LOGIC
   // -------------------------------------------------------------------------
+  const customerOptions = useMemo(() => {
+    return customers.map((c) => ({
+      value: c.id,
+      label: c.name,
+      subLabel: c.code ? `Kode Perusahaan: ${c.code}` : undefined,
+      badge: c.code || "Mitra",
+      badgeColor: "blue" as const,
+    }));
+  }, [customers]);
   const availableBastJobs = useMemo(() => {
     if (!bastCustomerId) return [];
 
@@ -953,6 +994,52 @@ export default function GenerateDocumentsClient({
     return custs.sort();
   }, [allMcuCandidates]);
 
+  const provinceOptions = useMemo(() => {
+    return provinces.map((prov) => ({
+      value: prov.id,
+      label: prov.name,
+      subLabel: prov.code ? `Kode Wilayah: ${prov.code}` : undefined,
+      badge: prov.code || undefined,
+      badgeColor: "purple" as const,
+    }));
+  }, [provinces]);
+
+  const clinicOptions = useMemo(() => {
+    return availableMcuClinics.map((clinic) => {
+      const name = clinic.name || clinic.nama || "Klinik";
+      const provName = clinic.province?.name || clinic.wilayah || "";
+      const addr = clinic.address || clinic.alamat || "";
+      return {
+        value: clinic.id,
+        label: name,
+        subLabel: `${addr ? `${addr} • ` : ""}Wilayah: ${provName || "-"}`,
+        badge: clinic.code || "Klinik",
+        badgeColor: "green" as const,
+      };
+    });
+  }, [availableMcuClinics]);
+
+  const mcuPosisiOptions = useMemo(() => {
+    return mcuPositions.map((pos) => ({
+      value: pos,
+      label: pos,
+    }));
+  }, [mcuPositions]);
+
+  const mcuSiteOptions = useMemo(() => {
+    return mcuSites.map((site) => ({
+      value: site,
+      label: site,
+    }));
+  }, [mcuSites]);
+
+  const mcuCustomerOptions = useMemo(() => {
+    return mcuCustomers.map((cust) => ({
+      value: cust,
+      label: cust,
+    }));
+  }, [mcuCustomers]);
+
   // Filtered Candidate List
   const filteredMcuCandidates = useMemo(() => {
     return allMcuCandidates.filter((cand) => {
@@ -1365,21 +1452,16 @@ export default function GenerateDocumentsClient({
                   <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
                     Lowongan Pekerjaan <span className="text-red-500">*</span>
                   </label>
-                  <select
+                  <SearchableSelect
+                    options={jobOptions}
                     value={selectedJobId}
-                    onChange={(e) => {
-                      setSelectedJobId(e.target.value);
+                    onChange={(val) => {
+                      setSelectedJobId(val);
                       setSelectedAppId("");
                     }}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
-                  >
-                    <option value="">-- Pilih Lowongan Pekerjaan --</option>
-                    {eligibleJobs.map((job) => (
-                      <option key={job.id} value={job.id}>
-                        {job.noRegistrasi} - {job.posisi} ({job.customerName})
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="-- Pilih Lowongan Pekerjaan --"
+                    searchPlaceholder="Cari registrasi, posisi, customer, site..."
+                  />
                   {eligibleJobs.length === 0 && (
                     <p className="text-[11px] text-amber-600 mt-1">
                       Belum ada lowongan dengan kandidat di tahap Offering Letter atau di atasnya.
@@ -1399,33 +1481,20 @@ export default function GenerateDocumentsClient({
                       </span>
                     )}
                   </div>
-                  <select
+                  <SearchableSelect
+                    options={candidateOptions}
                     value={selectedAppId}
-                    onChange={(e) => setSelectedAppId(e.target.value)}
+                    onChange={(val) => setSelectedAppId(val)}
                     disabled={!selectedJobId || eligibleCandidates.length === 0}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface disabled:opacity-50"
-                  >
-                    <option value="">
-                      {!selectedJobId
+                    placeholder={
+                      !selectedJobId
                         ? "-- Pilih Lowongan Terlebih Dahulu --"
                         : eligibleCandidates.length === 0
                           ? "-- Tidak ada kandidat eligible --"
-                          : "-- Pilih Kandidat --"}
-                    </option>
-                    {eligibleCandidates.map((app) => {
-                      const name =
-                        app.candidateProfile?.user?.name || "Kandidat";
-                      const stageName = app.currentStage?.name || app.status;
-                      const nik = app.candidateProfile?.nik
-                        ? ` - NIK: ${app.candidateProfile.nik}`
-                        : "";
-                      return (
-                        <option key={app.id} value={app.id}>
-                          {name} ({stageName}){nik}
-                        </option>
-                      );
-                    })}
-                  </select>
+                          : "-- Pilih Kandidat --"
+                    }
+                    searchPlaceholder="Cari nama kandidat, NIK, stage..."
+                  />
                 </div>
 
                 {/* Nama (autofill, disabled) */}
@@ -1709,23 +1778,18 @@ export default function GenerateDocumentsClient({
                   <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
                     Customer / Perusahaan Mitra
                   </label>
-                  <select
+                  <SearchableSelect
+                    options={customerOptions}
                     value={bastCustomerId}
-                    onChange={(e) => {
-                      setBastCustomerId(e.target.value);
+                    onChange={(val) => {
+                      setBastCustomerId(val);
                       setBastSelectedAreas([]);
                       setBastSelectedJobs([]);
                       setBastSelectedApps([]);
                     }}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
-                  >
-                    <option value="">-- Pilih Customer --</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {c.code ? `(${c.code})` : ""}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="-- Pilih Customer / Perusahaan Mitra --"
+                    searchPlaceholder="Cari nama atau kode perusahaan mitra..."
+                  />
                   <p className="text-[11px] text-on-surface-variant mt-1">
                     Perusahaan mitra penerima serah terima.
                   </p>
@@ -2263,21 +2327,16 @@ export default function GenerateDocumentsClient({
                       Provinsi Klinik <span className="text-red-500">*</span>
                     </label>
                     <span className="text-[11px] text-on-surface-variant font-medium">
-                      Master Wilayah
+                      Master Wilayah ({provinces.length})
                     </span>
                   </div>
-                  <select
+                  <SearchableSelect
+                    options={provinceOptions}
                     value={mcuProvinceId}
-                    onChange={(e) => handleProvinceChange(e.target.value)}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface font-medium cursor-pointer"
-                  >
-                    <option value="">-- Semua Provinsi --</option>
-                    {provinces.map((prov) => (
-                      <option key={prov.id} value={prov.id}>
-                        {prov.name} ({prov.code})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => handleProvinceChange(val)}
+                    placeholder="-- Semua Provinsi --"
+                    searchPlaceholder="Cari nama provinsi atau kode wilayah..."
+                  />
                   <p className="text-[11px] text-on-surface-variant mt-1">
                     Pilih provinsi untuk memfilter daftar klinik rujukan.
                   </p>
@@ -2293,21 +2352,18 @@ export default function GenerateDocumentsClient({
                       {availableMcuClinics.length} klinik tersedia
                     </span>
                   </div>
-                  <select
+                  <SearchableSelect
+                    options={clinicOptions}
                     value={mcuClinicId}
-                    onChange={(e) => setMcuClinicId(e.target.value)}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface font-medium cursor-pointer"
-                  >
-                    {availableMcuClinics.length === 0 ? (
-                      <option value="">Belum ada klinik di provinsi terpilih</option>
-                    ) : (
-                      availableMcuClinics.map((clinic) => (
-                        <option key={clinic.id} value={clinic.id}>
-                          {clinic.name || clinic.nama} {clinic.code ? `(${clinic.code})` : ""}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                    onChange={(val) => setMcuClinicId(val)}
+                    disabled={availableMcuClinics.length === 0}
+                    placeholder={
+                      availableMcuClinics.length === 0
+                        ? "-- Belum ada klinik di provinsi terpilih --"
+                        : "-- Pilih Klinik MCU --"
+                    }
+                    searchPlaceholder="Cari nama klinik, kode, atau alamat..."
+                  />
                   <p className="text-[11px] text-on-surface-variant mt-1">
                     Klinik tujuan pelaksanaan pemeriksaan kesehatan kandidat.
                   </p>
@@ -2402,18 +2458,14 @@ export default function GenerateDocumentsClient({
                     <label className="block text-[11px] font-semibold text-on-surface-variant uppercase mb-1">
                       Filter Posisi / Job
                     </label>
-                    <select
+                    <SearchableSelect
+                      options={mcuPosisiOptions}
                       value={mcuFilterPosisi}
-                      onChange={(e) => setMcuFilterPosisi(e.target.value)}
-                      className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="">Semua Posisi ({mcuPositions.length})</option>
-                      {mcuPositions.map((pos) => (
-                        <option key={pos} value={pos}>
-                          {pos}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setMcuFilterPosisi(val)}
+                      placeholder={`Semua Posisi (${mcuPositions.length})`}
+                      searchPlaceholder="Cari posisi pekerjaan..."
+                      className="text-xs"
+                    />
                   </div>
 
                   {/* Filter Site Operations */}
@@ -2421,18 +2473,14 @@ export default function GenerateDocumentsClient({
                     <label className="block text-[11px] font-semibold text-on-surface-variant uppercase mb-1">
                       Filter Site Operations
                     </label>
-                    <select
+                    <SearchableSelect
+                      options={mcuSiteOptions}
                       value={mcuFilterSite}
-                      onChange={(e) => setMcuFilterSite(e.target.value)}
-                      className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="">Semua Site ({mcuSites.length})</option>
-                      {mcuSites.map((site) => (
-                        <option key={site} value={site}>
-                          {site}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setMcuFilterSite(val)}
+                      placeholder={`Semua Site (${mcuSites.length})`}
+                      searchPlaceholder="Cari site operasional..."
+                      className="text-xs"
+                    />
                   </div>
 
                   {/* Filter Customer */}
@@ -2440,18 +2488,14 @@ export default function GenerateDocumentsClient({
                     <label className="block text-[11px] font-semibold text-on-surface-variant uppercase mb-1">
                       Filter Customer
                     </label>
-                    <select
+                    <SearchableSelect
+                      options={mcuCustomerOptions}
                       value={mcuFilterCustomer}
-                      onChange={(e) => setMcuFilterCustomer(e.target.value)}
-                      className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="">Semua Customer ({mcuCustomers.length})</option>
-                      {mcuCustomers.map((cust) => (
-                        <option key={cust} value={cust}>
-                          {cust}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setMcuFilterCustomer(val)}
+                      placeholder={`Semua Customer (${mcuCustomers.length})`}
+                      searchPlaceholder="Cari customer / mitra..."
+                      className="text-xs"
+                    />
                   </div>
 
                   {/* Search Query */}
