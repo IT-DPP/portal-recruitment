@@ -10,6 +10,7 @@ import PriorityJobsWidget, {
 import PipelineFunnelWidget from "@/components/dashboard/reports/PipelineFunnelWidget";
 import RejectionAnalysisWidget from "@/components/dashboard/reports/RejectionAnalysisWidget";
 import RecentCandidatesTable from "@/components/dashboard/RecentCandidatesTable";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 import {
   getExecutiveDashboardData,
   DashboardJob,
@@ -411,34 +412,36 @@ export default function ExecutiveDashboard() {
             <div className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-semibold text-black mb-1.5">Posisi Job</label>
-                <select
+                <SearchableSelect
+                  options={[
+                    { value: "", label: "Semua Posisi" },
+                    ...activePositions.map((pos: any) => ({ value: pos, label: pos }))
+                  ]}
                   value={filterPosition}
-                  onChange={(e) => setFilterPosition(e.target.value)}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
-                >
-                  <option value="">Semua Posisi</option>
-                  {activePositions.map((pos: any) => (
-                    <option key={pos} value={pos}>
-                      {pos}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFilterPosition(val)}
+                  placeholder="Semua Posisi"
+                  searchPlaceholder="Cari nama posisi job..."
+                  debounceMs={250}
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-black mb-1.5">Customer</label>
-                <select
+                <SearchableSelect
+                  options={[
+                    { value: "", label: "Semua Customer" },
+                    ...customers.map((c: any) => ({
+                      value: c.id,
+                      label: c.name,
+                      subLabel: c.code || undefined
+                    }))
+                  ]}
                   value={filterCustomer}
-                  onChange={(e) => setFilterCustomer(e.target.value)}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
-                >
-                  <option value="">Semua Customer</option>
-                  {customers.map((c: any) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFilterCustomer(val)}
+                  placeholder="Semua Customer"
+                  searchPlaceholder="Cari nama customer / klien..."
+                  debounceMs={250}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

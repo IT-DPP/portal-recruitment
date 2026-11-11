@@ -503,6 +503,55 @@ export async function deleteCertification(id: string) {
 }
 
 // ----------------------------------------------------------------------
+// CERTIFICATION SCHEMA (BNSP SKEMA)
+// ----------------------------------------------------------------------
+
+export async function getCertificationSchemas() {
+  try {
+    const data = await prisma.masterCertificationSchema.findMany({ orderBy: { name: 'asc' } })
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: "Gagal mengambil data skema sertifikasi" }
+  }
+}
+
+export async function createCertificationSchema(data: CertificationInput) {
+  try {
+    const parsed = CertificationSchema.safeParse(data)
+    if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
+    const payload = { ...parsed.data, code: parsed.data.code || null }
+    const result = await prisma.masterCertificationSchema.create({ data: payload })
+    revalidatePath("/dashboard/settings/master-data/skema-sertifikasi")
+    return { success: true, data: result }
+  } catch (error) {
+    return { success: false, error: "Gagal menyimpan data skema sertifikasi" }
+  }
+}
+
+export async function updateCertificationSchema(id: string, data: CertificationInput) {
+  try {
+    const parsed = CertificationSchema.safeParse(data)
+    if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
+    const payload = { ...parsed.data, code: parsed.data.code || null }
+    const result = await prisma.masterCertificationSchema.update({ where: { id }, data: payload })
+    revalidatePath("/dashboard/settings/master-data/skema-sertifikasi")
+    return { success: true, data: result }
+  } catch (error) {
+    return { success: false, error: "Gagal mengupdate data skema sertifikasi" }
+  }
+}
+
+export async function deleteCertificationSchema(id: string) {
+  try {
+    await prisma.masterCertificationSchema.delete({ where: { id } })
+    revalidatePath("/dashboard/settings/master-data/skema-sertifikasi")
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: "Gagal menghapus data skema sertifikasi" }
+  }
+}
+
+// ----------------------------------------------------------------------
 // REJECTION MESSAGE
 // ----------------------------------------------------------------------
 

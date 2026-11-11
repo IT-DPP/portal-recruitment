@@ -608,6 +608,30 @@ export async function updateApplicationStage(appId: string, targetStageId: strin
       return { success: false, error: "Application not found" };
     }
 
+    // Backend Guard: Recruiter cannot advance candidate from Offering Letter stage before candidate accepts
+    const currentStageId = app.currentStageId || "";
+    const isCurrentOfferingStage = currentStageId === "stage_6";
+
+    if (isCurrentOfferingStage && targetStageId !== "stage_6" && targetStageId !== "Rejected") {
+      let stageData: any = {};
+      if (app.stageData) {
+        try {
+          stageData = typeof app.stageData === "string" ? JSON.parse(app.stageData) : app.stageData;
+        } catch {
+          stageData = {};
+        }
+      }
+      const offering = stageData.offeringLetter || {};
+      const candidateStatus = offering.candidateResponse?.status;
+
+      if (candidateStatus !== "ACCEPTED") {
+        return {
+          success: false,
+          error: "Kandidat belum menyetujui dan menandatangani Offering Letter. Pemindahan ke tahap berikutnya tidak diizinkan sebelum ada persetujuan resmi dari kandidat."
+        };
+      }
+    }
+
     let targetStageName = targetStageId;
     if (targetStageId !== "Rejected" && targetStageId !== "Hired") {
       const stage = await prisma.masterPipelineStage.findUnique({
@@ -743,10 +767,59 @@ export async function applyToJob(jobId: string) {
       return { success: false, error: "Harap lengkapi profil dan dokumen Anda sebelum melamar." };
     }
 
+    const candidateNik = profile.nik?.trim();
+    if (!candidateNik) {
+      return {
+        success: false,
+        error: "Nomor Induk Kependudukan (NIK) belum terdaftar pada profil Anda. Harap lengkapi NIK Anda pada menu profil terlebih dahulu."
+      };
+    }
+
+    // Company Recruitment Policy Rule: 1 candidate cannot apply to more than 1 job opening (restricted by NIK).
+    // Check if there is already an active/ongoing application for this NIK across the entire database.
+    const existingActiveApp = await prisma.application.findFirst({
+      where: {
+        candidateProfile: {
+          nik: candidateNik,
+        },
+        status: {
+          in: ["ACTIVE", "HIRED"],
+        },
+      },
+      include: {
+        job: {
+          include: {
+            position: true,
+          },
+        },
+      },
+    });
+
+    if (existingActiveApp) {
+      const activeJobTitle =
+        existingActiveApp.job?.positionName ||
+        existingActiveApp.job?.position?.name ||
+        "Lowongan Pekerjaan";
+      const activeJobRef = existingActiveApp.job?.noRegistrasi || "-";
+
+      return {
+        success: false,
+        error: `Sesuai aturan rekrutmen perusahaan, 1 kandidat (NIK: ${candidateNik}) hanya dapat melamar pada 1 lowongan pekerjaan. Anda saat ini masih terdaftar dalam proses seleksi aktif untuk posisi "${activeJobTitle}" (No. Registrasi: ${activeJobRef}).`,
+      };
+    }
+
     // Check if already applied to this specific job
-    const alreadyApplied = profile.applications.some(app => app.jobId === jobId);
-    if (alreadyApplied) {
-      return { success: false, error: "Anda sudah pernah melamar ke lowongan ini." };
+    const alreadyAppliedThisJob = await prisma.application.findFirst({
+      where: {
+        jobId,
+        candidateProfile: {
+          nik: candidateNik,
+        },
+      },
+    });
+
+    if (alreadyAppliedThisJob) {
+      return { success: false, error: "Anda sudah pernah melamar ke lowongan ini sebelumnya." };
     }
 
     // Check if job is still active

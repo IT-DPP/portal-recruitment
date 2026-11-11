@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Save, X, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useModal } from '@/components/providers/ModalProvider';
+import { useClientTable } from '@/hooks/useClientTable';
+import TableControls from '@/components/ui/TableControls';
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from '@/app/actions/master-data';
 
 export default function DepartmentMaster() {
@@ -28,23 +30,30 @@ export default function DepartmentMaster() {
     loadData();
   }, []);
 
+  const table = useClientTable({
+    data,
+    searchKeys: ['name'],
+    initialRowsPerPage: 10,
+    debounceMs: 300,
+  });
+
   const handleSave = async () => {
-    if (!formData.name) return;
+    if (!formData.name.trim()) return;
     setIsSaving(true);
     
     if (isEditing) {
-      const res = await updateDepartment(isEditing, { name: formData.name });
+      const res = await updateDepartment(isEditing, { name: formData.name.trim() });
       if (res.success) {
         await loadData();
       } else {
-        alert(res.error);
+        alert(res.error || "Gagal mengupdate departemen");
       }
     } else {
-      const res = await createDepartment({ name: formData.name });
+      const res = await createDepartment({ name: formData.name.trim() });
       if (res.success) {
         await loadData();
       } else {
-        alert(res.error);
+        alert(res.error || "Gagal menambah departemen");
       }
     }
     
@@ -55,12 +64,12 @@ export default function DepartmentMaster() {
   };
 
   const handleDelete = async (id: string) => {
-    if(await modal.confirm("Konfirmasi Hapus", "Apakah Anda yakin ingin menghapus data ini?", true)) {
+    if (await modal.confirm("Konfirmasi Hapus", "Apakah Anda yakin ingin menghapus departemen ini?", true)) {
       const res = await deleteDepartment(id);
       if (res.success) {
         await loadData();
       } else {
-        alert(res.error);
+        alert(res.error || "Gagal menghapus departemen");
       }
     }
   };
@@ -90,6 +99,14 @@ export default function DepartmentMaster() {
             <Plus className="w-4 h-4" /> Add New
           </button>
         </div>
+
+        {/* Reusable Table Controls */}
+        <TableControls
+          {...table}
+          searchPlaceholder="Cari nama departemen..."
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          isLoading={isLoading}
+        />
 
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -126,7 +143,7 @@ export default function DepartmentMaster() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={isSaving || !formData.name.trim()}
                   className="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-container transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -149,18 +166,22 @@ export default function DepartmentMaster() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-8 text-center text-on-surface-variant flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Memuat data...
+                  <td colSpan={3} className="px-6 py-8 text-center text-on-surface-variant">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Memuat data...
+                    </div>
                   </td>
                 </tr>
-              ) : data.length === 0 ? (
+              ) : table.paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-8 text-center text-on-surface-variant">Belum ada data.</td>
+                  <td colSpan={3} className="px-6 py-8 text-center text-on-surface-variant">
+                    {table.debouncedSearch ? "Tidak ada departemen yang sesuai pencarian." : "Belum ada data."}
+                  </td>
                 </tr>
               ) : (
-                data.map((item, index) => (
+                table.paginatedData.map((item, index) => (
                   <tr key={item.id} className="bg-white border-b border-table-border hover:bg-surface-container-low/50">
-                    <td className="px-6 py-4">{index + 1}</td>
+                    <td className="px-6 py-4">{table.startIndex + index}</td>
                     <td className="px-6 py-4 font-medium text-black">{item.name}</td>
                     <td className="px-6 py-4 text-right">
                       <button onClick={() => startEdit(item)} className="text-primary hover:text-primary-container mr-3">

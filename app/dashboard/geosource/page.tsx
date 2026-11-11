@@ -8,6 +8,7 @@ import RegionalDistributionChart, { RegionalData } from '@/components/dashboard/
 import TopBlkChart, { BlkData } from '@/components/dashboard/TopBlkChart';
 import { SiteMarker } from '@/components/dashboard/GeoMapComponent';
 import InstitutionRankingTable from '@/components/dashboard/InstitutionRankingTable';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 import { getGeoSourceDashboardData } from '@/app/actions/dashboard';
 
 // Helper to intelligently classify institution types
@@ -462,50 +463,58 @@ export default function GeoSourceDashboard() {
             <div className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-semibold text-black mb-1.5">Site Operations</label>
-                <select
+                <SearchableSelect
+                  options={[
+                    { value: "", label: "Semua Site" },
+                    ...sites.map((s: any) => ({
+                      value: s.id,
+                      label: s.siteName,
+                      subLabel: s.province || undefined
+                    }))
+                  ]}
                   value={filterSite}
-                  onChange={(e) => setFilterSite(e.target.value)}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
-                >
-                  <option value="">Semua Site</option>
-                  {sites.map((s: any) => (
-                    <option key={s.id} value={s.id}>
-                      {s.siteName}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFilterSite(val)}
+                  placeholder="Semua Site"
+                  searchPlaceholder="Cari nama site operasional..."
+                  debounceMs={250}
+                />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-black mb-1.5">BLK/LPK Institution</label>
-                <select
+                <label className="block text-sm font-semibold text-black mb-1.5">BLK/LPK / School Institute</label>
+                <SearchableSelect
+                  options={[
+                    { value: "", label: "Semua Institusi" },
+                    ...blks.map((b: any) => ({
+                      value: b.name,
+                      label: b.name,
+                      badge: b.type || undefined
+                    }))
+                  ]}
                   value={filterBlk}
-                  onChange={(e) => setFilterBlk(e.target.value)}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
-                >
-                  <option value="">Semua Institusi</option>
-                  {blks.map((b: any) => (
-                    <option key={b.name} value={b.name}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFilterBlk(val)}
+                  placeholder="Semua Institusi"
+                  searchPlaceholder="Cari nama institusi / BLK..."
+                  debounceMs={250}
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-black mb-1.5">Province</label>
-                <select
+                <SearchableSelect
+                  options={[
+                    { value: "", label: "Semua Provinsi" },
+                    ...allProvinces.map((prov) => ({
+                      value: prov,
+                      label: prov
+                    }))
+                  ]}
                   value={filterProvince}
-                  onChange={(e) => setFilterProvince(e.target.value)}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
-                >
-                  <option value="">Semua Provinsi</option>
-                  {allProvinces.map((prov) => (
-                    <option key={prov} value={prov}>
-                      {prov}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFilterProvince(val)}
+                  placeholder="Semua Provinsi"
+                  searchPlaceholder="Cari nama provinsi..."
+                  debounceMs={250}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

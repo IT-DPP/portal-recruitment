@@ -4,6 +4,8 @@ import React, { useState, useTransition } from 'react';
 import { Plus, Edit2, Trash2, Save, X, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useModal } from '@/components/providers/ModalProvider';
+import { useClientTable } from '@/hooks/useClientTable';
+import TableControls from '@/components/ui/TableControls';
 import { createProvince, updateProvince, deleteProvince } from "@/app/actions/master-data";
 import { MasterProvince } from '@prisma/client';
 
@@ -14,16 +16,23 @@ export default function ProvinceClient({ initialData }: { initialData: MasterPro
   const [formData, setFormData] = useState({ name: '' });
   const [isPending, startTransition] = useTransition();
 
+  const table = useClientTable({
+    data: initialData,
+    searchKeys: ['name', 'code', 'id'],
+    initialRowsPerPage: 10,
+    debounceMs: 300,
+  });
+
   const handleSave = () => {
-    if (!formData.name) return;
+    if (!formData.name.trim()) return;
     
     startTransition(async () => {
       try {
         if (isEditing) {
-          const res = await updateProvince(isEditing, { name: formData.name });
+          const res = await updateProvince(isEditing, { name: formData.name.trim() });
           if (!res.success) throw new Error(res.error);
         } else {
-          const res = await createProvince({ name: formData.name });
+          const res = await createProvince({ name: formData.name.trim() });
           if (!res.success) throw new Error(res.error);
         }
         
@@ -31,16 +40,16 @@ export default function ProvinceClient({ initialData }: { initialData: MasterPro
         setFormData({ name: '' });
         setIsModalOpen(false);
       } catch (error: any) {
-         console.error(error);
-         // You could add a toast notification here
+        console.error(error);
+        alert(error?.message || "Gagal menyimpan provinsi");
       }
     });
   };
 
   const handleDelete = async (id: string) => {
-    if(await modal.confirm("Konfirmasi Hapus", "Apakah Anda yakin ingin menghapus data ini? Aksi ini berpotensi memutus relasi Kota/Kabupaten.", true)) {
+    if (await modal.confirm("Konfirmasi Hapus", "Apakah Anda yakin ingin menghapus data ini? Aksi ini berpotensi memutus relasi Kota/Kabupaten.", true)) {
       startTransition(async () => {
-         await deleteProvince(id);
+        await deleteProvince(id);
       });
     }
   };
@@ -71,6 +80,14 @@ export default function ProvinceClient({ initialData }: { initialData: MasterPro
             <Plus className="w-4 h-4" /> Add New
           </button>
         </div>
+
+        {/* Reusable Table Controls */}
+        <TableControls
+          {...table}
+          searchPlaceholder="Cari nama atau kode provinsi..."
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          isLoading={isPending}
+        />
 
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -110,7 +127,7 @@ export default function ProvinceClient({ initialData }: { initialData: MasterPro
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={isPending || !formData.name}
+                  disabled={isPending || !formData.name.trim()}
                   className="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-container transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -136,14 +153,16 @@ export default function ProvinceClient({ initialData }: { initialData: MasterPro
               </tr>
             </thead>
             <tbody>
-              {initialData.length === 0 ? (
+              {table.paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-8 text-center text-on-surface-variant">Belum ada data.</td>
+                  <td colSpan={3} className="px-6 py-8 text-center text-on-surface-variant">
+                    {table.debouncedSearch ? "Tidak ada provinsi yang cocok dengan pencarian." : "Belum ada data."}
+                  </td>
                 </tr>
               ) : (
-                initialData.map((item, index) => (
+                table.paginatedData.map((item, index) => (
                   <tr key={item.id} className="bg-white border-b border-table-border hover:bg-surface-container-low/50">
-                    <td className="px-6 py-4">{index + 1}</td>
+                    <td className="px-6 py-4">{table.startIndex + index}</td>
                     <td className="px-6 py-4 font-medium text-black">{item.name}</td>
                     <td className="px-6 py-4 text-right">
                       <button onClick={() => startEdit(item)} disabled={isPending} className="text-primary hover:text-primary-container mr-3 disabled:opacity-50">

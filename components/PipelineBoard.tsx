@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { AlertCircle, Clock, Search, User as UserIcon, CalendarClock, Ban } from "lucide-react";
+import { AlertCircle, Clock, Search, User as UserIcon, CalendarClock, Ban, CheckCircle, Lock } from "lucide-react";
 
 interface PipelineBoardProps {
   jobId: string;
@@ -129,6 +129,11 @@ export default function PipelineBoard({ jobId, timeline, initialApplications = [
          const d = stageData.offeringLetter || {};
          if (!d.date || !d.file) {
            setErrorModal("Anda harus melengkapi seluruh form pada stage Offering Letter sebelum melanjutkan ke tahap berikutnya.");
+           setDraggedAppId(null);
+           return;
+         }
+         if (d.candidateResponse?.status !== "ACCEPTED") {
+           setErrorModal("Kandidat belum menyetujui dan menandatangani Offering Letter. Anda tidak dapat memindahkan kandidat ke tahap berikutnya sebelum ada konfirmasi persetujuan resmi dari kandidat.");
            setDraggedAppId(null);
            return;
          }
@@ -341,13 +346,32 @@ export default function PipelineBoard({ jobId, timeline, initialApplications = [
                   const isAppOverdue = stageStatus.type === "overdue";
                   const hasNote = app.stageNotes && app.stageNotes[app.currentStageId];
 
+                  let appStageData: any = {};
+                  if (app.stageData) {
+                    try {
+                      appStageData = typeof app.stageData === 'string' ? JSON.parse(app.stageData) : app.stageData;
+                    } catch {
+                      appStageData = {};
+                    }
+                  }
+                  const isOfferingStage = app.currentStageId === "stage_6";
+                  const offeringResponseStatus = appStageData.offeringLetter?.candidateResponse?.status;
+                  const isOfferingLocked = isOfferingStage && offeringResponseStatus !== "ACCEPTED";
+
                   return (
                     <div
                       key={app.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, app.id)}
+                      draggable={!isOfferingLocked}
+                      onDragStart={(e) => {
+                        if (isOfferingLocked) {
+                          e.preventDefault();
+                          return;
+                        }
+                        handleDragStart(e, app.id);
+                      }}
                       className={`
-                        bg-white p-4 rounded-xl border shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative
+                        bg-white p-4 rounded-xl border shadow-sm transition-shadow relative
+                        ${isOfferingLocked ? "cursor-default border-amber-200 bg-amber-50/20" : "cursor-grab active:cursor-grabbing hover:shadow-md"}
                         ${isAppOverdue && !hasNote ? "border-red-400 border-l-4" : "border-outline-variant hover:border-primary/50"}
                       `}
                     >
@@ -372,6 +396,25 @@ export default function PipelineBoard({ jobId, timeline, initialApplications = [
                               <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 border border-emerald-200 rounded uppercase">Hired</span>
                             )}
                           </div>
+
+                          {/* Offering Letter Confirmation Status */}
+                          {isOfferingStage && (
+                            <div className="mt-1 mb-2">
+                              {offeringResponseStatus === "ACCEPTED" ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded flex items-center gap-1 w-full justify-center">
+                                  <CheckCircle className="w-3 h-3 text-emerald-600" /> Penawaran Disetujui
+                                </span>
+                              ) : offeringResponseStatus === "DECLINED" ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 bg-red-50 text-red-800 border border-red-200 rounded flex items-center gap-1 w-full justify-center">
+                                  <Ban className="w-3 h-3 text-red-600" /> Penawaran Ditolak
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded flex items-center gap-1 w-full justify-center" title="Kandidat belum memberikan konfirmasi Offering Letter. Perpindahan ke tahap selanjutnya dikunci.">
+                                  <Lock className="w-3 h-3 text-amber-600" /> Menunggu Konfirmasi
+                                </span>
+                              )}
+                            </div>
+                          )}
                           
                           <a 
                             href={`/dashboard/job-openings/${jobId}/verify/${app.candidateProfileId}`}

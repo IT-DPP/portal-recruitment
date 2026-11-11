@@ -15,6 +15,7 @@ import {
   CalendarDays
 } from "lucide-react";
 import AdvancedCalendar, { AdvancedCalendarEvent } from "@/components/dashboard/AdvancedCalendar";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 import { startOfDay, format, addMonths, subMonths } from "date-fns";
 import { id as localeId } from "date-fns/locale/id";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -563,6 +564,39 @@ export default function CalendarPage() {
   const activeJobs = jobs.filter((j) => j.globalStatus === "Active");
   const isFilterActive = activeFilters.job || activeFilters.startDate || activeFilters.endDate || selectedCandidateId;
 
+  const candidateSelectOptions = useMemo(() => {
+    const opts: { value: string; label: string; subLabel?: string; badge?: string }[] = [
+      { value: "", label: "Semua Kandidat (Mode Jadwal Umum)" }
+    ];
+    const seen = new Set<string>();
+    applications.forEach((app) => {
+      const cand = candidates[app.candidateId];
+      if (cand && !seen.has(cand.id)) {
+        seen.add(cand.id);
+        const job = jobs.find((j) => j.id === app.jobId);
+        opts.push({
+          value: `${cand.id}|${app.id}`,
+          label: cand.fullName,
+          subLabel: `NIK: ${cand.nik || "-"} • ${job?.posisi || ""}`,
+          badge: app.currentStage?.name || undefined
+        });
+      }
+    });
+    return opts;
+  }, [applications, candidates, jobs]);
+
+  const jobSelectOptions = useMemo(() => {
+    return [
+      { value: "", label: "Semua Lowongan Aktif" },
+      ...activeJobs.map((j) => ({
+        value: j.id,
+        label: j.posisi,
+        subLabel: `Ref: ${j.noRegistrasi}`,
+        badge: j.globalStatus || undefined
+      }))
+    ];
+  }, [activeJobs]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -860,38 +894,21 @@ export default function CalendarPage() {
                 <label className="block text-sm font-semibold text-black mb-1.5">
                   Fokus Kandidat (NIK / Nama)
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Ketik NIK atau Nama Kandidat..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
-                  />
-                  {candidateSearchResults.length > 0 && searchQuery && (
-                    <div className="mt-2 border border-outline-variant rounded-xl max-h-40 overflow-y-auto bg-white divide-y divide-table-border">
-                      {candidateSearchResults.map(({ app, candidate: cand, job }) => (
-                        <button
-                          key={app.id}
-                          type="button"
-                          onClick={() => {
-                            handleSelectCandidate(cand.id, app.id);
-                            setIsFilterModalOpen(false);
-                          }}
-                          className="w-full text-left p-2.5 hover:bg-primary/5 text-xs flex justify-between items-center"
-                        >
-                          <div>
-                            <span className="font-bold text-slate-900 block">{cand.fullName}</span>
-                            <span className="text-[11px] text-slate-500 font-mono">NIK: {cand.nik} • {job?.posisi}</span>
-                          </div>
-                          <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">
-                            Pilih
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <SearchableSelect
+                  options={candidateSelectOptions}
+                  value={selectedCandidateId && selectedAppId ? `${selectedCandidateId}|${selectedAppId}` : ""}
+                  onChange={(val) => {
+                    if (!val) {
+                      handleClearCandidateSelection();
+                    } else {
+                      const [candId, appId] = val.split("|");
+                      handleSelectCandidate(candId, appId);
+                    }
+                  }}
+                  placeholder="Semua Kandidat (Mode Jadwal Umum)"
+                  searchPlaceholder="Cari berdasarkan NIK atau Nama..."
+                  debounceMs={250}
+                />
                 <p className="text-[11px] text-on-surface-variant mt-1.5">
                   Jika kandidat dipilih, kalender akan menampilkan riwayat khusus dari tahap Administrasi sampai tahap berjalan.
                 </p>
@@ -899,18 +916,14 @@ export default function CalendarPage() {
 
               <div>
                 <label className="block text-sm font-semibold text-black mb-1.5">Lowongan (Job)</label>
-                <select
+                <SearchableSelect
+                  options={jobSelectOptions}
                   value={filterJob}
-                  onChange={(e) => setFilterJob(e.target.value)}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
-                >
-                  <option value="">Semua Lowongan Aktif</option>
-                  {activeJobs.map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.posisi} ({j.noRegistrasi})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFilterJob(val)}
+                  placeholder="Semua Lowongan Aktif"
+                  searchPlaceholder="Cari posisi atau no registrasi job..."
+                  debounceMs={250}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

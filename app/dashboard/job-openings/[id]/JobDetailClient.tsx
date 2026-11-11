@@ -38,7 +38,7 @@ export default function JobDetailClient({
   const router = useRouter();
   const modal = useModal();
   const [job, setJob] = useState<any>(initialJob);
-  const [slaConfig, setSlaConfig] = useState<any>(null);
+  const [slaConfig, setSlaConfig] = useState<any>({});
 
   // For overdue feedback modal
   const [showFeedbackModal, setShowFeedbackModal] = useState<string | null>(
@@ -89,7 +89,7 @@ export default function JobDetailClient({
 
       setJob({ ...initialJob, timeline: formattedTimeline, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionName || initialJob.position?.name || "Posisi Umum" });
     } else {
-      const previewTimeline = calculateTimelines(initialJob.publishedDate || new Date().toISOString(), initialJob.requiresSkillTest);
+      const previewTimeline = calculateTimelines(initialJob.publishedDate || new Date().toISOString(), initialJob.requiresSkillTest, config);
       setJob({ ...initialJob, timeline: previewTimeline, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionName || initialJob.position?.name || "Posisi Umum" });
     }
     setSlaConfig(config);
@@ -143,9 +143,11 @@ export default function JobDetailClient({
   const calculateTimelines = (
     publishDateStr: string,
     needTestSkill: boolean,
+    customConfig?: any
   ) => {
     const timelines: any[] = [];
     let currentDate = new Date(publishDateStr);
+    const activeConfig = customConfig || slaConfig || {};
 
     pipelineStages.forEach((s) => {
       // Check if this stage is Test Skill / Technical Test
@@ -155,10 +157,10 @@ export default function JobDetailClient({
 
       if (isSkillStage && !needTestSkill) return;
 
-      const config = slaConfig[s.id] || { totalDays: 0 };
+      const config = activeConfig[s.id] || { totalDays: s.slaDays || 0 };
       const startDate = new Date(currentDate);
       const deadlineDate = new Date(currentDate);
-      deadlineDate.setDate(deadlineDate.getDate() + config.totalDays);
+      deadlineDate.setDate(deadlineDate.getDate() + (config.totalDays || 0));
 
       timelines.push({
         id: s.id,
