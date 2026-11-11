@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud, MessageSquare, Send, ChevronDown, UserX, Clock, Lock } from "lucide-react";
+import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud, MessageSquare, Send, ChevronDown, UserX, Clock, Lock, ArrowRightLeft, Building2, MapPin, Loader2 } from "lucide-react";
 import { MASTER_SKEMA_SERTIFIKASI, MASTER_REJECTION_MESSAGE } from "@/lib/masterData";
 import HiredCandidateStageAccordions from "@/components/dashboard/HiredCandidateStageAccordions";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 
 export default function AdvancedDocumentVerificationPage({
   params,
@@ -100,19 +101,41 @@ export default function AdvancedDocumentVerificationPage({
   const [blacklistNote, setBlacklistNote] = useState("");
   const [showMoveJobModal, setShowMoveJobModal] = useState(false);
   const [selectedMoveJobId, setSelectedMoveJobId] = useState("");
+  const [moveReason, setMoveReason] = useState("");
+  const [isSubmittingMove, setIsSubmittingMove] = useState(false);
   const [activeJobs, setActiveJobs] = useState<any[]>([]);
   const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
+  const moveJobOptions = React.useMemo(() => {
+    return activeJobs.map((j: any) => ({
+      value: j.id,
+      label: `${j.positionName || j.position?.name || "Posisi"} (${j.noRegistrasi || "-"})`,
+      subLabel: `${j.customerName || j.customer?.name || "Customer Umum"} • ${j.siteName || j.site?.name || "Site"} • Kuota: ${j.openPositions || "-"}`,
+      badge: j.departmentName || j.department?.name || undefined,
+      badgeColor: "blue" as const,
+    }));
+  }, [activeJobs]);
+
   useEffect(() => {
+    // Load Active Jobs for Move using Server Action
+    const loadActiveJobs = async () => {
+      try {
+        const { getActiveJobOpeningsForMove } = await import("@/app/actions/candidate-application");
+        const res = await getActiveJobOpeningsForMove(unwrappedParams.id);
+        if (res.success && res.data) {
+          setActiveJobs(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to load active jobs for move:", err);
+      }
+    };
+    loadActiveJobs();
+
     // Load Job
     const allJobs = JSON.parse(localStorage.getItem("ugz_jobs") || "[]");
     const foundJob = allJobs.find((j: any) => j.id === unwrappedParams.id);
     if (foundJob) setJob(foundJob);
-
-    // Set active jobs for move
-    const otherActiveJobs = allJobs.filter((j: any) => j.globalStatus === "Active" && j.id !== unwrappedParams.id);
-    setActiveJobs(otherActiveJobs);
 
     // Load Profile
     const profiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
@@ -656,30 +679,40 @@ export default function AdvancedDocumentVerificationPage({
 
   const handleMoveCandidateRequest = async () => {
     if (!selectedMoveJobId) {
-      window.alert("Please select a target job opening.");
+      window.alert("Silakan pilih lowongan tujuan terlebih dahulu.");
       return;
     }
 
-    if (application.moveProposal?.status === "Pending") {
-      window.alert("There is already a pending job move proposal for this candidate.");
-      return;
-    }
-
-    const updatedApp = {
-      ...application,
-      moveProposal: {
-        toJobId: selectedMoveJobId,
-        status: "Pending",
-        createdAt: new Date().toISOString()
+    const currentProposalStatus = application?.stageData?.moveProposal?.status || application?.moveProposal?.status;
+    if (currentProposalStatus === "PENDING") {
+      if (!window.confirm("Sudah ada proposal pemindahan lowongan yang menunggu konfirmasi kandidat. Apakah Anda yakin ingin memperbarui/mengirim ulang proposal ini?")) {
+        return;
       }
-    };
+    }
 
-    const success = await safeSaveApplications(updatedApp);
-    if (success) {
-      window.alert("Move request sent successfully. Waiting for candidate approval.");
-      setShowMoveJobModal(false);
-      setSelectedMoveJobId("");
-      setShowActionModal(false);
+    setIsSubmittingMove(true);
+    try {
+      const { resolveOfferDeclined } = await import("@/app/actions/candidate-application");
+      const res = await resolveOfferDeclined(application.id, "MOVE_JOB", {
+        targetJobId: selectedMoveJobId,
+        reason: moveReason.trim() || undefined,
+      });
+
+      if (res.success) {
+        window.alert("Tawaran pemindahan lowongan berhasil dikirim ke kandidat. Menunggu konfirmasi kandidat di dashboard My Applications.");
+        setShowMoveJobModal(false);
+        setSelectedMoveJobId("");
+        setMoveReason("");
+        setShowActionModal(false);
+        window.location.reload();
+      } else {
+        window.alert(res.error || "Gagal mengirim tawaran pemindahan lowongan.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      window.alert("Terjadi kesalahan: " + (err.message || String(err)));
+    } finally {
+      setIsSubmittingMove(false);
     }
   };
 
@@ -1828,6 +1861,57 @@ export default function AdvancedDocumentVerificationPage({
                           "{application.offeringLetter.candidateResponse.note}"
                         </p>
                       </div>
+
+                      {/* Move Proposal Status Display */}
+                      {((application.stageData?.moveProposal?.status === "PENDING") || (application.moveProposal?.status === "PENDING")) && (
+                        <div className="mt-3 bg-amber-50 border border-amber-300 rounded-lg p-3 text-xs text-amber-900">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold flex items-center gap-1.5 text-amber-800">
+                              <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+                              Tawaran Pemindahan Lowongan Terkirim (Menunggu Konfirmasi Kandidat)
+                            </span>
+                            <span className="text-[11px] font-mono text-amber-700">
+                              Ref: {(application.stageData?.moveProposal || application.moveProposal)?.targetJobRegistrationNo}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-800">
+                            Lowongan Tujuan: <strong>{(application.stageData?.moveProposal || application.moveProposal)?.targetJobTitle}</strong>
+                          </p>
+                          {(application.stageData?.moveProposal || application.moveProposal)?.note && (
+                            <p className="mt-0.5 text-xs text-gray-600 italic">
+                              Catatan Recruiter: "{(application.stageData?.moveProposal || application.moveProposal)?.note}"
+                            </p>
+                          )}
+                          <p className="mt-1.5 text-[11px] text-amber-700">
+                            * Kandidat sedang diminta konfirmasi melalui portal kandidat untuk menerima atau menolak tawaran ini.
+                          </p>
+                        </div>
+                      )}
+
+                      {((application.stageData?.moveProposal?.status === "DECLINED") || (application.moveProposal?.status === "DECLINED")) && (
+                        <div className="mt-3 bg-red-100/70 border border-red-300 rounded-lg p-3 text-xs text-red-900">
+                          <span className="font-bold flex items-center gap-1.5 text-red-800">
+                            <AlertCircle className="w-4 h-4 text-red-600" />
+                            Kandidat Menolak Pemindahan Lowongan ke: {(application.stageData?.moveProposal || application.moveProposal)?.targetJobTitle}
+                          </span>
+                          <p className="mt-1 text-xs text-red-700">
+                            Alasan Penolakan Kandidat: "{(application.stageData?.moveProposal || application.moveProposal)?.candidateDeclineReason || "Kandidat tidak berminat"}"
+                          </p>
+                        </div>
+                      )}
+
+                      {((application.stageData?.moveProposal?.status === "ACCEPTED") || (application.moveProposal?.status === "ACCEPTED")) && (
+                        <div className="mt-3 bg-emerald-50 border border-emerald-300 rounded-lg p-3 text-xs text-emerald-900">
+                          <span className="font-bold flex items-center gap-1.5 text-emerald-800">
+                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            Kandidat Telah Menyetujui Pemindahan ke Lowongan: {(application.stageData?.moveProposal || application.moveProposal)?.targetJobTitle}
+                          </span>
+                          <p className="mt-1 text-xs text-emerald-700">
+                            Lamaran ini telah dialihkan dan lamaran baru berstatus ACTIVE telah dibuat di lowongan tujuan.
+                          </p>
+                        </div>
+                      )}
+
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <button
                           type="button"
@@ -1841,7 +1925,10 @@ export default function AdvancedDocumentVerificationPage({
                           onClick={() => setShowMoveJobModal(true)}
                           className="px-3.5 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-sm"
                         >
-                          <ArrowRight className="w-3.5 h-3.5" /> Pindahkan ke Lowongan Lain
+                          <ArrowRight className="w-3.5 h-3.5" />
+                          {((application.stageData?.moveProposal?.status === "PENDING") || (application.moveProposal?.status === "PENDING"))
+                            ? "Kirim Ulang / Ganti Pilihan Lowongan"
+                            : "Pindahkan ke Lowongan Lain"}
                         </button>
                       </div>
                     </div>
@@ -2865,48 +2952,81 @@ export default function AdvancedDocumentVerificationPage({
       {showMoveJobModal && (
         <div className="fixed inset-0 bg-black/60 z-[100] flex justify-center items-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-table-border bg-amber-500 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <ArrowRight className="w-5 h-5" /> Move Candidate
+            <div className="p-5 border-b border-table-border bg-gradient-to-r from-amber-500 to-amber-600 flex justify-between items-center">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <ArrowRight className="w-5 h-5" /> Tawarkan Pemindahan ke Lowongan Lain
               </h3>
-              <button onClick={() => setShowMoveJobModal(false)} className="p-1.5 text-white/80 hover:bg-amber-600 hover:text-white rounded-lg transition-colors">
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-sm text-black mb-4">
-                Select an active job opening to move <strong>{profile?.fullName}</strong> to. The candidate will need to approve this move on their dashboard.
-              </p>
-              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Target Job Opening</label>
-              <select
-                value={selectedMoveJobId}
-                onChange={(e) => setSelectedMoveJobId(e.target.value)}
-                className="w-full px-3 py-2 border border-outline-variant rounded focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm text-black bg-white"
-              >
-                <option value="">-- Select Job --</option>
-                {activeJobs.map((j) => (
-                  <option key={j.id} value={j.id}>
-                    {j.positionName || j.position?.name} (Ref: {j.noRegistrasi})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="p-4 bg-surface-container-lowest border-t border-table-border flex justify-end gap-3">
-              <button
+              <button 
                 onClick={() => {
                   setShowMoveJobModal(false);
                   setSelectedMoveJobId("");
-                }}
-                className="px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low rounded transition-colors"
+                  setMoveReason("");
+                }} 
+                className="p-1.5 text-white/80 hover:bg-amber-600 hover:text-white rounded-lg transition-colors"
               >
-                Cancel
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-gray-700 leading-relaxed">
+                Pilih lowongan pekerjaan aktif untuk menawarkan pengalihan kandidat <strong>{profile?.fullName}</strong>. Kandidat akan menerima tawaran ini dan diminta persetujuan pada dashboard My Applications mereka.
+              </p>
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">
+                  Lowongan Tujuan Aktif <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
+                  options={moveJobOptions}
+                  value={selectedMoveJobId}
+                  onChange={(val) => setSelectedMoveJobId(val)}
+                  placeholder="-- Cari nama posisi, ref registrasi, customer, atau site --"
+                  searchPlaceholder="Ketik untuk mencari lowongan aktif..."
+                  debounceMs={250}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">
+                  Catatan / Alasan Rekomendasi Recruiter
+                </label>
+                <textarea
+                  rows={3}
+                  value={moveReason}
+                  onChange={(e) => setMoveReason(e.target.value)}
+                  placeholder="Contoh: Mengingat kualifikasi Anda cocok untuk unit kerja di Site B, kami menawarkan pengalihan ke lowongan ini..."
+                  className="w-full px-3.5 py-2.5 border border-table-border rounded-xl focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs text-black bg-white"
+                />
+              </div>
+            </div>
+            <div className="p-4 bg-surface-container-lowest border-t border-table-border flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMoveJobModal(false);
+                  setSelectedMoveJobId("");
+                  setMoveReason("");
+                }}
+                disabled={isSubmittingMove}
+                className="px-4 py-2 text-xs font-bold text-on-surface-variant hover:bg-surface-container-low rounded-xl transition-colors"
+              >
+                Batal
               </button>
               <button
+                type="button"
                 onClick={handleMoveCandidateRequest}
-                disabled={!selectedMoveJobId}
-                className="px-4 py-2 bg-amber-500 text-white text-sm font-semibold rounded hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                disabled={!selectedMoveJobId || isSubmittingMove}
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-2"
               >
-                <Send className="w-4 h-4" /> Send Proposal
+                {isSubmittingMove ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Mengirim Proposal...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Kirim Proposal ke Kandidat</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

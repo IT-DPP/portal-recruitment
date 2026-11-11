@@ -13,6 +13,7 @@ import {
   Building,
   MessageSquare,
   Sparkles,
+  ArrowRightLeft,
 } from "lucide-react";
 import OfferingActionCard from "./OfferingActionCard";
 import McuActionCard from "./McuActionCard";
@@ -117,6 +118,12 @@ export default function CandidateApplicationItem({ app }: CandidateApplicationIt
                   year: "numeric",
                 })}
               </span>
+              {stageData.moveProposal?.status === "PENDING" && (
+                <span className="px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded-full animate-pulse flex items-center gap-1.5 shadow-sm">
+                  <ArrowRightLeft className="w-3.5 h-3.5" />
+                  Ada Tawaran Pindah Lowongan
+                </span>
+              )}
             </div>
 
             <h3 className="text-xl font-bold text-gray-900 mb-2">
@@ -247,6 +254,7 @@ export default function CandidateApplicationItem({ app }: CandidateApplicationIt
                   jobId={job.id}
                   offeringData={stageData.offeringLetter}
                   currentStageName={displayStageName}
+                  moveProposalData={stageData.moveProposal}
                 />
               )}
 

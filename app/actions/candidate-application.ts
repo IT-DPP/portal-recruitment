@@ -488,7 +488,7 @@ export async function resolveOfferDeclined(
           stageData: updatedStageData,
           history: {
             create: {
-              stageId: "Rejected",
+              stageId: null,
               stageName: "Rejected",
               note: payload?.reason || "Kandidat menolak penawaran kerja (Diterima oleh recruiter)",
             },
@@ -505,12 +505,348 @@ export async function resolveOfferDeclined(
       return { success: true };
     }
 
+    if (action === "MOVE_JOB") {
+      if (!payload?.targetJobId) {
+        return { success: false, error: "Lowongan tujuan harus dipilih." };
+      }
+
+      if (payload.targetJobId === application.jobId) {
+        return { success: false, error: "Lowongan tujuan tidak boleh sama dengan lowongan saat ini." };
+      }
+
+      const targetJob = await prisma.jobOpening.findUnique({
+        where: { id: payload.targetJobId },
+        include: {
+          position: true,
+          customer: true,
+          site: true,
+          department: true,
+        },
+      });
+
+      if (!targetJob) {
+        return { success: false, error: "Lowongan tujuan tidak ditemukan." };
+      }
+
+      const targetJobTitle = targetJob.position?.name || targetJob.positionName || "Posisi Baru";
+      const targetJobRegistrationNo = targetJob.noRegistrasi || "-";
+
+      const updatedMoveProposal = {
+        targetJobId: targetJob.id,
+        targetJobTitle,
+        targetJobRegistrationNo,
+        targetCustomerName: targetJob.customer?.name || "-",
+        targetSiteName: targetJob.site?.name || "-",
+        targetDepartmentName: targetJob.department?.name || "-",
+        targetOpenPositions: targetJob.jumlahPermintaan || 1,
+        status: "PENDING",
+        proposedAt: new Date().toISOString(),
+        proposedBy: recruiterName,
+        note: payload?.reason || "Recruiter menawarkan pengalihan lowongan kerja.",
+      };
+
+      const messages = Array.isArray(currentStageData.messages)
+        ? [...currentStageData.messages]
+        : [];
+
+      messages.push({
+        id: uuidv4(),
+        sender: "RECRUITER",
+        senderName: recruiterName,
+        stage: application.currentStageId || "stage_6",
+        text: `Tawaran Pemindahan Lowongan: Kami menawarkan Anda untuk dialihkan ke lowongan "${targetJobTitle}" (Ref: ${targetJobRegistrationNo}, ${targetJob.customer?.name || "-"} - ${targetJob.site?.name || "-"}). Silakan periksa rincian tawaran dan berikan konfirmasi persetujuan Anda melalui portal kandidat. Catatan: ${payload?.reason || "-"}`,
+        date: new Date().toISOString(),
+      });
+
+      const updatedStageData = {
+        ...currentStageData,
+        moveProposal: updatedMoveProposal,
+        messages,
+      };
+
+      await prisma.application.update({
+        where: { id: appId },
+        data: {
+          stageData: updatedStageData,
+          history: {
+            create: {
+              stageId: application.currentStageId || null,
+              stageName: "Move Proposal Sent",
+              note: `Recruiter mengajukan tawaran pindah ke ${targetJobTitle} (Ref: ${targetJobRegistrationNo})`,
+            },
+          },
+        },
+      });
+
+      revalidatePath(`/dashboard/job-openings/${application.jobId}/verify/${application.candidateProfileId}`);
+      revalidatePath(`/dashboard/job-openings/${application.jobId}`);
+      revalidatePath("/dashboard/pipeline");
+      revalidatePath("/candidate/history");
+
+      return { success: true };
+    }
+
     return { success: false, error: "Action tidak dikenal." };
   } catch (error: any) {
     console.error("resolveOfferDeclined error:", error);
     return {
       success: false,
       error: "Gagal memproses penolakan tawaran: " + (error?.message || String(error)),
+    };
+  }
+}
+
+/**
+ * Fetch active job openings for candidate move proposal with debounced search support
+ */
+export async function getActiveJobOpeningsForMove(excludeJobId?: string) {
+  try {
+    const jobs = await prisma.jobOpening.findMany({
+      where: {
+        status: "ACTIVE",
+        ...(excludeJobId ? { id: { not: excludeJobId } } : {}),
+      },
+      include: {
+        position: true,
+        customer: true,
+        site: true,
+        department: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      success: true,
+      data: jobs.map((j) => ({
+        id: j.id,
+        noRegistrasi: j.noRegistrasi || "-",
+        positionName: j.position?.name || j.positionName || "Posisi Umum",
+        customerName: j.customer?.name || "-",
+        siteName: j.site?.name || "-",
+        departmentName: j.department?.name || "-",
+        openPositions: j.jumlahPermintaan || 1,
+      })),
+    };
+  } catch (err: any) {
+    console.error("getActiveJobOpeningsForMove error:", err);
+    return { success: false, error: err.message, data: [] };
+  }
+}
+
+/**
+ * Candidate decision on job move proposal (ACCEPT or DECLINE)
+ */
+export async function respondToJobMoveProposal(
+  appId: string,
+  decision: "ACCEPT" | "DECLINE",
+  payload?: { reason?: string }
+) {
+  try {
+    const auth = await getAuthenticatedCandidate();
+    if ("error" in auth) {
+      return { success: false, error: auth.error };
+    }
+
+    const application = await prisma.application.findUnique({
+      where: { id: appId },
+      include: {
+        job: {
+          include: {
+            position: true,
+          },
+        },
+        candidateProfile: true,
+      },
+    });
+
+    if (!application) {
+      return { success: false, error: "Lamaran tidak ditemukan." };
+    }
+
+    if (application.candidateProfileId !== auth.profile.id) {
+      return { success: false, error: "Anda tidak memiliki akses ke lamaran ini." };
+    }
+
+    let currentStageData: Record<string, any> = {};
+    if (application.stageData) {
+      try {
+        currentStageData =
+          typeof application.stageData === "string"
+            ? JSON.parse(application.stageData)
+            : application.stageData;
+      } catch {
+        currentStageData = {};
+      }
+    }
+
+    const moveProposal = currentStageData.moveProposal;
+    if (!moveProposal || moveProposal.status !== "PENDING") {
+      return { success: false, error: "Tidak ada tawaran pemindahan lowongan yang sedang menunggu konfirmasi." };
+    }
+
+    const candidateName = auth.profile.user?.name || "Kandidat";
+
+    if (decision === "ACCEPT") {
+      const targetJobId = moveProposal.targetJobId;
+      const targetJob = await prisma.jobOpening.findUnique({
+        where: { id: targetJobId },
+        include: {
+          position: true,
+          timeline: {
+            include: { stage: true },
+            orderBy: { stage: { orderIndex: "asc" } },
+          },
+        },
+      });
+
+      if (!targetJob) {
+        return { success: false, error: "Lowongan tujuan sudah tidak aktif atau tidak ditemukan." };
+      }
+
+      const firstStage = targetJob.timeline?.[0]?.stage || await prisma.masterPipelineStage.findFirst({ orderBy: { orderIndex: "asc" } });
+
+      const messages = Array.isArray(currentStageData.messages)
+        ? [...currentStageData.messages]
+        : [];
+
+      messages.push({
+        id: uuidv4(),
+        sender: "CANDIDATE",
+        senderName: candidateName,
+        stage: application.currentStageId || "stage_6",
+        text: `Saya menyetujui tawaran pemindahan proses seleksi ke lowongan "${moveProposal.targetJobTitle}".`,
+        date: new Date().toISOString(),
+      });
+
+      const updatedOldStageData = {
+        ...currentStageData,
+        moveProposal: {
+          ...moveProposal,
+          status: "ACCEPTED",
+          resolvedAt: new Date().toISOString(),
+        },
+        messages,
+      };
+
+      // 1. Mark previous application as WITHDRAWN so candidate can transition cleanly
+      await prisma.application.update({
+        where: { id: appId },
+        data: {
+          status: "WITHDRAWN",
+          stageData: updatedOldStageData,
+          history: {
+            create: {
+              stageId: null,
+              stageName: "Transferred",
+              note: `Lamaran dialihkan ke lowongan ${moveProposal.targetJobTitle} atas persetujuan kandidat.`,
+            },
+          },
+        },
+      });
+
+      // 2. Create new active application for target job opening
+      const prevJobTitle = application.job?.position?.name || application.job?.positionName || "Lowongan Sebelumnya";
+      await prisma.application.create({
+        data: {
+          jobId: targetJobId,
+          candidateProfileId: application.candidateProfileId,
+          currentStageId: firstStage?.id || null,
+          status: "ACTIVE",
+          stageData: {
+            transferredFrom: {
+              previousApplicationId: application.id,
+              previousJobId: application.jobId,
+              previousJobTitle: prevJobTitle,
+              transferredAt: new Date().toISOString(),
+            },
+            messages: [
+              {
+                id: uuidv4(),
+                sender: "SYSTEM",
+                senderName: "Sistem Rekrutmen",
+                stage: firstStage?.id || "stage_1",
+                text: `Lamaran dialihkan dari posisi "${prevJobTitle}" atas persetujuan kandidat. Anda memulai proses seleksi untuk lowongan ini dari tahap awal.`,
+                date: new Date().toISOString(),
+              },
+            ],
+          },
+          history: {
+            create: {
+              stageId: firstStage?.id || null,
+              stageName: firstStage?.name || "Administration",
+              note: `Lamaran baru hasil pengalihan dari lowongan "${prevJobTitle}" atas persetujuan kandidat.`,
+            },
+          },
+        },
+      });
+
+      revalidatePath("/candidate/history");
+      revalidatePath("/candidate/past-applications");
+      revalidatePath(`/dashboard/job-openings/${application.jobId}/verify/${application.candidateProfileId}`);
+      revalidatePath(`/dashboard/job-openings/${targetJobId}`);
+      revalidatePath(`/dashboard/job-openings/${application.jobId}`);
+      revalidatePath("/dashboard/pipeline");
+
+      return {
+        success: true,
+        message: `Pemindahan ke lowongan ${moveProposal.targetJobTitle} berhasil disetujui!`,
+      };
+    } else {
+      // DECLINE
+      const declineReason = payload?.reason?.trim() || "Kandidat tidak berminat dengan tawaran pemindahan lowongan ini.";
+      const messages = Array.isArray(currentStageData.messages)
+        ? [...currentStageData.messages]
+        : [];
+
+      messages.push({
+        id: uuidv4(),
+        sender: "CANDIDATE",
+        senderName: candidateName,
+        stage: application.currentStageId || "stage_6",
+        text: `Saya menolak tawaran pemindahan ke lowongan "${moveProposal.targetJobTitle}". Alasan: ${declineReason}`,
+        date: new Date().toISOString(),
+      });
+
+      const updatedOldStageData = {
+        ...currentStageData,
+        moveProposal: {
+          ...moveProposal,
+          status: "DECLINED",
+          resolvedAt: new Date().toISOString(),
+          candidateDeclineReason: declineReason,
+        },
+        messages,
+      };
+
+      await prisma.application.update({
+        where: { id: appId },
+        data: {
+          stageData: updatedOldStageData,
+          history: {
+            create: {
+              stageId: null,
+              stageName: "Move Declined",
+              note: `Kandidat menolak tawaran pemindahan lowongan (${moveProposal.targetJobTitle}). Alasan: ${declineReason}`,
+            },
+          },
+        },
+      });
+
+      revalidatePath("/candidate/history");
+      revalidatePath(`/dashboard/job-openings/${application.jobId}/verify/${application.candidateProfileId}`);
+      revalidatePath(`/dashboard/job-openings/${application.jobId}`);
+      revalidatePath("/dashboard/pipeline");
+
+      return {
+        success: true,
+        message: "Penolakan tawaran pemindahan lowongan telah disampaikan ke tim rekrutmen.",
+      };
+    }
+  } catch (error: any) {
+    console.error("respondToJobMoveProposal error:", error);
+    return {
+      success: false,
+      error: "Gagal memproses respon pemindahan lowongan: " + (error?.message || String(error)),
     };
   }
 }
