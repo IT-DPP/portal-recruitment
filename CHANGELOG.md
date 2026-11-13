@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Phase 4 Branding] — Corporate Visual Alignment & Industrial Identity (dpp.co.id) — 2026-11-13
 
 ### Added
+- **Official Brand Mark & Logo Assets:**
+  - `public/images/branding/dpp-logo-new.png`: Official PT Dian Pandu Pratama mark uploaded by IT Leader.
+  - `public/images/branding/dpp-logo-white-text.png`: Pure white text version for dark and transparent backgrounds with original red `dp` mark.
+  - `public/images/branding/smart-culture-banner.png`: Official S.M.A.R.T culture banner graphic uploaded by IT Leader.
+  - `components/landing/LandingNavbar.tsx`: Transparent responsive navbar featuring logo-only branding, smooth scroll transition to dark blur glass, and consolidated navigation menu.
+  - `components/landing/ClientLogosCarousel.tsx`: Horizontal scrolling and infinite marquee carousel presenting only corporate logos for Astra International, United Tractors, PATRIA, PAMA, KPC, Berau Coal, Triatra, PMP, TRUST, and IPR Tabang.
 - **Industrial Visual Assets:**
   - Integrated official photographs uploaded by IT Leader into `public/images/branding/`:
     - `dpp-plant.jpg`: Industrial Eco-Greenplant PT DPP Cikarang (Jababeka XII) with PATRIA 02 utility vehicle.
@@ -14,17 +20,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     - `dpp-operational-map.jpg`: Official PT DPP Indonesia Operational Footprint Map (Head Office Cikarang, Sangatta KPC, Melak PATRIA/TRUST, Tabang IPR, Balikpapan Manggar, Batu Kajang, Tanjung Redep Berau, Tanjung Tabalong, Muara Teweh, Banjarmasin, Sungai Danau).
 - **DPP Corporate Design System Tokens (`app/globals.css`):**
   - Added primary brand colors matching `dpp.co.id` and the Astra/United Tractors ecosystem: `--color-dpp-red: #D9232A;`, `--color-dpp-red-hover: #B91C1C;`, `--color-dpp-navy: #0A2540;`, `--color-dpp-slate: #1E293B;`, `--color-dpp-amber: #D97706;`.
+  - Added infinite horizontal CSS marquee animations (`@keyframes marquee`, `.animate-marquee`).
 
 ### Changed
-- **Public Landing Page (`app/page.tsx`):**
-  - Completely replaced generic placeholder UI with official DPP corporate portal:
-    - Corporate header featuring DPP official logo, YKBUT affiliation badge, and quick access navigation.
-    - Industrial hero section featuring high-impact welder and plant imagery, real metrics (10+ Site Operations, 50+ Placement Points, 100% K3/PDP Compliance), and dual candidate/recruiter CTAs.
-    - 3 Core Business Pillars: *Job & Labour Supply*, *Product Support & Fabrication*, and *YKBUT & BNSP Competency Development*.
-    - S.M.A.R.T Corporate Culture showcase: Satisfaction, Morale, Adaptability, Responsibility, Team Work.
-    - Strategic Clients & Partners showcase: PATRIA, United Tractors, PAMA, Triatra, PMP, KPC (Sangatta), Berau Coal, TRUST (Melak), IPR (Tabang), Astra International.
-    - Operational Footprint section embedding the official Indonesia site map with direct contact details.
-    - Live active vacancies table via `PublicJobsClient` and corporate footer with Cikarang Jababeka XII address, K3 & UU PDP privacy notices.
+- **Public Landing Page Refinements (`app/page.tsx`):**
+  - Removed top announcement bar above the navbar for a seamless, distraction-free corporate entry.
+  - Replaced navbar with transparent `LandingNavbar`, featuring logo-only presentation without redundant text labels.
+  - Reordered menu: "Lowongan Kerja" followed by unified "About" dropdown combining "Budaya S.M.A.R.T", "Mitra & Klien Strategis", and "Jaringan Operasi".
+  - Enlarged Hero Section to exact **100vh (`h-screen min-h-screen`)** with centered layout.
+  - Removed all dot indicators (pulsing dots, dot grids) and eliminated low-opacity text in favor of crisp, solid high-contrast black, white, and DPP red (`#D9232A`).
+  - Redesigned S.M.A.R.T culture section according to the uploaded graphic reference: embedded official banner and built 3D-beveled white square tiles with bold red uppercase wording (`[S]` **ATISFACTION**, `[M]` **ORALE**, `[A]` **DAPTABILITY**, `[R]` **ESPONSIBILITY**, `[T]` **EAMWORK**).
+  - Redesigned "Mitra & Klien Strategis" to display **only company logos** in an infinite smooth horizontal carousel.
+  - Placed "Lowongan Kerja" immediately after the Hero for maximum applicant conversion.
+  - Updated corporate footer with the latest DPP white-text logo and crisp high-contrast formatting.
 - **Public Jobs Portal (`app/jobs/page.tsx` & `app/jobs/[id]/page.tsx`):**
   - Redesigned with DPP Corporate Navy headers, category badges for mining & heavy equipment trades (Welder 6G/4G, Heavy Equipment Mechanic, Assembler, Mine Surveyor), and client placement tags.
   - Detail page includes K3 safety certification, BNSP requirements, and UU PDP data privacy badges.

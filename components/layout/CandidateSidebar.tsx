@@ -101,10 +101,9 @@ export default function CandidateSidebar() {
                 href={item.href}
                 className={`
                   flex items-center px-3 py-2.5 rounded-lg transition-colors group relative
-                  ${
-                    isActive
-                      ? "bg-primary/10 text-primary font-bold"
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface font-semibold"
+                  ${isActive
+                    ? "bg-primary/10 text-primary font-bold"
+                    : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface font-semibold"
                   }
                 `}
                 title={isCollapsed ? item.name : undefined}
