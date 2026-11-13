@@ -167,3 +167,4 @@ ALTER TABLE "ContractMobilization" ADD CONSTRAINT "ContractMobilization_applicat
 
 -- AddForeignKey
 ALTER TABLE "ContractMobilization" ADD CONSTRAINT "ContractMobilization_siteId_fkey" FOREIGN KEY ("siteId") REFERENCES "MasterSite"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+

@@ -159,3 +159,4 @@ export function maskNik(nik?: string | null): string {
   const stars = "*".repeat(clean.length - 8);
   return `${prefix}${stars}${suffix}`;
 }
+

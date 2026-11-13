@@ -27,7 +27,7 @@ interface SearchableSelectProps {
 }
 
 export default function SearchableSelect({
-  options,
+  options = [],
   value,
   onChange,
   placeholder = "Pilih opsi...",
@@ -38,6 +38,7 @@ export default function SearchableSelect({
   className = "",
   debounceMs = 250,
 }: SearchableSelectProps) {
+  const safeOptions = Array.isArray(options) ? options : [];
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -133,23 +134,23 @@ export default function SearchableSelect({
 
   // Currently selected option
   const selectedOption = useMemo(
-    () => options.find((opt) => opt.value === value),
-    [options, value]
+    () => safeOptions.find((opt) => opt.value === value),
+    [safeOptions, value]
   );
 
   // Filter options based on debounced search term
   const filteredOptions = useMemo(() => {
-    if (!debouncedSearch.trim()) return options;
+    if (!debouncedSearch.trim()) return safeOptions;
     const term = debouncedSearch.toLowerCase().trim();
 
-    return options.filter((opt) => {
+    return safeOptions.filter((opt) => {
       const labelMatch = opt.label.toLowerCase().includes(term);
       const subLabelMatch = opt.subLabel?.toLowerCase().includes(term);
       const badgeMatch = opt.badge?.toLowerCase().includes(term);
       const valueMatch = opt.value.toLowerCase().includes(term);
       return labelMatch || subLabelMatch || badgeMatch || valueMatch;
     });
-  }, [options, debouncedSearch]);
+  }, [safeOptions, debouncedSearch]);
 
   const handleSelect = (val: string, label?: string) => {
     onChange(val, label);
@@ -220,7 +221,7 @@ export default function SearchableSelect({
       } else if (
         creatable &&
         searchTerm &&
-        !options.some((opt) => opt.label.toLowerCase() === searchTerm.toLowerCase())
+        !safeOptions.some((opt) => opt.label.toLowerCase() === searchTerm.toLowerCase())
       ) {
         handleSelect(searchTerm, searchTerm);
       }
@@ -301,7 +302,7 @@ export default function SearchableSelect({
             {debouncedSearch ? "Hasil pencarian:" : "Total master data:"}
           </span>
           <span className="font-semibold">
-            {filteredOptions.length} dari {options.length} opsi
+            {filteredOptions.length} dari {safeOptions.length} opsi
           </span>
         </div>
       </div>
@@ -378,7 +379,7 @@ export default function SearchableSelect({
             {/* Creatable Option */}
             {creatable &&
               searchTerm &&
-              !options.some(
+              !safeOptions.some(
                 (opt) => opt.label.toLowerCase() === searchTerm.toLowerCase()
               ) && (
                 <div
