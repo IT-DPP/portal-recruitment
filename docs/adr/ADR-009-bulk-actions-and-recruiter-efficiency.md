@@ -87,3 +87,4 @@ Menerapkan 5 Server Actions baru di `app/actions/job.ts`:
 ### Hal yang Perlu Diperhatikan:
 1. File Excel dengan lebih dari 500 baris disarankan dipecah menjadi beberapa batch untuk menjaga responsivitas thread Node.js.
 2. Penolakan massal kandidat bersifat permanen pada aplikasi aktif, namun profil kandidat tetap tersimpan di database dan dapat dipanggil kembali dari Talent Pool.
+

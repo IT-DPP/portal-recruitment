@@ -106,3 +106,4 @@ test("Bulk Actions — Standardized Rejection Reason Handling", () => {
     "Kualifikasi belum sesuai kebutuhan"
   );
 });
+

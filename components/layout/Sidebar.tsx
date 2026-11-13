@@ -62,25 +62,28 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
     >
       {/* Brand Header */}
       <div
-        className={`px-6 mb-8 flex items-center ${isCollapsed ? "justify-center px-0" : "gap-3"}`}
+        className={`px-5 mb-6 flex items-center ${isCollapsed ? "justify-center px-0" : "gap-3"}`}
       >
-        <div className="w-10 h-10 bg-primary rounded-md p-1 flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="w-10 h-10 bg-white rounded-xl border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
           <Image
             src="/icon.png"
-            alt="Logo"
+            alt="DPP Logo"
             width={40}
             height={40}
             className="object-contain"
           />
         </div>
         {!isCollapsed && (
-          <div>
-            <h1 className="font-sans text-lg font-bold text-primary leading-none">
-              E-Recruitment
+          <div className="min-w-0">
+            <h1 className="font-extrabold text-xs text-[#0A2540] leading-tight truncate">
+              DIAN PANDU PRATAMA
             </h1>
-            <p className="font-mono text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mt-1">
-              Recruitment Portal
+            <p className="text-[10px] font-medium text-slate-500 truncate mt-0.5">
+              E-Recruitment • YKBUT
             </p>
+            <span className="inline-block text-[9px] font-bold text-[#D9232A] uppercase tracking-wider">
+              Labor & Job Supply
+            </span>
           </div>
         )}
       </div>

@@ -1,20 +1,31 @@
 "use client";
 
 import React, { useState } from "react";
-import { UserPlus, Mail, Lock, Eye, EyeOff, User, AlertCircle, Loader2, ArrowRight } from "lucide-react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import {
+  UserPlus,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Loader2,
+  ArrowLeft,
+  ShieldCheck,
+  Building2,
+  CheckCircle2,
+} from "lucide-react";
 
-export default function CandidateRegisterPage() {
+export default function RegisterPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -24,13 +35,13 @@ export default function CandidateRegisterPage() {
     setErrorMsg("");
 
     if (password !== confirmPassword) {
-      setErrorMsg("Passwords do not match. Please try again.");
+      setErrorMsg("Konfirmasi kata sandi tidak cocok.");
       setIsSubmitting(false);
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMsg("Password must be at least 6 characters long.");
+    if (password.length < 8) {
+      setErrorMsg("Kata sandi minimal harus 8 karakter.");
       setIsSubmitting(false);
       return;
     }
@@ -38,19 +49,14 @@ export default function CandidateRegisterPage() {
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setErrorMsg(data.message || "Registration failed");
+        setErrorMsg(data.message || "Pendaftaran gagal. Periksa kembali email Anda.");
         setIsSubmitting(false);
         return;
       }
@@ -63,152 +69,162 @@ export default function CandidateRegisterPage() {
       });
 
       if (res?.error) {
-        setErrorMsg("Registration successful but auto-login failed. Please sign in manually.");
+        setErrorMsg("Pendaftaran berhasil namun login otomatis gagal. Silakan masuk secara manual.");
         setIsSubmitting(false);
         return;
       }
 
       setIsSubmitting(false);
-      router.push("/candidate/jobs"); // Redirect to candidate jobs list
-    } catch (error) {
-      setErrorMsg("An unexpected error occurred. Please try again.");
+      router.push("/candidate/jobs");
+    } catch {
+      setErrorMsg("Terjadi kesalahan sistem saat memproses registrasi.");
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="bg-surface-bright min-h-screen flex items-center justify-center p-4 relative font-sans overflow-hidden">
-      {/* Background Decor */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none opacity-20"
-        style={{
-          backgroundImage: "radial-gradient(#00355f 0.5px, transparent 0.5px)",
-          backgroundSize: "24px 24px",
-        }}
-      />
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3" />
-
-      <main className="relative z-10 w-full max-w-[440px]">
-        <div className="bg-white border border-surface-container rounded-3xl shadow-xl shadow-primary/5 p-8 md:p-10">
-          
+    <div className="bg-slate-100 min-h-screen flex items-center justify-center p-4 md:p-8 font-sans">
+      <main className="w-full max-w-md">
+        <div className="bg-white border border-slate-200 rounded-3xl shadow-xl p-8 sm:p-10 space-y-6">
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <UserPlus className="text-primary w-7 h-7" />
+          <div className="text-center space-y-2">
+            <Link href="/" className="inline-flex items-center gap-2 mb-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" /> Kembali ke Beranda
+            </Link>
+
+            <div className="w-14 h-14 bg-white rounded-2xl p-1.5 border border-slate-200 shadow-2xs flex items-center justify-center mx-auto">
+              <Image
+                src="/icon.png"
+                alt="DPP Logo"
+                width={48}
+                height={48}
+                className="object-contain"
+                priority
+              />
             </div>
-            <h1 className="text-2xl font-bold text-on-surface mb-2 tracking-tight">Create an Account</h1>
-            <p className="text-sm text-on-surface-variant">Join DPP Portal Career to apply for jobs</p>
+            <h1 className="text-xl font-bold text-[#0A2540] tracking-tight">
+              Pendaftaran Akun Pelamar
+            </h1>
+            <p className="text-xs text-slate-500">
+              PT Dian Pandu Pratama • Member of YKBUT (United Tractors Group)
+            </p>
           </div>
 
           {/* Error Message */}
           {errorMsg && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
-              <span className="text-sm font-medium text-red-800 leading-relaxed">{errorMsg}</span>
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-800">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
+              <span>{errorMsg}</span>
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-on-surface uppercase tracking-wider block" htmlFor="email">
-                Email Address
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1" htmlFor="email">
+                Alamat Email Aktif
               </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant w-5 h-5" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                 <input
                   type="email"
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="you@example.com"
-                  className="w-full h-12 pl-12 pr-4 bg-surface-bright border-2 border-surface-container rounded-xl text-sm font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                  placeholder="nama.anda@gmail.com"
+                  className="w-full h-10 pl-9 pr-4 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary transition-all"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-on-surface uppercase tracking-wider block" htmlFor="password">
-                Password
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1" htmlFor="password">
+                Kata Sandi (Minimal 8 Karakter)
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant w-5 h-5" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                 <input
                   type={showPassword ? "text" : "password"}
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="Create a password"
-                  className="w-full h-12 pl-12 pr-12 bg-surface-bright border-2 border-surface-container rounded-xl text-sm font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                  placeholder="Buat kata sandi aman"
+                  className="w-full h-10 pl-9 pr-10 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors focus:outline-none"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-on-surface uppercase tracking-wider block" htmlFor="confirmPassword">
-                Verify Password
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1" htmlFor="confirmPassword">
+                Ulangi Kata Sandi
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant w-5 h-5" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   id="confirmPassword"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  placeholder="Confirm your password"
-                  className="w-full h-12 pl-12 pr-12 bg-surface-bright border-2 border-surface-container rounded-xl text-sm font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                  placeholder="Konfirmasi kata sandi"
+                  className="w-full h-10 pl-9 pr-10 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors focus:outline-none"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            {/* Privacy notice */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-500 space-y-1">
+              <p className="font-semibold text-slate-700 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Pelindungan Data Pribadi:
+              </p>
+              <p>
+                Dengan mendaftar, data diri Anda diproteksi dengan enkripsi AES-256-GCM sesuai Undang-Undang PDP No. 27 Tahun 2022.
+              </p>
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-12 mt-4 bg-primary text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:bg-primary-container active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none group"
+              className="w-full h-11 bg-[#0A2540] hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-2xs hover:shadow-xs focus:outline-hidden transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="animate-spin w-5 h-5" />
-                  <span>Registering...</span>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Mendaftarkan Akun...
                 </>
               ) : (
                 <>
-                  <span>Create Account</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <UserPlus className="w-4 h-4 text-emerald-400" />
+                  Daftar Sekarang
                 </>
               )}
             </button>
           </form>
-          
-          <div className="mt-8 text-center text-sm font-medium text-on-surface-variant">
-            Already have an account?{" "}
-            <Link href="/candidate/login" className="text-primary hover:underline underline-offset-4 font-bold">
-              Sign In here
-            </Link>
-          </div>
-          
-          <div className="mt-8 pt-6 border-t border-surface-container flex justify-center">
-             <Link href="/" className="text-xs font-bold text-on-surface-variant hover:text-primary flex items-center gap-1 transition-colors">
-                Return to Home
-             </Link>
+
+          {/* Login Link */}
+          <div className="text-center pt-2 border-t border-slate-100">
+            <p className="text-xs text-slate-500">
+              Sudah memiliki akun pelamar?{" "}
+              <Link href="/login" className="font-bold text-[#D9232A] hover:underline">
+                Masuk di sini
+              </Link>
+            </p>
           </div>
         </div>
       </main>

@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
-import { User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { User, Lock, Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck, Building2, HardHat, CheckCircle2 } from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -11,14 +13,14 @@ function mapAuthErrorMessage(errorCode: string | null): string {
     case "OAuthSignin":
     case "OAuthCallback":
     case "Configuration":
-      return "Login Google gagal: Pastikan GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET sudah diisi di .env dan Redirect URI http://localhost:3000/api/auth/callback/google sudah terdaftar.";
+      return "Login Google gagal: Pastikan GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET sudah diisi di .env dan Redirect URI sudah terdaftar.";
     case "Callback":
     case "OAuthCreateAccount":
-      return "Gagal menyimpan sesi ke database. Pastikan koneksi DATABASE_URL PostgreSQL sudah aktif dan sudah di-migrate (npm run db:setup).";
+      return "Gagal menyimpan sesi ke database. Pastikan koneksi DATABASE_URL PostgreSQL sudah aktif.";
     case "AccessDenied":
       return "Akses ditolak untuk akun ini.";
     case "CredentialsSignin":
-      return "Email atau password tidak sesuai.";
+      return "Email atau kata sandi tidak sesuai.";
     default:
       return errorCode;
   }
@@ -41,7 +43,6 @@ function LoginFormContent() {
     }
   }, [searchParams]);
 
-  // If already authenticated, redirect to the correct dashboard based on role
   useEffect(() => {
     if (status === "authenticated" && session) {
       const userRole = (session.user as any)?.role;
@@ -91,21 +92,90 @@ function LoginFormContent() {
   };
 
   return (
-    <main className="relative z-10 w-full max-w-[480px]">
-      <div className="bg-surface-container-lowest border border-table-border rounded-lg shadow-sm p-8 md:p-12">
-        <div className="flex flex-col items-center mb-10">
-          <h1 className="text-2xl font-bold text-on-surface">Sign In</h1>
-          <p className="text-sm text-on-surface-variant mt-2 text-center">
-            Welcome to E-Recruitment Portal
+    <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[580px]">
+      {/* Left Brand Panel (DPP Corporate Navy & Industrial Imagery) */}
+      <div className="md:col-span-5 bg-linear-to-b from-[#0A2540] via-[#0D2E4F] to-[#12365C] p-8 text-white flex flex-col justify-between relative overflow-hidden">
+        {/* Background Image Accent */}
+        <div className="absolute inset-0 opacity-15 pointer-events-none mix-blend-overlay">
+          <Image
+            src="/images/branding/welder-specialist.jpg"
+            alt="Welder Background"
+            fill
+            className="object-cover"
+          />
+        </div>
+
+        <div className="relative z-10 space-y-6">
+          <Link href="/" className="inline-flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" /> Kembali ke Beranda
+          </Link>
+
+          <div>
+            <div className="w-12 h-12 bg-white rounded-xl p-1.5 border border-white/20 flex items-center justify-center shadow-md mb-3">
+              <Image
+                src="/icon.png"
+                alt="DPP Logo"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
+            </div>
+            <h2 className="text-xl font-extrabold tracking-tight text-white">
+              PT DIAN PANDU PRATAMA
+            </h2>
+            <p className="text-xs text-slate-300 font-medium mt-1">
+              Member of YKBUT (Yayasan Karya Bakti United Tractors) — AHEMCE Group
+            </p>
+          </div>
+
+          <div className="space-y-2.5 pt-2">
+            <div className="p-3 bg-white/10 rounded-xl border border-white/10 text-xs space-y-1">
+              <p className="font-bold text-white flex items-center gap-1.5">
+                <HardHat className="w-3.5 h-3.5 text-amber-400" /> Job & Labour Supply
+              </p>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Penyedia tenaga kerja terampil tersertifikasi BNSP & K3 untuk sektor tambang dan alat berat.
+              </p>
+            </div>
+            <div className="p-3 bg-white/10 rounded-xl border border-white/10 text-xs space-y-1">
+              <p className="font-bold text-white flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-blue-400" /> Mitra Industri Terkemuka
+              </p>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                PATRIA, United Tractors, PAMA, KPC, Berau Coal, TRUST, Triatra.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Security Tag */}
+        <div className="relative z-10 pt-6 mt-6 border-t border-white/15 flex items-center gap-2 text-[11px] text-slate-300">
+          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>Sistem aman terproteksi enkripsi UU PDP No. 27 Tahun 2022.</span>
+        </div>
+      </div>
+
+      {/* Right Login Form Panel */}
+      <div className="md:col-span-7 p-8 sm:p-12 flex flex-col justify-center bg-white">
+        <div className="mb-8">
+          <div className="inline-block px-2.5 py-0.5 bg-[#D9232A]/10 text-[#D9232A] rounded-full text-[11px] font-bold uppercase tracking-wider mb-2">
+            Portal Masuk
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Selamat Datang di Portal Karir DPP
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Masuk untuk mengelola proses rekrutmen staf atau mengecek status lamaran pekerjaan Anda.
           </p>
         </div>
 
+        {/* Google SSO Button */}
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-md p-3 text-sm font-medium text-gray-700 hover:bg-gray-50 mb-6 transition-colors"
+          className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 rounded-xl py-2.5 px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 mb-5 transition-colors shadow-2xs"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
               fill="#4285F4"
@@ -123,116 +193,101 @@ function LoginFormContent() {
               fill="#EA4335"
             />
           </svg>
-          Sign in with Google
+          Masuk dengan Akun Google
         </button>
 
-        <div className="relative mb-6">
+        <div className="relative mb-5">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-table-border"></div>
+            <div className="w-full border-t border-slate-200"></div>
           </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-surface-container-lowest text-on-surface-variant">
-              Or continue with credentials
-            </span>
+          <div className="relative flex justify-center text-xs">
+            <span className="px-3 bg-white text-slate-400">Atau masuk dengan email akun</span>
           </div>
         </div>
 
-        <form onSubmit={handleCredentialsLogin} className="space-y-5">
+        <form onSubmit={handleCredentialsLogin} className="space-y-4">
           {errorMsg && (
-            <div className="p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">
+            <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">
               {errorMsg}
             </div>
           )}
+
           <div>
-            <label className="block text-sm font-medium text-on-surface mb-1.5">
-              Email Address
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Alamat Email
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <User className="h-4 w-4 text-on-surface-variant" />
+                <User className="h-4 w-4 text-slate-400" />
               </div>
               <input
                 type="email"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2.5 border border-table-border rounded-md text-sm shadow-sm placeholder-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-surface"
-                placeholder="Enter your email"
+                className="block w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary text-slate-900 bg-white"
+                placeholder="nama@perusahaan.com atau email kandidat"
                 required
               />
             </div>
           </div>
+
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-sm font-medium text-on-surface">
-                Password
-              </label>
-            </div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Kata Sandi
+            </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-4 w-4 text-on-surface-variant" />
+                <Lock className="h-4 w-4 text-slate-400" />
               </div>
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="block w-full pl-10 pr-10 py-2.5 border border-table-border rounded-md text-sm shadow-sm placeholder-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-surface"
+                className="block w-full pl-9 pr-9 py-2 border border-slate-300 rounded-xl text-xs placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary text-slate-900 bg-white"
                 placeholder="••••••••"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-on-surface-variant hover:text-on-surface"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
+
           <button
             type="submit"
             disabled={isAuthenticating}
-            className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-on-primary bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex justify-center py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-[#0A2540] hover:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-70 disabled:cursor-not-allowed transition-colors shadow-2xs"
           >
             {isAuthenticating ? (
               <>
                 <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                Signing in...
+                Memverifikasi...
               </>
             ) : (
-              "Sign in"
+              "Masuk ke Portal"
             )}
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-on-surface-variant">
-          Don&apos;t have an account?{" "}
-          <a href="/candidate/register" className="font-medium text-primary hover:underline">
-            Register here
-          </a>
+        <div className="mt-6 text-center text-xs text-slate-500">
+          Belum memiliki akun pelamar?{" "}
+          <Link href="/candidate/register" className="font-bold text-[#D9232A] hover:underline">
+            Daftar Karir Sekarang
+          </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="bg-surface-bright flex min-h-screen items-center justify-center p-4 md:p-0 relative overflow-hidden font-sans">
-      <div
-        className="absolute inset-0 z-0 pointer-events-none opacity-20"
-        style={{
-          backgroundImage: "radial-gradient(#00355f 0.5px, transparent 0.5px)",
-          backgroundSize: "24px 24px",
-        }}
-      />
-      <div className="hidden lg:block absolute -left-20 bottom-10 w-96 h-96 rounded-full bg-secondary-container blur-3xl opacity-40 z-0" />
-      <div className="hidden lg:block absolute -right-20 top-10 w-80 h-80 rounded-full bg-primary-container blur-3xl opacity-20 z-0" />
-
-      <Suspense fallback={<div className="text-primary text-sm">Loading...</div>}>
+    <div className="bg-slate-100 flex min-h-screen items-center justify-center p-4 md:p-8 relative overflow-hidden font-sans">
+      <Suspense fallback={<div className="text-primary text-xs">Memuat formulir masuk...</div>}>
         <LoginFormContent />
       </Suspense>
     </div>

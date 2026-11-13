@@ -228,6 +228,50 @@ Fase 2 (Database Normalization & Kepatuhan UU PDP) selesai dengan sempurna dan t
 ### Status
 Fase 3 (UI/UX De-slopping, Bulk Actions & Recruiter Efficiency) selesai 100% dengan standar keandalan tinggi dan verifikasi end-to-end tanpa error.
 
+---
+
+## 2026-11-13 — Fase 4: Corporate Branding Overhaul & Industrial Identity (dpp.co.id)
+
+### Konteks & Arahan IT Leader
+IT Leader DPP menginstruksikan penyelarasan tema dan branding platform e-recruitment dengan referensi website korporat utama (`dpp.co.id`), menyematkan ornamen visual khas bisnis inti *Labor Supply & Job Supply* (manpower support alat berat & fabrikasi), serta menampilkan relasi ekosistem klien/konsumen strategis (AHEMCE Group / United Tractors ecosystem).
+
+### Apa yang dikerjakan
+1. **Integrasi Aset Riil Korporat PT DPP:**
+   - Menyimpan dan mengoptimasi foto autentik kiriman IT Leader ke dalam `public/images/branding/`:
+     - `dpp-plant.jpg`: Fasilitas industri Eco-Greenplant PT DPP di Cikarang (Kawasan Industri Jababeka XII) dengan kendaraan operasional PATRIA 02.
+     - `welder-specialist.jpg`: Juru las bersertifikasi dengan APD lengkap fabrikasi alat berat dan percikan api las, merepresentasikan kompetensi inti penyediaan tenaga kerja teknis.
+     - `dpp-operational-map.jpg`: Peta Sebaran Operasional PT DPP di seluruh Indonesia (Head Office Cikarang, Sangatta KPC, Melak TRUST/PATRIA, Tabang IPR, Balikpapan Manggar, Batu Kajang, Tanjung Redep Berau, Tanjung Tabalong, Muara Teweh, Banjarmasin, Sungai Danau).
+2. **Standardisasi Design System Token DPP (`app/globals.css`):**
+   - Menambahkan warna resmi korporat DPP: Deep Navy `#0A2540`, DPP Accent Red `#D9232A` (warna standar Astra / UT), Slate `#1E293B`, dan Industrial Amber `#D97706`.
+3. **Penyusunan Ulang Halaman Utama Publik (`app/page.tsx`):**
+   - Mengganti total halaman beranda generik menjadi portal rekrutmen korporat bereputasi tinggi:
+     - Header korporat dengan logo resmi DPP, afiliasi YKBUT (Yayasan Karya Bakti United Tractors), dan tombol aksi.
+     - Hero section industri menggabungkan fotografi juru las dan greenplant, statistik kunci (10+ Site Operasi, 50+ Titik Penempatan, 100% Kepatuhan K3 & PDP), serta CTA pelamar dan recruiter.
+     - 3 Pilar Bisnis DPP: *Job & Labour Supply*, *Product Support & Fabrication*, dan *YKBUT & BNSP Competency Development*.
+     - Nilai Budaya Korporat S.M.A.R.T (Satisfaction, Morale, Adaptability, Responsibility, Team Work).
+     - Showcase Ekosistem Klien & Mitra Strategis: PATRIA, United Tractors, PAMA, Triatra, PMP, KPC (Sangatta), Berau Coal, TRUST (Melak), IPR (Tabang), Astra International.
+     - Peta Sebaran Operasional Nasional menampilkan representatif site di Sumatera, Jawa, dan Kalimantan.
+     - Tabel lowongan aktif terkini (`PublicJobsClient`) dan footer korporat lengkap (alamat Jababeka XII Cikarang, email, telepon, dan klausul privasi UU PDP No. 27/2022).
+4. **Pembaruan Portal Lowongan Publik (`app/jobs/page.tsx` & `app/jobs/[id]/page.tsx`):**
+   - Header bertema DPP Deep Navy dengan ornamen badge keahlian teknis (Welder 6G/4G, Heavy Equipment Mechanic, Assembler, Surveyor).
+   - Penegasan kualifikasi K3 (Kesehatan & Keselamatan Kerja), sertifikasi BNSP, serta data klien/site penempatan.
+5. **Pembaruan Halaman Autentikasi (`app/login/page.tsx` & `app/candidate/register/page.tsx`):**
+   - Halaman Login dirombak menjadi tata letak *responsive split-screen*: panel kiri menampilkan visual industrial juru las, badge budaya S.M.A.R.T, daftar klien strategis, dan komitmen UU PDP; panel kanan menyediakan formulir login akun dan Google SSO.
+   - Halaman Registrasi Kandidat diperkuat dengan logo DPP, afiliasi YKBUT, dan persetujuan privasi data pribadi.
+6. **Harmonisasi Navigasi Internal (Recruiter & Kandidat):**
+   - `components/layout/Sidebar.tsx`: Menampilkan identitas resmi PT DPP, "E-Recruitment • YKBUT", dan badge "Labor & Job Supply".
+   - `components/layout/CandidateSidebar.tsx`: Menyelaraskan logo dan header dengan portal kandidat resmi DPP.
+   - `components/layout/Header.tsx`: Menampilkan identitas "PT Dian Pandu Pratama • E-Recruitment Portal (YKBUT) • Labor & Job Supply".
+   - `app/dashboard/geosource/page.tsx`: Disesuaikan dengan konteks pemetaan talenta site operasional tambang/manufaktur dan jejaring vokasi (BLK/LPK/SMK).
+7. **Verifikasi Mutu & Integritas:**
+   - Static Type Checking `npx tsc --noEmit` (**0 ERROR**).
+   - Automated Unit Tests `npm test` (**17/17 PASS**).
+   - End-to-End Suite `npm run check:e2e` (**21/21 PASS**).
+   - Next.js Turbopack Production Build `npm run build` (**54 routes compiled successfully**).
+
+### Status
+Fase 4 (Corporate Branding Overhaul) selesai 100%. Platform e-recruitment kini memiliki identitas visual profesional yang sepenuhnya selaras dengan `dpp.co.id`, ornamen industri alat berat & labor supply, serta ekosistem klien strategis PT DPP.
+
 
 
 

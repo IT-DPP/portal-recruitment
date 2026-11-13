@@ -31,6 +31,11 @@
   --color-outline-variant: #c2c7d1;
   --color-outline: #727780;
   --color-secondary: #48626e;
+  --color-dpp-red: #D9232A;
+  --color-dpp-red-hover: #B91C1C;
+  --color-dpp-navy: #0A2540;
+  --color-dpp-slate: #1E293B;
+  --color-dpp-amber: #D97706;
 
   --font-sans: "Hanken Grotesk", "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "IBM Plex Sans", "JetBrains Mono", ui-monospace, monospace;

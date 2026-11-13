@@ -390,8 +390,17 @@ export default function GeoSourceDashboard() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-on-surface">GeoSource Dashboard</h2>
-          <p className="text-sm text-on-surface-variant">Geographical distribution and institutional sourcing.</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-[#D9232A]">
+              DPP NATIONWIDE SITES &amp; INSTITUTION SOURCING
+            </span>
+            <span className="text-xs text-slate-400">•</span>
+            <span className="text-xs font-medium text-slate-500">YKBUT Labor Supply Network</span>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">GeoSource &amp; Talent Distribution</h2>
+          <p className="text-sm text-slate-500">
+            Pemetaan sebaran talenta dan jejaring institusi vokasi (BLK/LPK/SMK) di Head Office Cikarang serta 10+ site operasional klien (Sangatta, Melak, Tabang, Balikpapan, Tanjung, Berau).
+          </p>
         </div>
         
         <div className="flex items-center gap-2">

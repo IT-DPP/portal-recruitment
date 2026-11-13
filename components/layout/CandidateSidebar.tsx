@@ -66,24 +66,27 @@ export default function CandidateSidebar() {
         `}
       >
         {/* Header */}
-        <div className="h-16 flex items-center px-4 border-b border-table-border shrink-0">
-          <div className="w-8 h-8 bg-primary rounded-md p-1 flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="h-16 flex items-center px-4 border-b border-table-border shrink-0 gap-3">
+          <div className="w-9 h-9 bg-white border border-slate-200 rounded-lg p-1.5 flex items-center justify-center shrink-0 shadow-2xs">
             <Image
               src="/icon.png"
-              alt="Logo"
-              width={32}
-              height={32}
+              alt="Logo DPP"
+              width={28}
+              height={28}
               className="object-contain"
             />
           </div>
           {!isCollapsed && (
-            <div className="ml-3 overflow-hidden">
-              <h1 className="font-bold text-primary text-sm whitespace-nowrap">
-                E-Recruitment
+            <div className="min-w-0">
+              <h1 className="font-extrabold text-xs text-[#0A2540] leading-tight truncate">
+                DIAN PANDU PRATAMA
               </h1>
-              <p className="text-[10px] text-on-surface-variant truncate">
-                Candidate Portal
+              <p className="text-[10px] font-medium text-slate-500 truncate">
+                Candidate Portal • YKBUT
               </p>
+              <span className="inline-block text-[9px] font-bold text-[#D9232A] uppercase tracking-wider">
+                Labor & Job Supply
+              </span>
             </div>
           )}
         </div>

@@ -4,6 +4,39 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Phase 4 Branding] — Corporate Visual Alignment & Industrial Identity (dpp.co.id) — 2026-11-13
+
+### Added
+- **Industrial Visual Assets:**
+  - Integrated official photographs uploaded by IT Leader into `public/images/branding/`:
+    - `dpp-plant.jpg`: Industrial Eco-Greenplant PT DPP Cikarang (Jababeka XII) with PATRIA 02 utility vehicle.
+    - `welder-specialist.jpg`: Skilled welding specialist in heavy equipment PPE & sparks, representing DPP's core *Job & Labour Supply* capability.
+    - `dpp-operational-map.jpg`: Official PT DPP Indonesia Operational Footprint Map (Head Office Cikarang, Sangatta KPC, Melak PATRIA/TRUST, Tabang IPR, Balikpapan Manggar, Batu Kajang, Tanjung Redep Berau, Tanjung Tabalong, Muara Teweh, Banjarmasin, Sungai Danau).
+- **DPP Corporate Design System Tokens (`app/globals.css`):**
+  - Added primary brand colors matching `dpp.co.id` and the Astra/United Tractors ecosystem: `--color-dpp-red: #D9232A;`, `--color-dpp-red-hover: #B91C1C;`, `--color-dpp-navy: #0A2540;`, `--color-dpp-slate: #1E293B;`, `--color-dpp-amber: #D97706;`.
+
+### Changed
+- **Public Landing Page (`app/page.tsx`):**
+  - Completely replaced generic placeholder UI with official DPP corporate portal:
+    - Corporate header featuring DPP official logo, YKBUT affiliation badge, and quick access navigation.
+    - Industrial hero section featuring high-impact welder and plant imagery, real metrics (10+ Site Operations, 50+ Placement Points, 100% K3/PDP Compliance), and dual candidate/recruiter CTAs.
+    - 3 Core Business Pillars: *Job & Labour Supply*, *Product Support & Fabrication*, and *YKBUT & BNSP Competency Development*.
+    - S.M.A.R.T Corporate Culture showcase: Satisfaction, Morale, Adaptability, Responsibility, Team Work.
+    - Strategic Clients & Partners showcase: PATRIA, United Tractors, PAMA, Triatra, PMP, KPC (Sangatta), Berau Coal, TRUST (Melak), IPR (Tabang), Astra International.
+    - Operational Footprint section embedding the official Indonesia site map with direct contact details.
+    - Live active vacancies table via `PublicJobsClient` and corporate footer with Cikarang Jababeka XII address, K3 & UU PDP privacy notices.
+- **Public Jobs Portal (`app/jobs/page.tsx` & `app/jobs/[id]/page.tsx`):**
+  - Redesigned with DPP Corporate Navy headers, category badges for mining & heavy equipment trades (Welder 6G/4G, Heavy Equipment Mechanic, Assembler, Mine Surveyor), and client placement tags.
+  - Detail page includes K3 safety certification, BNSP requirements, and UU PDP data privacy badges.
+- **Authentication Pages (`app/login/page.tsx` & `app/candidate/register/page.tsx`):**
+  - Redesigned `/login` into an industrial split-screen layout with left brand showcase (welder visual, S.M.A.R.T badge, corporate partner marquee, UU PDP notice) and right clean login card.
+  - Updated `/candidate/register` with official DPP branding and clear consent terms for PDP No. 27/2022.
+- **Internal Navigation Layouts:**
+  - Recruiter Sidebar (`components/layout/Sidebar.tsx`): Header updated with DPP logo, "DIAN PANDU PRATAMA", "E-Recruitment • YKBUT", and "Labor & Job Supply" badge.
+  - Candidate Sidebar (`components/layout/CandidateSidebar.tsx`): Header aligned with DPP logo, "DIAN PANDU PRATAMA", and "Candidate Portal • YKBUT".
+  - System Header (`components/layout/Header.tsx`): Replaced generic subtitle with "PT Dian Pandu Pratama • E-Recruitment Portal (YKBUT) • Labor & Job Supply".
+  - GeoSource Dashboard (`app/dashboard/geosource/page.tsx`): Contextualized with DPP's nationwide sites and vocational sourcing pipeline (BLK/LPK/SMK).
+
 ## [Unreleased] — Revamp Option B: Phase 3 (UI/UX De-slopping, Bulk Actions & Recruiter Efficiency) — 2026-11-13
 
 ### Added
