@@ -271,14 +271,14 @@ IT Leader DPP menginstruksikan penyelarasan tema dan branding platform e-recruit
 
 ### Status
 Fase 4 (Corporate Branding Overhaul & Refinements) selesai 100%. Landing page kini memiliki identitas visual minimalis, kokoh, dan berwibawa:
-- Section pre-navbar dihilangkan.
-- Navbar dibuat transparan dengan logo resmi murni (tanpa label teks samping) yang bertransisi halus saat discroll.
-- Menu navigasi disederhanakan: Lowongan Kerja diletakkan di depan, diikuti menu About terpadu (Budaya SMART, Mitra & Klien, Jaringan Operasi).
-- Hero section berukuran penuh 100vh tanpa elemen dot/indikator berulang atau teks ber-opacity rendah.
-- Nilai S.M.A.R.T disesuaikan 100% dengan banner referensi (ubin kotak 3D dan tipografi merah tegas).
-- Mitra & Klien Strategis ditampilkan murni berupa logo perusahaan dalam carousel horizontal berkesinambungan.
+- Mengadopsi tema cerah (*bright theme*) yang terbuka, percaya diri, dan prestisius (menghilangkan background gelap pada Hero dan Jaringan Operasional).
+- Logo resmi PT DPP (`dpp-logo-new.png`) kini tampil jernih, tajam, dan kontras di Navbar transparan dan Footer.
+- Hero section 100vh diperkaya dengan **overlay elemen berjenjang** (visual juru las + floating card pabrik Cikarang + badge sertifikasi K3/BNSP + ribbon metrik).
+- Bagian Jaringan Operasional diubah menjadi terang dengan kartu floating overlay di atas peta resmi operasional Indonesia.
+- Kalimat berlebih pada Budaya S.M.A.R.T dihapus sehingga banner dan kartu ubin 3D tampil fokus dan bersih.
+- Bagian Mitra & Klien Strategis diperbarui menampilkan 5 logo resmi yang diunggah (PATRIA ASTRA, TRIATRA, UNITED TRACTORS, PATRIA Maritim Perkasa, PATRIA Maritime Lines) dalam carousel marquee horizontal berkesinambungan.
+- Menu navigasi: Lowongan Kerja diletakkan di depan, diikuti menu About terpadu (Budaya SMART, Mitra & Klien, Jaringan Operasi).
 - Palet warna teks dan elemen UI dibatasi secara ketat pada Hitam, Putih, dan Merah DPP (`#D9232A`).
-- Logo footer diperbarui dengan logo vektor beresolusi tinggi versi putih terbaru.
 
 
 

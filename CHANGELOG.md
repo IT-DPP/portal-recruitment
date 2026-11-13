@@ -11,8 +11,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - `public/images/branding/dpp-logo-new.png`: Official PT Dian Pandu Pratama mark uploaded by IT Leader.
   - `public/images/branding/dpp-logo-white-text.png`: Pure white text version for dark and transparent backgrounds with original red `dp` mark.
   - `public/images/branding/smart-culture-banner.png`: Official S.M.A.R.T culture banner graphic uploaded by IT Leader.
-  - `components/landing/LandingNavbar.tsx`: Transparent responsive navbar featuring logo-only branding, smooth scroll transition to dark blur glass, and consolidated navigation menu.
-  - `components/landing/ClientLogosCarousel.tsx`: Horizontal scrolling and infinite marquee carousel presenting only corporate logos for Astra International, United Tractors, PATRIA, PAMA, KPC, Berau Coal, Triatra, PMP, TRUST, and IPR Tabang.
+  - `public/images/branding/clients/`: Official customer/client logo assets uploaded by IT Leader:
+    - `patria-astra.png`: PATRIA member of ASTRA
+    - `triatra.png`: TRIATRA
+    - `united-tractors.png`: UNITED TRACTORS member of ASTRA
+    - `patria-maritim-perkasa.png`: PATRIA maritim perkasa
+    - `patria-maritime-lines.png`: PATRIA maritime lines
+  - `components/landing/LandingNavbar.tsx`: Transparent responsive navbar featuring official DPP logo-only branding, smooth scroll transition to white glass backdrop, and consolidated navigation menu.
+  - `components/landing/ClientLogosCarousel.tsx`: Horizontal scrolling and infinite marquee carousel presenting the 5 official client logo assets in high-resolution transparency.
 - **Industrial Visual Assets:**
   - Integrated official photographs uploaded by IT Leader into `public/images/branding/`:
     - `dpp-plant.jpg`: Industrial Eco-Greenplant PT DPP Cikarang (Jababeka XII) with PATRIA 02 utility vehicle.
@@ -23,16 +29,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Added infinite horizontal CSS marquee animations (`@keyframes marquee`, `.animate-marquee`).
 
 ### Changed
-- **Public Landing Page Refinements (`app/page.tsx`):**
-  - Removed top announcement bar above the navbar for a seamless, distraction-free corporate entry.
-  - Replaced navbar with transparent `LandingNavbar`, featuring logo-only presentation without redundant text labels.
-  - Reordered menu: "Lowongan Kerja" followed by unified "About" dropdown combining "Budaya S.M.A.R.T", "Mitra & Klien Strategis", and "Jaringan Operasi".
-  - Enlarged Hero Section to exact **100vh (`h-screen min-h-screen`)** with centered layout.
-  - Removed all dot indicators (pulsing dots, dot grids) and eliminated low-opacity text in favor of crisp, solid high-contrast black, white, and DPP red (`#D9232A`).
-  - Redesigned S.M.A.R.T culture section according to the uploaded graphic reference: embedded official banner and built 3D-beveled white square tiles with bold red uppercase wording (`[S]` **ATISFACTION**, `[M]` **ORALE**, `[A]` **DAPTABILITY**, `[R]` **ESPONSIBILITY**, `[T]` **EAMWORK**).
-  - Redesigned "Mitra & Klien Strategis" to display **only company logos** in an infinite smooth horizontal carousel.
-  - Placed "Lowongan Kerja" immediately after the Hero for maximum applicant conversion.
-  - Updated corporate footer with the latest DPP white-text logo and crisp high-contrast formatting.
+- **Bright Corporate Visual Identity (Anti "Menutup Diri"):**
+  - Replaced dark backgrounds with bright, open, prestigious surfaces (`bg-gradient-to-b from-white via-zinc-50 to-[#F8FAFC]`, `bg-zinc-50`, `bg-white`) on Hero, Operational Network, and footer.
+  - Hero section (100vh) now features multi-layered **UI Overlay Elements**:
+    - Welder specialist visual base card with high-impact K3/BNSP badge.
+    - Overlapping floating Eco-Greenplant Jababeka card breaking the visual grid.
+    - Floating K3 & BNSP certification badge on the top-right corner.
+    - Floating quick metrics ribbon.
+  - Operational Network section now uses a bright theme with floating overlay badges (Head Office tag & 10+ Site coverage badge) anchored over the official Indonesia operational map.
+  - Section Budaya Perusahaan: Removed the redundant subtitle sentence `"Nilai Utama S.M.A.R.T Pondasi etika kerja dan karakter profesional seluruh insan PT Dian Pandu Pratama."` so that the official S.M.A.R.T banner and 3D tiles take center stage directly.
+  - Section Mitra & Klien: Replaced previous logos with the 5 official client logos uploaded by the IT Leader (PATRIA ASTRA, TRIATRA, UNITED TRACTORS, PATRIA Maritim Perkasa, PATRIA Maritime Lines).
+  - Official DPP logo (`dpp-logo-new.png`) is prominently visible in the transparent navbar and footer against bright surfaces.
 - **Public Jobs Portal (`app/jobs/page.tsx` & `app/jobs/[id]/page.tsx`):**
   - Redesigned with DPP Corporate Navy headers, category badges for mining & heavy equipment trades (Welder 6G/4G, Heavy Equipment Mechanic, Assembler, Mine Surveyor), and client placement tags.
   - Detail page includes K3 safety certification, BNSP requirements, and UU PDP data privacy badges.
