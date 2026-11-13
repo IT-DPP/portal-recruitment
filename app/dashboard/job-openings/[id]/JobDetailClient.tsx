@@ -11,9 +11,11 @@ import {
   XCircle,
   Clock,
   Trash2,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useModal } from "@/components/providers/ModalProvider";
 import PipelineBoard from "@/components/PipelineBoard";
+import BulkImportModal from "@/components/dashboard/BulkImportModal";
 import { publishJob } from "@/app/actions/job";
 
 interface JobDetailClientProps {
@@ -47,6 +49,7 @@ export default function JobDetailClient({
   const [feedbackText, setFeedbackText] = useState("");
   const [activeTab, setActiveTab] = useState<"details" | "pipeline" | "hired">("details");
   const [hiredCandidates, setHiredCandidates] = useState<any[]>([]);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   // B1 Form Edit State
   const [isEditingB1, setIsEditingB1] = useState(false);
@@ -352,7 +355,15 @@ export default function JobDetailClient({
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setIsBulkImportOpen(true)}
+            className="px-3.5 py-2 bg-[#0A2540] hover:bg-slate-800 text-white rounded text-sm font-semibold transition-colors flex items-center gap-2 shadow-2xs cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            Import Massal Excel
+          </button>
           {job.globalStatus === "Draft" && (
             <>
               <Link
@@ -699,9 +710,9 @@ export default function JobDetailClient({
               Belum ada kandidat yang terpilih.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div tabIndex={0} role="region" aria-label="Tabel Kandidat Terpilih" className="overflow-x-auto focus:outline-hidden overscroll-x-contain">
               <table className="w-full text-sm text-left">
-                <thead className="bg-surface-container-lowest text-xs uppercase font-bold text-on-surface-variant border-b border-table-border">
+                <thead className="bg-surface-container-lowest text-xs uppercase font-bold text-on-surface-variant border-b border-table-border sticky top-0 z-10">
                   <tr>
                     <th className="px-6 py-4">Kandidat</th>
                     <th className="px-6 py-4">Kontak</th>
@@ -826,6 +837,17 @@ export default function JobDetailClient({
           </div>
         </div>
       )}
+
+      {/* Bulk Candidate Import Modal */}
+      <BulkImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        jobId={job.id}
+        jobTitle={job.posisi}
+        onSuccess={() => {
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

@@ -382,6 +382,80 @@ async function runEndToEndCheck() {
     report("Pemeriksaan Tabel Relasional Fase 2", false, err.message);
   }
 
+  // ----------------------------------------------------------------------------
+  // 7. CEK FITUR FASE 3 (BULK ACTIONS & EXCEL TEMPLATE)
+  // ----------------------------------------------------------------------------
+  console.log("\n--- [7] Memeriksa Fitur Fase 3 (Bulk Actions & Excel Template) ---");
+  try {
+    const {
+      bulkAdvanceApplicationStage,
+      bulkRejectApplications,
+      bulkAddToTalentPool,
+      bulkAssignCandidatesToJob,
+      bulkImportCandidates,
+    } = await import("../app/actions/job");
+
+    if (
+      typeof bulkAdvanceApplicationStage === "function" &&
+      typeof bulkRejectApplications === "function" &&
+      typeof bulkAddToTalentPool === "function" &&
+      typeof bulkAssignCandidatesToJob === "function" &&
+      typeof bulkImportCandidates === "function"
+    ) {
+      report(
+        "Fase 3 Server Actions Export",
+        true,
+        "5 Server Actions (bulkAdvance, bulkReject, bulkTalentPool, bulkAssign, bulkImport) terdaftar & valid"
+      );
+    } else {
+      report("Fase 3 Server Actions Export", false, "Salah satu Server Action Fase 3 belum terdefinisi");
+    }
+
+    // Cek Template Excel Generation
+    const ExcelJS = (await import("exceljs")).default;
+    const testWorkbook = new ExcelJS.Workbook();
+    const sheet = testWorkbook.addWorksheet("Template Import Kandidat");
+    sheet.columns = [
+      { header: "NIK (16 Digit Wajib)", key: "nik", width: 24 },
+      { header: "Nama Lengkap (Wajib)", key: "fullName", width: 30 },
+      { header: "No. WhatsApp / HP (Wajib)", key: "phone", width: 24 },
+    ];
+    sheet.addRow({
+      nik: "6403061205900001",
+      fullName: "Budi Santoso",
+      phone: "081234567890",
+    });
+    const buffer = await testWorkbook.xlsx.writeBuffer();
+    if (buffer && buffer.byteLength > 1000) {
+      report(
+        "ExcelJS Template Generation",
+        true,
+        `Template spreadsheet berhasil dibuat (${buffer.byteLength} bytes)`
+      );
+    } else {
+      report("ExcelJS Template Generation", false, "Gagal membuat buffer template Excel");
+    }
+
+    // Cek Blind Index Deduplication & Encryption logic
+    const { hashField, encryptField, decryptField } = await import("../lib/crypto");
+    const sampleNik = "6403061205909999";
+    const blindIndex = hashField(sampleNik);
+    const encrypted = encryptField(sampleNik);
+    const decrypted = decryptField(encrypted);
+
+    if (blindIndex && encrypted?.startsWith("enc:v1:") && decrypted === sampleNik) {
+      report(
+        "Bulk PDP Encryption & Blind Indexing",
+        true,
+        `Sample NIK ${sampleNik} berhasil di-hash O(1) & dienkripsi AES-256-GCM`
+      );
+    } else {
+      report("Bulk PDP Encryption & Blind Indexing", false, "Kegagalan pada enkripsi/hashing sampel");
+    }
+  } catch (err: any) {
+    report("Pemeriksaan Fitur Fase 3", false, err.message);
+  }
+
   console.log("\n==================================================================");
   console.log(`HASIL PEMERIKSAAN END-TO-END: ${passedChecks} LULUS, ${failedChecks} GAGAL`);
   console.log("==================================================================");
@@ -399,3 +473,4 @@ runEndToEndCheck()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

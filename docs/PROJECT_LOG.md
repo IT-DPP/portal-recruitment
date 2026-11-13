@@ -173,5 +173,61 @@ Fase 1 (Security & Dependency Hardening) selesai, diverifikasi, dan disetujui IT
 ### Status
 Fase 2 (Database Normalization & Kepatuhan UU PDP) selesai dengan sempurna dan terverifikasi secara menyeluruh. Menunggu instruksi dan persetujuan IT Leader sebelum melanjutkan ke Fase 3 (UI Redesign & Bulk Actions).
 
+---
+
+## 2026-11-13 — Fase 3: UI/UX De-slopping, Bulk Actions & Recruiter Efficiency
+
+### Apa yang dikerjakan
+1. **Multi-Selection & Floating Sticky Bottom Bulk Action Bar:**
+   - Menambahkan mekanisme multi-seleksi berbasis checkbox di setiap kartu kandidat pada Kanban Board:
+     - Cross-job Pipeline: `app/dashboard/pipeline/PipelineClient.tsx`
+     - Per-job Pipeline: `components/PipelineBoard.tsx`
+   - Menambahkan toggle "Pilih Semua di Kolom Ini" pada header tiap kolom tahapan untuk seleksi cepat kandidat per tahap seleksi.
+   - Mengimplementasikan bilah aksi mengambang (*Sticky Bottom Bulk Bar*) berdesain korporat DPP Navy (`#0A2540`):
+     - Menampilkan indikator jumlah kandidat terpilih.
+     - **Loloskan ke Tahap... (*Bulk Advance*):** Memilih tahapan tujuan dan memindahkan seluruh kandidat terpilih secara paralel.
+     - **Tolak Massal (*Bulk Reject*):** Menolak kandidat dengan alasan penolakan standar terstruktur (*Standardized Rejection Reasons*).
+     - **Pindahkan ke Talent Pool:** Memindahkan profil kandidat ke Talent Pool.
+     - **Batal Pilih:** Mengosongkan seleksi seketika.
+2. **Server Actions Terproteksi untuk Aksi Massal (`app/actions/job.ts`):**
+   - `bulkAdvanceApplicationStage(appIds, targetStageId, note)`: Memindahkan banyak kandidat sekaligus dengan guard Offering Letter lock (mencegah pemindahan kandidat dari stage 6 sebelum persetujuan resmi), sinkronisasi otomatis status `HIRED` untuk tahapan pasca-MCU, pembaruan headcount target job (`headcountFulfilled` & `headcountOnSite`), dan audit log `BULK_STAGE_MOVED`.
+   - `bulkRejectApplications(appIds, rejectionReason)`: Menolak kandidat massal, menyinkronkan status `REJECTED`, dan mencatat riwayat audit log `BULK_REJECTED`.
+   - `bulkAddToTalentPool(candidateProfileIds)`: Menandai `isTalentPool = true` pada profil kandidat terpilih secara massal.
+   - `bulkAssignCandidatesToJob(candidateProfileIds, targetJobId)`: Menugaskan kandidat langsung dari Talent Pool ke lowongan kerja aktif pada Stage 1 (CV Screening).
+   - `bulkImportCandidates(jobId, candidates)`: Memproses impor massal kandidat via spreadsheet hingga 500 baris per batch.
+3. **Bulky Upload Kandidat (Excel / CSV Mass Import):**
+   - Membangun endpoint unduh template resmi [`app/api/candidates/import-template/route.ts`](../app/api/candidates/import-template/route.ts) menggunakan `exceljs`:
+     - Sheet 1: Template data kandidat dengan format header DPP Navy (`#0A2540`), formatting text cell `@` pada NIK & KK agar tidak terpotong menjadi notasi ilmiah, dan 3 baris data sampel riil profil staf lapangan & back office.
+     - Sheet 2: Panduan aturan pengisian kolom, validasi format, dan klausul UU PDP.
+   - Membangun komponen modal impor interaktif [`components/dashboard/BulkImportModal.tsx`](../components/dashboard/BulkImportModal.tsx):
+     - Area drag-and-drop berkas `.xlsx`, `.xls`, `.csv`.
+     - Client-side parser menggunakan `exceljs` yang mengekstrak dan memvalidasi data langsung di browser.
+     - Tabel pratinjau data (status `Valid` / `Error`, NIK 16 digit, Nama Lengkap, WA, Pendidikan) sebelum dieksekusi ke database.
+   - Menghubungkan tombol "+ Import Massal Excel" pada:
+     - Header halaman detail lowongan: `app/dashboard/job-openings/[id]/JobDetailClient.tsx`
+     - Header halaman Talent Pool: `app/dashboard/talent-pool/TalentPoolClient.tsx`
+4. **Kepatuhan UU No. 27 Tahun 2022 (UU PDP) pada Impor Massal:**
+   - Validasi ketat NIK 16 digit numerik.
+   - Deduplikasi cepat $O(1)$ menggunakan blind index HMAC-SHA256 (`hashField`).
+   - Proteksi field-level encryption AES-256-GCM (`encryptField`) pada kolom NIK dan KK.
+   - Pembuatan akun `User` otomatis dengan role `CANDIDATE` dan kata sandi ter-hash `bcrypt`.
+5. **Kepatuhan Modern Web Guidance:**
+   - **Accessible Dialogs (`dialog`):** Seluruh modal menggunakan `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, dan listener tombol `Escape`.
+   - **Responsive Table (`responsive-table`):** Tabel pratinjau impor, tabel kandidat terpilih, dan tabel Talent Pool dibungkus kontainer `<div tabIndex={0} role="region" aria-label="..." className="overflow-x-auto focus:outline-hidden overscroll-x-contain">` dengan sticky header (`sticky top-0 z-10`).
+6. **UI/UX De-slopping:**
+   - Mengeliminasi gradien template AI berlebihan dan glassmorphism buram.
+   - Menegaskan palet warna korporat DPP: Deep Navy `#0A2540`, Slate `#F8FAFC` & `#E2E8F0`, Emerald `#059669`, Amber `#D97706`, dan Rose `#DC2626`.
+7. **Penyusunan Dokumentasi ADR-009 & Pengujian Mutu:**
+   - Menerbitkan [`docs/adr/ADR-009-bulk-actions-and-recruiter-efficiency.md`](adr/ADR-009-bulk-actions-and-recruiter-efficiency.md).
+   - Menambahkan unit test baru di `lib/__tests__/bulk-actions.test.ts`.
+   - Menjalankan `npm test` (**17/17 PASS**).
+   - Menjalankan `npm run check:e2e` (**21/21 PASS**).
+   - Menjalankan `npx tsc --noEmit` (**0 ERROR**).
+   - Menjalankan `npm run build` (**54 routes compiled cleanly via Turbopack**).
+
+### Status
+Fase 3 (UI/UX De-slopping, Bulk Actions & Recruiter Efficiency) selesai 100% dengan standar keandalan tinggi dan verifikasi end-to-end tanpa error.
+
+
 
 

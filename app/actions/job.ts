@@ -8,6 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { requireStaffSession } from "@/lib/auth-guard";
 import { recordAuditLog } from "@/lib/audit-log";
 import { encryptField, decryptField, hashField } from "@/lib/crypto";
+import bcrypt from "bcryptjs";
 import {
   AssessmentStage,
   AssessmentResult,
@@ -2227,4 +2228,667 @@ export async function getFilteredPipelineData({
     console.error("getFilteredPipelineData Error:", error);
     return { success: false, error: "Gagal mengambil data pipeline" };
   }
+}
+
+/**
+ * ==============================================================================
+ * FASE 3: BULK ACTIONS & RECRUITER EFFICIENCY
+ * ==============================================================================
+ */
+
+export interface BulkCandidateInput {
+  nik: string;
+  fullName: string;
+  kk?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  birthPlace?: string | null;
+  birthDate?: string | null;
+  gender?: string | null;
+  latestEducation?: string | null;
+  educationInstitution?: string | null;
+  domicileAddress?: string | null;
+  notes?: string | null;
+}
+
+/**
+ * Memindahkan banyak aplikasi kandidat sekaligus ke stage tertentu (Bulk Advance Stage).
+ */
+export async function bulkAdvanceApplicationStage(
+  appIds: string[],
+  targetStageId: string,
+  note?: string
+) {
+  const auth = await requireStaffSession();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
+
+  if (!Array.isArray(appIds) || appIds.length === 0) {
+    return { success: false, error: "Pilih minimal 1 kandidat untuk dipindahkan." };
+  }
+
+  try {
+    const apps = await prisma.application.findMany({
+      where: { id: { in: appIds }, deletedAt: null },
+      include: { job: true },
+    });
+
+    if (apps.length === 0) {
+      return { success: false, error: "Tidak ada aplikasi kandidat yang ditemukan." };
+    }
+
+    let targetStageName = targetStageId;
+    if (targetStageId !== "Rejected" && targetStageId !== "Hired") {
+      const stage = await prisma.masterPipelineStage.findUnique({
+        where: { id: targetStageId },
+      });
+      targetStageName = stage?.name || targetStageId;
+    }
+
+    let updatedCount = 0;
+    const skippedErrors: string[] = [];
+    const affectedJobIds = new Set<string>();
+
+    for (const app of apps) {
+      affectedJobIds.add(app.jobId);
+      const currentStageId = app.currentStageId || "";
+      const isCurrentOfferingStage = currentStageId === "stage_6";
+
+      // Guard: Candidat di tahap offering letter harus disetujui kandidat dulu sebelum lanjut
+      if (isCurrentOfferingStage && targetStageId !== "stage_6" && targetStageId !== "Rejected") {
+        let stageData: any = {};
+        if (app.stageData) {
+          try {
+            stageData = typeof app.stageData === "string" ? JSON.parse(app.stageData) : app.stageData;
+          } catch {
+            stageData = {};
+          }
+        }
+        const offering = stageData.offeringLetter || {};
+        if (offering.candidateResponse?.status !== "ACCEPTED") {
+          skippedErrors.push(`Kandidat ID ${app.id.slice(0, 8)}: Belum menyetujui Offering Letter.`);
+          continue;
+        }
+      }
+
+      let newStatus = app.status;
+      let newCurrentStageId: string | null = targetStageId;
+
+      if (targetStageId === "Rejected") {
+        newStatus = "REJECTED";
+        newCurrentStageId = app.currentStageId;
+      } else if (targetStageId === "Hired") {
+        newStatus = "HIRED";
+        newCurrentStageId = null;
+      } else if (
+        ["stage_8", "stage_9", "stage_10"].includes(targetStageId) ||
+        (targetStageName && ["training", "induction", "pkwt"].some((n) => targetStageName.toLowerCase().includes(n)))
+      ) {
+        newStatus = "HIRED";
+        newCurrentStageId = targetStageId;
+      } else {
+        newStatus = "ACTIVE";
+        newCurrentStageId = targetStageId;
+      }
+
+      await prisma.application.update({
+        where: { id: app.id },
+        data: {
+          currentStageId: newCurrentStageId,
+          status: newStatus,
+          history: {
+            create: {
+              stageId: targetStageId === "Rejected" || targetStageId === "Hired" ? undefined : targetStageId,
+              stageName: targetStageId === "Rejected" ? "Rejected" : targetStageId === "Hired" ? "Hired" : targetStageName,
+              note: note || `Lolos massal ke ${targetStageName}`,
+            },
+          },
+        },
+      });
+
+      updatedCount++;
+    }
+
+    // Update headcount sync pada job yang terdampak
+    for (const jId of Array.from(affectedJobIds)) {
+      try {
+        const [hiredCount, onSiteCount] = await Promise.all([
+          prisma.application.count({ where: { jobId: jId, status: "HIRED", deletedAt: null } }),
+          prisma.application.count({
+            where: {
+              jobId: jId,
+              deletedAt: null,
+              OR: [
+                { currentStageId: "stage_10" },
+                { contractMobilization: { mobilizationStatus: { in: ["ARRIVED_ON_SITE", "COMPLETED"] } } },
+              ],
+            },
+          }),
+        ]);
+        await prisma.jobOpening.update({
+          where: { id: jId },
+          data: {
+            headcountFulfilled: hiredCount,
+            headcountOnSite: onSiteCount,
+          },
+        });
+      } catch (e) {
+        console.warn("Headcount sync warning for job", jId, e);
+      }
+    }
+
+    revalidatePath("/dashboard/pipeline");
+    for (const jId of Array.from(affectedJobIds)) {
+      revalidatePath(`/dashboard/job-openings/${jId}`);
+    }
+
+    await recordAuditLog({
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      actorRole: auth.user.role,
+      action: "BULK_STAGE_MOVED",
+      entityType: "Application",
+      metadata: {
+        totalRequested: appIds.length,
+        updatedCount,
+        targetStageId,
+        targetStageName,
+        note: note || null,
+        skippedCount: skippedErrors.length,
+      },
+    });
+
+    return {
+      success: true,
+      data: {
+        updatedCount,
+        skippedCount: skippedErrors.length,
+        errors: skippedErrors,
+      },
+    };
+  } catch (error: any) {
+    console.error("bulkAdvanceApplicationStage Error:", error);
+    return { success: false, error: "Gagal memindahkan kandidat secara massal" };
+  }
+}
+
+/**
+ * Menolak banyak aplikasi kandidat sekaligus dengan alasan standar (Bulk Reject).
+ */
+export async function bulkRejectApplications(
+  appIds: string[],
+  rejectionReason: string
+) {
+  const auth = await requireStaffSession();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
+
+  if (!Array.isArray(appIds) || appIds.length === 0) {
+    return { success: false, error: "Pilih minimal 1 kandidat untuk ditolak." };
+  }
+
+  const reason = (rejectionReason || "").trim() || "Kualifikasi belum sesuai kebutuhan";
+
+  try {
+    const apps = await prisma.application.findMany({
+      where: { id: { in: appIds }, deletedAt: null },
+      select: { id: true, jobId: true, candidateProfileId: true },
+    });
+
+    if (apps.length === 0) {
+      return { success: false, error: "Tidak ada aplikasi kandidat yang ditemukan." };
+    }
+
+    const affectedJobIds = new Set<string>();
+
+    for (const app of apps) {
+      affectedJobIds.add(app.jobId);
+      await prisma.application.update({
+        where: { id: app.id },
+        data: {
+          status: "REJECTED",
+          history: {
+            create: {
+              stageName: "Rejected",
+              note: `Ditolak massal: ${reason}`,
+            },
+          },
+        },
+      });
+    }
+
+    // Sync headcount pada job terdampak
+    for (const jId of Array.from(affectedJobIds)) {
+      try {
+        const [hiredCount, onSiteCount] = await Promise.all([
+          prisma.application.count({ where: { jobId: jId, status: "HIRED", deletedAt: null } }),
+          prisma.application.count({
+            where: {
+              jobId: jId,
+              deletedAt: null,
+              OR: [
+                { currentStageId: "stage_10" },
+                { contractMobilization: { mobilizationStatus: { in: ["ARRIVED_ON_SITE", "COMPLETED"] } } },
+              ],
+            },
+          }),
+        ]);
+        await prisma.jobOpening.update({
+          where: { id: jId },
+          data: {
+            headcountFulfilled: hiredCount,
+            headcountOnSite: onSiteCount,
+          },
+        });
+      } catch (e) {
+        console.warn("Headcount sync warning on reject:", e);
+      }
+    }
+
+    revalidatePath("/dashboard/pipeline");
+    for (const jId of Array.from(affectedJobIds)) {
+      revalidatePath(`/dashboard/job-openings/${jId}`);
+    }
+
+    await recordAuditLog({
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      actorRole: auth.user.role,
+      action: "BULK_REJECTED",
+      entityType: "Application",
+      metadata: {
+        count: apps.length,
+        reason,
+        appIds,
+      },
+    });
+
+    return { success: true, count: apps.length };
+  } catch (error: any) {
+    console.error("bulkRejectApplications Error:", error);
+    return { success: false, error: "Gagal menolak kandidat secara massal" };
+  }
+}
+
+/**
+ * Menandai banyak profil kandidat sebagai Talent Pool (Bulk Add to Talent Pool).
+ */
+export async function bulkAddToTalentPool(candidateProfileIds: string[]) {
+  const auth = await requireStaffSession();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
+
+  if (!Array.isArray(candidateProfileIds) || candidateProfileIds.length === 0) {
+    return { success: false, error: "Pilih minimal 1 kandidat." };
+  }
+
+  try {
+    const res = await prisma.candidateProfile.updateMany({
+      where: { id: { in: candidateProfileIds } },
+      data: { isTalentPool: true },
+    });
+
+    revalidatePath("/dashboard/talent-pool");
+
+    await recordAuditLog({
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      actorRole: auth.user.role,
+      action: "BULK_TALENT_POOL_ADDED",
+      entityType: "CandidateProfile",
+      metadata: {
+        count: res.count,
+        candidateProfileIds,
+      },
+    });
+
+    return { success: true, count: res.count };
+  } catch (error: any) {
+    console.error("bulkAddToTalentPool Error:", error);
+    return { success: false, error: "Gagal memindahkan kandidat ke Talent Pool" };
+  }
+}
+
+/**
+ * Menugaskan banyak kandidat dari Talent Pool ke lowongan kerja aktif (Bulk Assign to Job).
+ */
+export async function bulkAssignCandidatesToJob(
+  candidateProfileIds: string[],
+  targetJobId: string
+) {
+  const auth = await requireStaffSession();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
+
+  if (!Array.isArray(candidateProfileIds) || candidateProfileIds.length === 0) {
+    return { success: false, error: "Pilih minimal 1 kandidat." };
+  }
+
+  if (!targetJobId) {
+    return { success: false, error: "Lowongan tujuan wajib dipilih." };
+  }
+
+  try {
+    const job = await prisma.jobOpening.findUnique({
+      where: { id: targetJobId },
+    });
+    if (!job) {
+      return { success: false, error: "Lowongan tujuan tidak ditemukan." };
+    }
+
+    let assignedCount = 0;
+    let skippedCount = 0;
+
+    for (const profileId of candidateProfileIds) {
+      const existingApp = await prisma.application.findFirst({
+        where: {
+          jobId: targetJobId,
+          candidateProfileId: profileId,
+          deletedAt: null,
+        },
+      });
+
+      if (existingApp) {
+        skippedCount++;
+        continue;
+      }
+
+      await prisma.application.create({
+        data: {
+          jobId: targetJobId,
+          candidateProfileId: profileId,
+          currentStageId: "stage_1",
+          status: "ACTIVE",
+          stageData: {
+            bnspValidation: {
+              isApproved: true,
+              verifiedAt: new Date().toISOString(),
+              notes: "Ditugaskan dari Talent Pool oleh recruiter",
+            },
+          },
+          history: {
+            create: {
+              stageId: "stage_1",
+              stageName: "CV Screening",
+              note: `Ditugaskan dari Talent Pool oleh ${auth.user.name || auth.user.email}`,
+            },
+          },
+          assessments: {
+            create: {
+              stageType: AssessmentStage.CV_SCREENING,
+              result: AssessmentResult.PASSED,
+              score: 100,
+              feedback: "Ditugaskan langsung dari Talent Pool",
+            },
+          },
+        },
+      });
+
+      assignedCount++;
+    }
+
+    revalidatePath("/dashboard/pipeline");
+    revalidatePath(`/dashboard/job-openings/${targetJobId}`);
+    revalidatePath("/dashboard/talent-pool");
+
+    await recordAuditLog({
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      actorRole: auth.user.role,
+      action: "BULK_ASSIGNED_TO_JOB",
+      entityType: "JobOpening",
+      entityId: targetJobId,
+      metadata: {
+        assignedCount,
+        skippedCount,
+        targetJobId,
+      },
+    });
+
+    return { success: true, assignedCount, skippedCount };
+  } catch (error: any) {
+    console.error("bulkAssignCandidatesToJob Error:", error);
+    return { success: false, error: "Gagal menugaskan kandidat ke lowongan." };
+  }
+}
+
+/**
+ * Import kandidat massal (Excel / CSV) dengan validasi NIK 16-digit, deduplikasi blind index (nikHash),
+ * dan proteksi field-level encryption AES-256-GCM sesuai UU PDP.
+ */
+export async function bulkImportCandidates(
+  jobId: string | null,
+  candidates: BulkCandidateInput[]
+) {
+  const auth = await requireStaffSession();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
+
+  if (!Array.isArray(candidates) || candidates.length === 0) {
+    return { success: false, error: "Tidak ada data kandidat yang diberikan." };
+  }
+
+  if (candidates.length > 500) {
+    return { success: false, error: "Maksimal import per batch adalah 500 kandidat." };
+  }
+
+  let job: any = null;
+  if (jobId) {
+    job = await prisma.jobOpening.findUnique({
+      where: { id: jobId },
+      select: { id: true, positionName: true, status: true },
+    });
+    if (!job) {
+      return { success: false, error: "Lowongan tujuan tidak valid." };
+    }
+  }
+
+  let createdCount = 0;
+  let updatedCount = 0;
+  let existingAppsCount = 0;
+  const errors: string[] = [];
+
+  for (let i = 0; i < candidates.length; i++) {
+    const row = candidates[i];
+    const rowNum = i + 1;
+
+    const rawNik = (row.nik || "").toString().trim().replace(/\D/g, "");
+    const rawFullName = (row.fullName || "").toString().trim();
+
+    if (!rawNik || rawNik.length !== 16) {
+      errors.push(`Baris ${rowNum}: NIK "${row.nik || ""}" tidak valid (harus tepat 16 digit angka).`);
+      continue;
+    }
+
+    if (!rawFullName || rawFullName.length < 2) {
+      errors.push(`Baris ${rowNum}: Nama lengkap wajib diisi minimal 2 karakter.`);
+      continue;
+    }
+
+    try {
+      const nikHash = hashField(rawNik);
+      const encryptedNik = encryptField(rawNik);
+      const rawKk = (row.kk || "").toString().trim().replace(/\D/g, "");
+      const encryptedKk = rawKk && rawKk.length === 16 ? encryptField(rawKk) : null;
+
+      // Parse birth date
+      let parsedBirthDate: Date | null = null;
+      if (row.birthDate) {
+        const d = new Date(row.birthDate);
+        if (!isNaN(d.getTime())) {
+          parsedBirthDate = d;
+        }
+      }
+
+      // Format email
+      const userEmail =
+        (row.email || "").toString().trim() || `kandidat.${rawNik}@recruitment.dpp.co.id`;
+
+      // Cek apakah profil kandidat sudah ada berdasarkan nikHash atau enkripsi
+      let profile = await prisma.candidateProfile.findFirst({
+        where: {
+          OR: [
+            ...(nikHash ? [{ nikHash }] : []),
+            ...(encryptedNik ? [{ nik: encryptedNik }] : []),
+            { nik: rawNik },
+          ],
+        },
+        include: { user: true },
+      });
+
+      if (profile) {
+        await prisma.candidateProfile.update({
+          where: { id: profile.id },
+          data: {
+            nikHash: profile.nikHash || nikHash,
+            nik: encryptedNik,
+            kk: encryptedKk || profile.kk,
+            birthPlace: row.birthPlace?.toString().trim() || profile.birthPlace,
+            birthDate: parsedBirthDate || profile.birthDate,
+            gender: row.gender?.toString().trim() || profile.gender,
+            whatsapp: row.phone?.toString().trim() || profile.whatsapp,
+            latestEducation: row.latestEducation?.toString().trim() || profile.latestEducation,
+            educationInstitution: row.educationInstitution?.toString().trim() || profile.educationInstitution,
+            domicileAddress: row.domicileAddress?.toString().trim() || profile.domicileAddress,
+            isTalentPool: true,
+            isProfileCompleted: true,
+          },
+        });
+
+        if (profile.user && rawFullName) {
+          await prisma.user.update({
+            where: { id: profile.userId },
+            data: { name: rawFullName },
+          });
+        }
+
+        updatedCount++;
+      } else {
+        let user = await prisma.user.findUnique({
+          where: { email: userEmail },
+        });
+
+        if (!user) {
+          const defaultPasswordHash = await bcrypt.hash(rawNik, 10);
+          user = await prisma.user.create({
+            data: {
+              name: rawFullName,
+              email: userEmail,
+              password: defaultPasswordHash,
+              role: "CANDIDATE",
+            },
+          });
+        }
+
+        profile = await prisma.candidateProfile.create({
+          data: {
+            userId: user.id,
+            nik: encryptedNik,
+            nikHash,
+            kk: encryptedKk,
+            birthPlace: row.birthPlace?.toString().trim() || null,
+            birthDate: parsedBirthDate,
+            gender: row.gender?.toString().trim() || null,
+            whatsapp: row.phone?.toString().trim() || null,
+            latestEducation: row.latestEducation?.toString().trim() || null,
+            educationInstitution: row.educationInstitution?.toString().trim() || null,
+            domicileAddress: row.domicileAddress?.toString().trim() || null,
+            isProfileCompleted: true,
+            isTalentPool: true,
+          },
+          include: { user: true },
+        });
+
+        createdCount++;
+      }
+
+      // Jika jobId diberikan, daftarkan kandidat ke lowongan kerja pada Stage 1 (CV Screening)
+      if (jobId && profile) {
+        const existingApp = await prisma.application.findFirst({
+          where: {
+            jobId,
+            candidateProfileId: profile.id,
+            deletedAt: null,
+          },
+        });
+
+        if (existingApp) {
+          existingAppsCount++;
+        } else {
+          await prisma.application.create({
+            data: {
+              jobId,
+              candidateProfileId: profile.id,
+              currentStageId: "stage_1",
+              status: "ACTIVE",
+              stageData: {
+                bnspValidation: {
+                  isApproved: true,
+                  verifiedAt: new Date().toISOString(),
+                  notes: row.notes?.toString().trim() || "Import massal recruiter",
+                },
+              },
+              history: {
+                create: {
+                  stageId: "stage_1",
+                  stageName: "CV Screening",
+                  note: `Diinput massal oleh recruiter (${auth.user.name || auth.user.email})`,
+                },
+              },
+              assessments: {
+                create: {
+                  stageType: AssessmentStage.CV_SCREENING,
+                  result: AssessmentResult.PASSED,
+                  score: 100,
+                  feedback: "Disetujui otomatis melalui impor massal berkas staf.",
+                },
+              },
+            },
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error(`Import error row ${rowNum}:`, err);
+      errors.push(`Baris ${rowNum} (${rawFullName}): ${err.message || "Gagal memproses data"}`);
+    }
+  }
+
+  if (jobId) {
+    revalidatePath(`/dashboard/job-openings/${jobId}`);
+  }
+  revalidatePath("/dashboard/pipeline");
+  revalidatePath("/dashboard/talent-pool");
+
+  await recordAuditLog({
+    actorId: auth.user.id,
+    actorEmail: auth.user.email,
+    actorRole: auth.user.role,
+    action: "BULK_CANDIDATE_IMPORTED",
+    entityType: jobId ? "JobOpening" : "CandidateProfile",
+    entityId: jobId || undefined,
+    metadata: {
+      totalRows: candidates.length,
+      createdCount,
+      updatedCount,
+      existingAppsCount,
+      errorsCount: errors.length,
+      jobId,
+    },
+  });
+
+  return {
+    success: true,
+    data: {
+      total: candidates.length,
+      created: createdCount,
+      updated: updatedCount,
+      existingApps: existingAppsCount,
+      errors,
+    },
+  };
 }

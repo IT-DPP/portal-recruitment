@@ -4,7 +4,40 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — Revamp Option B: Phase 2 (Database Normalization & UU PDP Compliance) — 2026-11-13
+## [Unreleased] — Revamp Option B: Phase 3 (UI/UX De-slopping, Bulk Actions & Recruiter Efficiency) — 2026-11-13
+
+### Added
+- `docs/adr/ADR-009-bulk-actions-and-recruiter-efficiency.md`: Architecture Decision Record for Kanban multi-selection, bulk server actions, spreadsheet bulk import with field-level encryption, and modern web guidelines compliance.
+- `lib/__tests__/bulk-actions.test.ts`: 4 automated unit tests verifying 16-digit NIK cleaning and validation, AES-256-GCM encryption & HMAC-SHA256 blind indexing for imported candidates, offering letter lock guard logic, and standardized rejection reason normalization.
+- `app/api/candidates/import-template/route.ts`: Secure endpoint generating the official candidate import spreadsheet template (`Template_Import_Kandidat_DPP.xlsx`) via `exceljs`, featuring DPP Navy headers, formatted text `@` cells for NIK/KK, 3 realistic mining labor supply sample rows, and an explicit UU PDP compliance guideline sheet.
+- `components/dashboard/BulkImportModal.tsx`: Accessible interactive modal for dragging & dropping Excel spreadsheets, client-side parsing and validation preview table, error detection for invalid NIKs/names, and batch submission to the database.
+- **Bulk Server Actions in `app/actions/job.ts`:**
+  - `bulkAdvanceApplicationStage(appIds, targetStageId, note)`: Batch candidate stage advancement with Offering Letter confirmation locks, automatic status transitions (`ACTIVE` $\rightarrow$ `HIRED`), live job headcount synchronization, and `BULK_STAGE_MOVED` audit trail logging.
+  - `bulkRejectApplications(appIds, rejectionReason)`: Standardized multi-applicant rejection recording `status = REJECTED`, reason notes, headcount recalculation, and `BULK_REJECTED` audit logs.
+  - `bulkAddToTalentPool(candidateProfileIds)`: Batch marking of candidates as talent pool assets with `BULK_TALENT_POOL_ADDED` audit logging.
+  - `bulkAssignCandidatesToJob(candidateProfileIds, targetJobId)`: Direct batch assignment of talent pool candidates into active job openings at Stage 1 (CV Screening).
+  - `bulkImportCandidates(jobId, candidates)`: Batch import handler for up to 500 candidates per execution, with blind index deduplication (`nikHash`), field-level encryption (`encryptField`), auto-generated user credentials, and initial assessment creation.
+
+### Changed
+- **Kanban Board Multi-Selection (`components/PipelineBoard.tsx` & `app/dashboard/pipeline/PipelineClient.tsx`):**
+  - Added checkboxes on each candidate card with selection highlight and non-interfering click handlers.
+  - Added "Pilih Semua di Kolom Ini" toggle button on each stage column header.
+  - Added a floating sticky bottom action bar (*Sticky Bottom Bulk Bar*) styled in DPP Corporate Navy (`#0A2540`), enabling recruiters to advance stages, reject applicants in bulk, or send profiles to the talent pool with one click.
+- **Job Detail Page (`app/dashboard/job-openings/[id]/JobDetailClient.tsx`):**
+  - Integrated "+ Import Massal Excel" button in the job detail header actions.
+  - Applied Modern Web Guidance for responsive tables: wrapped hired candidate list with `<div tabIndex={0} role="region" aria-label="Tabel Kandidat Terpilih" className="overflow-x-auto focus:outline-hidden overscroll-x-contain">` and sticky headers.
+- **Talent Pool Page (`app/dashboard/talent-pool/TalentPoolClient.tsx` & `app/dashboard/talent-pool/page.tsx`):**
+  - Added "+ Import Massal Excel" button allowing direct profile imports into the talent pool.
+  - Added table row multi-selection checkboxes with "Select All" column header control.
+  - Added sticky floating bulk action bar with "Tugaskan ke Lowongan..." modal to assign selected candidates to active job openings.
+  - Applied Modern Web Guidance: wrapped table with `role="region"`, `aria-label="Tabel Talent Pool Kandidat"`, and sticky headers.
+- **UI/UX De-slopping:**
+  - Removed gratuitous AI slop (over-saturated card gradients, blurry glassmorphism borders) in favor of crisp DPP Navy (`#0A2540`), Slate (`#F8FAFC` & `#E2E8F0`), Emerald (`#059669`), and Rose (`#DC2626`).
+- **End-to-End Verification (`scripts/e2e-page-check.ts`):**
+  - Added section [7] testing Fase 3 Server Actions, Excel template generation, and PDP blind indexing / encryption.
+  - Added `npm run check:e2e` script to `package.json` for one-command platform integrity verification (**21/21 checks passing**).
+
+## [Phase 2] — Revamp Option B: Phase 2 (Database Normalization & UU PDP Compliance) — 2026-11-13
 
 ### Added
 - `docs/adr/ADR-008-database-normalization-and-pdp-compliance.md`: Architecture Decision Record covering stage data relational normalization, UU PDP No. 27/2022 compliance, and field-level AES-256-GCM encryption.

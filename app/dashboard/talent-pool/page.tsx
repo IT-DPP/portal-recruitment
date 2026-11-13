@@ -1,11 +1,19 @@
 import React from "react";
 import TalentPoolClient from "./TalentPoolClient";
 import { getPaginatedTalentPool } from "@/app/actions/job";
+import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function TalentPoolPage() {
-  const result = await getPaginatedTalentPool({ page: 1, limit: 10 });
+  const [result, activeJobs] = await Promise.all([
+    getPaginatedTalentPool({ page: 1, limit: 10 }),
+    prisma.jobOpening.findMany({
+      where: { status: "ACTIVE" },
+      select: { id: true, positionName: true, noRegistrasi: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
   return (
     <TalentPoolClient
@@ -15,6 +23,7 @@ export default async function TalentPoolPage() {
           ? result.pagination
           : { totalItems: 0, totalPages: 1, currentPage: 1, limit: 10 }
       }
+      activeJobs={activeJobs}
     />
   );
 }
