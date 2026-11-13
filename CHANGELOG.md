@@ -4,7 +4,36 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — Revamp Option B: Phase 1 (Security & Dependency Hardening) — 2026-11-13
+## [Unreleased] — Revamp Option B: Phase 2 (Database Normalization & UU PDP Compliance) — 2026-11-13
+
+### Added
+- `docs/adr/ADR-008-database-normalization-and-pdp-compliance.md`: Architecture Decision Record covering stage data relational normalization, UU PDP No. 27/2022 compliance, and field-level AES-256-GCM encryption.
+- `lib/crypto.ts`: Field-Level Encryption utility using **AES-256-GCM** (96-bit random IV, 128-bit authentication tag, `enc:v1:` prefix) and **HMAC-SHA256 Blind Indexing** for fast database lookups without decrypting PII.
+- `lib/__tests__/crypto.test.ts`: 7 unit tests verifying encryption round-trips, anti-tampering validation, legacy plaintext fallback, deterministic blind index hashing, and presentation NIK masking.
+- `scripts/run-all-tests.ts`: Unified test runner executing all 13 security, domain, and cryptographic unit tests.
+- `scripts/migrate-stagedata-to-relational.ts` (`npm run db:migrate:fase2`): Idempotent, non-destructive migration script that transforms historical untyped JSON `stageData` into normalized relational models, protects candidate PII, and initializes job quota metrics.
+- `prisma/migrations/20261113140000_fase2_normalization_and_pdp/migration.sql`: Zero-downtime PostgreSQL migration creating formal relational tables, enums, soft delete columns, and composite indexes.
+- **Relational Domain Models in `prisma/schema.prisma`:**
+  - `ApplicationAssessment`: Structured scoring and records for CV Screening, HR Interview, Psikotes, Skill Test, User Interview, and BNSP Certification Validation.
+  - `MedicalCheckUp`: Structured MCU scheduling, clinic tracking, fitness classification (`FIT`, `FIT_WITH_RESTRICTION`, `TEMPORARY_UNFIT`, `UNFIT`), candidate proof attachments, and AES-256-GCM encrypted health diagnoses (`doctorNotesEncrypted`).
+  - `OfferingLetterRecord`: Formal offering letter status lifecycle (`DRAFT`, `SENT`, `ACCEPTED`, `DECLINED`, `REJECTED_FINAL`), signed document keys, and encrypted compensation data.
+  - `ContractMobilization`: Mining labor supply tracking with PKWT contract number, site NRP, Mine Permit/SIMPER number, induction dates, BAST status, and mobilization progression (`PENDING` $\rightarrow$ `ARRIVED_ON_SITE`).
+
+### Changed
+- **Candidate Profile & Privacy (UU PDP Compliance):**
+  - Updated `CandidateProfile`: added `nikHash String? @unique` (Blind Index) and `deletedAt DateTime?` (Soft Delete).
+  - Updated `app/actions/candidate-profile.ts` to transparently encrypt `nik` and `kk` on storage and decrypt on retrieval, preventing duplicate registration via `nikHash`.
+- **Job Headcount Tracking (Labor Supply Alignment):**
+  - Updated `JobOpening`: added `headcountTarget`, `headcountFulfilled`, and `headcountOnSite` to track real client quota fulfillment.
+  - Updated `updateApplicationStage` in `app/actions/job.ts` to automatically recalculate fulfilled and on-site headcounts whenever candidates advance stages.
+- **Server Actions Relational Sync:**
+  - Added `syncStageDataToRelational` in `app/actions/job.ts` to automatically sync all `stageData` updates into the new relational tables while retaining the legacy JSON for complete backward compatibility.
+  - Updated `app/actions/candidate-application.ts` to sync candidate responses (Offering acceptance/decline and MCU proofs) directly into `OfferingLetterRecord` and `MedicalCheckUp`.
+  - Updated `applyToJob` in `app/actions/job.ts` to enforce the single active application policy using indexed `nikHash` lookups.
+- **Database Query Optimization:**
+  - Added composite indexes: `JobOpening(status, customerId)`, `JobOpening(status, tanggalMasuk)`, `Application(jobId, status)`, `Application(candidateProfileId, status)`, and `CandidateProfile(isTalentPool, isBlacklisted, isArchived)`.
+
+## [Phase 1 Hardening] — Revamp Option B: Phase 1 (Security & Dependency Hardening) — 2026-11-13
 
 ### Added
 - `docs/adr/ADR-007-security-and-dependency-hardening.md`: Architecture Decision Record for server action auth guards, middleware API protection, and dependency elimination.

@@ -7,6 +7,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { requireStaffSession } from "@/lib/auth-guard";
 import { recordAuditLog } from "@/lib/audit-log";
+import { encryptField, decryptField, hashField } from "@/lib/crypto";
+import {
+  AssessmentStage,
+  AssessmentResult,
+  McuFitnessStatus,
+  OfferingLetterStatus,
+  MobilizationStatus,
+} from "@prisma/client";
 
 export async function getJobOpenings() {
   try {
@@ -242,7 +250,7 @@ export async function getCalendarData() {
       if (a.candidateProfile && !mappedCandidates[a.candidateProfileId]) {
         mappedCandidates[a.candidateProfileId] = {
           id: a.candidateProfile.id,
-          nik: a.candidateProfile.nik || "-",
+          nik: decryptField(a.candidateProfile.nik) || "-",
           fullName: a.candidateProfile.user?.name || "Unknown",
           email: a.candidateProfile.user?.email || "-",
           whatsapp: a.candidateProfile.whatsapp || "-",
@@ -707,6 +715,31 @@ export async function updateApplicationStage(appId: string, targetStageId: strin
       }
     });
 
+    // Update live headcount fulfilled and on-site count on JobOpening (Fase 2)
+    try {
+      const [hiredCount, onSiteCount] = await Promise.all([
+        prisma.application.count({ where: { jobId: app.jobId, status: "HIRED" } }),
+        prisma.application.count({
+          where: {
+            jobId: app.jobId,
+            OR: [
+              { currentStageId: "stage_10" },
+              { contractMobilization: { mobilizationStatus: { in: ["ARRIVED_ON_SITE", "COMPLETED"] } } },
+            ],
+          },
+        }),
+      ]);
+      await prisma.jobOpening.update({
+        where: { id: app.jobId },
+        data: {
+          headcountFulfilled: hiredCount,
+          headcountOnSite: onSiteCount,
+        },
+      });
+    } catch (e) {
+      console.warn("Headcount sync warning:", e);
+    }
+
     revalidatePath(`/dashboard/pipeline`);
     revalidatePath(`/dashboard/job-openings/${app.jobId}`);
 
@@ -733,6 +766,273 @@ export async function updateApplicationStage(appId: string, targetStageId: strin
   }
 }
 
+/**
+ * Sinkronisasi data stage kandidat ke tabel relasional formal & enkripsi data PDP (Fase 2)
+ */
+export async function syncStageDataToRelational(appId: string, stageData: any) {
+  if (!stageData || typeof stageData !== "object") return;
+  const sd = typeof stageData === "string" ? JSON.parse(stageData) : stageData;
+
+  try {
+    // 1. HR Interview
+    if (sd.hrInterview) {
+      const hr = sd.hrInterview;
+      const conductedDate = hr.date ? new Date(hr.date) : null;
+      let result: AssessmentResult = AssessmentResult.PENDING;
+      if (hr.result === "Lulus") result = AssessmentResult.PASSED;
+      else if (hr.result === "Gagal") result = AssessmentResult.FAILED;
+
+      const existing = await prisma.applicationAssessment.findFirst({
+        where: { applicationId: appId, stageType: AssessmentStage.HR_INTERVIEW },
+      });
+      if (existing) {
+        await prisma.applicationAssessment.update({
+          where: { id: existing.id },
+          data: {
+            conductedDate: conductedDate && !isNaN(conductedDate.getTime()) ? conductedDate : undefined,
+            result,
+            feedback: hr.feedback || null,
+            metadata: hr,
+          },
+        });
+      } else {
+        await prisma.applicationAssessment.create({
+          data: {
+            applicationId: appId,
+            stageType: AssessmentStage.HR_INTERVIEW,
+            conductedDate: conductedDate && !isNaN(conductedDate.getTime()) ? conductedDate : null,
+            result,
+            feedback: hr.feedback || null,
+            metadata: hr,
+          },
+        });
+      }
+    }
+
+    // 2. User Interview
+    if (sd.userInterview) {
+      const ui = sd.userInterview;
+      const conductedDate = ui.date ? new Date(ui.date) : null;
+      let result: AssessmentResult = AssessmentResult.PENDING;
+      if (ui.result === "Lulus") result = AssessmentResult.PASSED;
+      else if (ui.result === "Gagal") result = AssessmentResult.FAILED;
+
+      const existing = await prisma.applicationAssessment.findFirst({
+        where: { applicationId: appId, stageType: AssessmentStage.USER_INTERVIEW },
+      });
+      if (existing) {
+        await prisma.applicationAssessment.update({
+          where: { id: existing.id },
+          data: {
+            conductedDate: conductedDate && !isNaN(conductedDate.getTime()) ? conductedDate : undefined,
+            result,
+            feedback: ui.feedback || null,
+            metadata: ui,
+          },
+        });
+      } else {
+        await prisma.applicationAssessment.create({
+          data: {
+            applicationId: appId,
+            stageType: AssessmentStage.USER_INTERVIEW,
+            conductedDate: conductedDate && !isNaN(conductedDate.getTime()) ? conductedDate : null,
+            result,
+            feedback: ui.feedback || null,
+            metadata: ui,
+          },
+        });
+      }
+    }
+
+    // 3. Psikotes
+    if (sd.psikotes) {
+      const psi = sd.psikotes;
+      const conductedDate = psi.date ? new Date(psi.date) : null;
+      let result: AssessmentResult = AssessmentResult.CONSIDERED;
+      if (psi.result?.includes("Disarankan")) result = AssessmentResult.RECOMMENDED;
+      else if (psi.result?.includes("Tidak")) result = AssessmentResult.NOT_RECOMMENDED;
+
+      const existing = await prisma.applicationAssessment.findFirst({
+        where: { applicationId: appId, stageType: AssessmentStage.PSIKOTES },
+      });
+      if (existing) {
+        await prisma.applicationAssessment.update({
+          where: { id: existing.id },
+          data: {
+            conductedDate: conductedDate && !isNaN(conductedDate.getTime()) ? conductedDate : undefined,
+            result,
+            metadata: psi,
+          },
+        });
+      } else {
+        await prisma.applicationAssessment.create({
+          data: {
+            applicationId: appId,
+            stageType: AssessmentStage.PSIKOTES,
+            conductedDate: conductedDate && !isNaN(conductedDate.getTime()) ? conductedDate : null,
+            result,
+            metadata: psi,
+          },
+        });
+      }
+    }
+
+    // 4. Test Skill
+    if (sd.testSkill) {
+      const ts = sd.testSkill;
+      const conductedDate = ts.date ? new Date(ts.date) : null;
+      const existing = await prisma.applicationAssessment.findFirst({
+        where: { applicationId: appId, stageType: AssessmentStage.SKILL_TEST },
+      });
+      if (existing) {
+        await prisma.applicationAssessment.update({
+          where: { id: existing.id },
+          data: {
+            conductedDate: conductedDate && !isNaN(conductedDate.getTime()) ? conductedDate : undefined,
+            attachmentUrl: ts.resultFile || null,
+            metadata: ts,
+          },
+        });
+      } else {
+        await prisma.applicationAssessment.create({
+          data: {
+            applicationId: appId,
+            stageType: AssessmentStage.SKILL_TEST,
+            conductedDate: conductedDate && !isNaN(conductedDate.getTime()) ? conductedDate : null,
+            attachmentUrl: ts.resultFile || null,
+            metadata: ts,
+          },
+        });
+      }
+    }
+
+    // 5. BNSP Validation
+    if (sd.bnspValidation) {
+      const bnsp = sd.bnspValidation;
+      const existing = await prisma.applicationAssessment.findFirst({
+        where: { applicationId: appId, stageType: AssessmentStage.BNSP_VALIDATION },
+      });
+      const result = bnsp.isApproved ? AssessmentResult.PASSED : AssessmentResult.PENDING;
+      if (existing) {
+        await prisma.applicationAssessment.update({
+          where: { id: existing.id },
+          data: { result, metadata: bnsp },
+        });
+      } else {
+        await prisma.applicationAssessment.create({
+          data: { applicationId: appId, stageType: AssessmentStage.BNSP_VALIDATION, result, metadata: bnsp },
+        });
+      }
+    }
+
+    // 6. Medical Check-Up (MCU) with AES-256-GCM encryption (UU PDP Pasal 4)
+    if (sd.mcu) {
+      const mcu = sd.mcu;
+      let fitnessStatus: McuFitnessStatus = McuFitnessStatus.PENDING;
+      const raw = (mcu.resultStatus || "").toUpperCase();
+      if (raw.includes("FIT TO WORK") || (raw.includes("FIT") && !raw.includes("UNFIT"))) {
+        fitnessStatus = raw.includes("RESTRICTION") ? McuFitnessStatus.FIT_WITH_RESTRICTION : McuFitnessStatus.FIT;
+      } else if (raw.includes("TEMPORARY")) {
+        fitnessStatus = McuFitnessStatus.TEMPORARY_UNFIT;
+      } else if (raw.includes("UNFIT")) {
+        fitnessStatus = McuFitnessStatus.UNFIT;
+      }
+
+      const completedDate = mcu.date ? new Date(mcu.date) : null;
+      const notesToEncrypt = mcu.doctorNotes || mcu.resultStatus || "";
+      const doctorNotesEncrypted = notesToEncrypt ? encryptField(notesToEncrypt) : null;
+
+      await prisma.medicalCheckUp.upsert({
+        where: { applicationId: appId },
+        create: {
+          applicationId: appId,
+          fitnessStatus,
+          clinicName: mcu.clinicName || null,
+          completedDate: completedDate && !isNaN(completedDate.getTime()) ? completedDate : null,
+          packageMcu: mcu.package || "Standar Tambang",
+          doctorNotesEncrypted,
+          candidateProofUrl: mcu.candidateProof?.file?.url || mcu.candidateProof?.file?.objectKey || null,
+        },
+        update: {
+          fitnessStatus,
+          clinicName: mcu.clinicName || undefined,
+          completedDate: completedDate && !isNaN(completedDate.getTime()) ? completedDate : undefined,
+          doctorNotesEncrypted: doctorNotesEncrypted || undefined,
+          candidateProofUrl: mcu.candidateProof?.file?.url || mcu.candidateProof?.file?.objectKey || undefined,
+        },
+      });
+    }
+
+    // 7. Offering Letter Record
+    if (sd.offeringLetter) {
+      const ol = sd.offeringLetter;
+      let status: OfferingLetterStatus = OfferingLetterStatus.DRAFT;
+      const candStatus = ol.candidateResponse?.status;
+      if (candStatus === "ACCEPTED") status = OfferingLetterStatus.ACCEPTED;
+      else if (candStatus === "DECLINED") status = OfferingLetterStatus.DECLINED;
+      else if (candStatus === "REJECTED_FINAL") status = OfferingLetterStatus.REJECTED_FINAL;
+      else if (ol.file || ol.date) status = OfferingLetterStatus.SENT;
+
+      const issuedDate = ol.date ? new Date(ol.date) : null;
+      const signedAt = ol.candidateResponse?.signedAt ? new Date(ol.candidateResponse.signedAt) : null;
+
+      await prisma.offeringLetterRecord.upsert({
+        where: { applicationId: appId },
+        create: {
+          applicationId: appId,
+          status,
+          issuedDate: issuedDate && !isNaN(issuedDate.getTime()) ? issuedDate : null,
+          signedAt: signedAt && !isNaN(signedAt.getTime()) ? signedAt : null,
+          documentUrl: typeof ol.file === "string" ? ol.file : null,
+          signedDocumentUrl: ol.candidateResponse?.signedFile?.url || null,
+          signedDocumentKey: ol.candidateResponse?.signedFile?.objectKey || null,
+          candidateNote: ol.candidateResponse?.note || null,
+          baseSalaryEncrypted: ol.salary ? encryptField(String(ol.salary)) : null,
+          siteAllowanceEncrypted: ol.siteAllowance ? encryptField(String(ol.siteAllowance)) : null,
+        },
+        update: {
+          status,
+          issuedDate: issuedDate && !isNaN(issuedDate.getTime()) ? issuedDate : undefined,
+          signedAt: signedAt && !isNaN(signedAt.getTime()) ? signedAt : undefined,
+          documentUrl: typeof ol.file === "string" ? ol.file : undefined,
+          signedDocumentUrl: ol.candidateResponse?.signedFile?.url || undefined,
+          signedDocumentKey: ol.candidateResponse?.signedFile?.objectKey || undefined,
+          candidateNote: ol.candidateResponse?.note || undefined,
+        },
+      });
+    }
+
+    // 8. BAST & Contract Mobilization
+    if (sd.bast) {
+      const b = sd.bast;
+      const start = b.start ? new Date(b.start) : null;
+      const end = b.end ? new Date(b.end) : null;
+
+      await prisma.contractMobilization.upsert({
+        where: { applicationId: appId },
+        create: {
+          applicationId: appId,
+          nrp: b.nrp || null,
+          bastStatus: b.status || null,
+          bastValidationLink: b.link || null,
+          pkwtStartDate: start && !isNaN(start.getTime()) ? start : null,
+          pkwtEndDate: end && !isNaN(end.getTime()) ? end : null,
+          mobilizationStatus: MobilizationStatus.ARRIVED_ON_SITE,
+        },
+        update: {
+          nrp: b.nrp || undefined,
+          bastStatus: b.status || undefined,
+          bastValidationLink: b.link || undefined,
+          pkwtStartDate: start && !isNaN(start.getTime()) ? start : undefined,
+          pkwtEndDate: end && !isNaN(end.getTime()) ? end : undefined,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("syncStageDataToRelational Error:", error);
+  }
+}
+
 export async function updateApplicationStageData(appId: string, stageData: any) {
   const auth = await requireStaffSession();
   if (!auth.authorized) {
@@ -746,6 +1046,9 @@ export async function updateApplicationStageData(appId: string, stageData: any) 
         stageData
       }
     });
+
+    // Sinkronisasi data stage ke model relasional ternormalisasi (Fase 2)
+    await syncStageDataToRelational(appId, stageData);
 
     revalidatePath(`/dashboard/pipeline`);
     revalidatePath(`/dashboard/job-openings/${updatedApp.jobId}`);
@@ -789,6 +1092,16 @@ export async function getApplicationForVerify(jobId: string, candidateProfileId:
 
     if (!app) return { success: false, error: "Application not found" };
 
+    // Dekripsi data PII kandidat (UU PDP) untuk tampilan recruiter
+    if (app.candidateProfile) {
+      if (app.candidateProfile.nik) {
+        app.candidateProfile.nik = decryptField(app.candidateProfile.nik);
+      }
+      if (app.candidateProfile.kk) {
+        app.candidateProfile.kk = decryptField(app.candidateProfile.kk);
+      }
+    }
+
     return { success: true, data: app };
   } catch (error) {
     console.error("getApplicationForVerify Error:", error);
@@ -816,20 +1129,27 @@ export async function applyToJob(jobId: string) {
       return { success: false, error: "Harap lengkapi profil dan dokumen Anda sebelum melamar." };
     }
 
-    const candidateNik = profile.nik?.trim();
+    const rawCandidateNik = profile.nik?.trim();
+    const candidateNik = decryptField(rawCandidateNik) || "";
     if (!candidateNik) {
       return {
         success: false,
         error: "Nomor Induk Kependudukan (NIK) belum terdaftar pada profil Anda. Harap lengkapi NIK Anda pada menu profil terlebih dahulu."
       };
     }
+    const candidateNikHash = hashField(candidateNik);
 
-    // Company Recruitment Policy Rule: 1 candidate cannot apply to more than 1 job opening (restricted by NIK).
-    // Check if there is already an active/ongoing application for this NIK across the entire database.
+    // Aturan Seleksi Perusahaan: 1 kandidat hanya boleh melamar ke 1 lowongan aktif (dicek via blind index / NIK)
+    const nikMatchConditions = [
+      ...(candidateNikHash ? [{ nikHash: candidateNikHash }] : []),
+      ...(rawCandidateNik ? [{ nik: rawCandidateNik }] : []),
+      { nik: candidateNik },
+    ];
+
     const existingActiveApp = await prisma.application.findFirst({
       where: {
         candidateProfile: {
-          nik: candidateNik,
+          OR: nikMatchConditions,
         },
         status: {
           in: ["ACTIVE", "HIRED"],
@@ -862,7 +1182,7 @@ export async function applyToJob(jobId: string) {
       where: {
         jobId,
         candidateProfile: {
-          nik: candidateNik,
+          OR: nikMatchConditions,
         },
       },
     });
@@ -1007,7 +1327,7 @@ export async function getBlacklistedCandidates() {
       return {
         id: p.id,
         fullName: p.user?.name || "Unknown",
-        nik: p.nik || "-",
+        nik: decryptField(p.nik) || "-",
         email: p.user?.email || "-",
         phone: p.whatsapp || "-",
         lastJobApplied,
@@ -1487,7 +1807,7 @@ export async function getPaginatedBlacklistedCandidates({
       return {
         id: p.id,
         fullName: p.user?.name || "Unknown",
-        nik: p.nik || "-",
+        nik: decryptField(p.nik) || "-",
         email: p.user?.email || "-",
         phone: p.whatsapp || "-",
         lastJobApplied,

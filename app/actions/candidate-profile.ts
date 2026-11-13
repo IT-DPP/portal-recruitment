@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache"
 import { getPresignedUploadUrl, deleteS3Object, getPresignedDownloadUrl } from "@/lib/s3"
 import { v4 as uuidv4 } from "uuid"
 import { isObjectKeyOwnedByUser, validateUploadMetadata } from "@/lib/auth-guard"
+import { encryptField, decryptField, hashField } from "@/lib/crypto"
 
 export async function getCandidateProfile() {
   const session = await getServerSession(authOptions)
@@ -48,6 +49,14 @@ export async function getCandidateProfile() {
       return { success: true, data: { user: session.user } } // return just user data if no profile yet
     }
 
+    // Dekripsi data PII sensitif kandidat (UU PDP)
+    if (profile.nik) {
+      profile.nik = decryptField(profile.nik);
+    }
+    if (profile.kk) {
+      profile.kk = decryptField(profile.kk);
+    }
+
     return { success: true, data: profile }
   } catch (error) {
     console.error("Error fetching profile:", error)
@@ -60,6 +69,8 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
   if (!session || !session.user || !(session.user as any).id) {
     return { success: false, error: "Unauthorized" }
   }
+
+  const userId = (session.user as any).id;
 
   try {
     // Basic validation
@@ -78,7 +89,7 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
     // Update User table for fullName
     if (data.fullName) {
       await prisma.user.update({
-        where: { id: (session.user as any).id },
+        where: { id: userId },
         data: { name: data.fullName }
       })
     }
@@ -114,12 +125,43 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
       if (c) cityId = c.id
     }
 
+    // Enkripsi PII dan hitung Blind Index untuk NIK (UU PDP)
+    let encryptedNik: string | null = null
+    let nikHash: string | null = null
+    let encryptedKk: string | null = null
+
+    if (data.nik && data.nik.trim().length > 0) {
+      const cleanNik = data.nik.trim()
+      nikHash = hashField(cleanNik)
+
+      // Cek apakah NIK ini sudah digunakan oleh akun lain
+      if (nikHash) {
+        const duplicate = await prisma.candidateProfile.findFirst({
+          where: {
+            nikHash,
+            userId: { not: userId },
+          },
+          select: { id: true },
+        })
+        if (duplicate) {
+          return { success: false, error: "Nomor Induk Kependudukan (NIK) sudah terdaftar pada akun lain." }
+        }
+      }
+
+      encryptedNik = encryptField(cleanNik)
+    }
+
+    if (data.kk && data.kk.trim().length > 0) {
+      encryptedKk = encryptField(data.kk.trim())
+    }
+
     // Upsert CandidateProfile
     const profile = await prisma.candidateProfile.upsert({
-      where: { userId: (session.user as any).id },
+      where: { userId },
       update: {
-        nik: data.nik || null,
-        kk: data.kk || null,
+        nik: encryptedNik,
+        nikHash,
+        kk: encryptedKk,
         birthPlace: data.birthPlace || null,
         birthDate: data.birthDate ? new Date(data.birthDate) : null,
         gender: data.gender || null,
@@ -139,9 +181,10 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
         isProfileCompleted: !isDraft,
       },
       create: {
-        userId: (session.user as any).id,
-        nik: data.nik || null,
-        kk: data.kk || null,
+        userId,
+        nik: encryptedNik,
+        nikHash,
+        kk: encryptedKk,
         birthPlace: data.birthPlace || null,
         birthDate: data.birthDate ? new Date(data.birthDate) : null,
         gender: data.gender || null,
@@ -161,6 +204,10 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
         isProfileCompleted: !isDraft,
       }
     })
+
+    // Kembalikan NIK & KK dalam bentuk plaintext untuk respons client
+    if (profile.nik) profile.nik = decryptField(profile.nik);
+    if (profile.kk) profile.kk = decryptField(profile.kk);
 
     // Upsert Documents if provided (save documents metadata)
     const docTypes = ["cv", "ijazah", "ktp", "kk", "sertifikat", "photo"]

@@ -129,6 +129,49 @@ Disetujui oleh IT Leader. Aplikasi telah berhasil diverifikasi di lokal (Postgre
    - Menghapus impor `xlsx` yang tidak terpakai di [`lib/document-generator.ts`](../lib/document-generator.ts).
 
 ### Status
-Fase 1 (Security & Dependency Hardening) selesai dan terverifikasi. Siap untuk peninjauan dan persetujuan IT Leader sebelum melangkah ke Fase 2 (Database Normalization & Kepatuhan UU PDP).
+Fase 1 (Security & Dependency Hardening) selesai, diverifikasi, dan disetujui IT Leader.
+
+---
+
+## 2026-11-13 — Revamp Opsi B: Fase 2 (Database Normalization & Kepatuhan UU PDP)
+
+### Aktivitas
+1. **Implementasi Utilitas Enkripsi Field-Level AES-256-GCM (`lib/crypto.ts`):**
+   - Menghadirkan perlindungan data sesuai UU No. 27 Tahun 2022 (UU PDP) Pasal 4 Ayat 2a (Data Medis Spesifik) dan Pasal 35 (Kewajiban Pengamanan Teknis).
+   - Menggunakan authenticated cipher **AES-256-GCM** dengan format `enc:v1:<iv>:<tag>:<ciphertext>`.
+   - Mengimplementasikan **HMAC-SHA256 Blind Indexing** (`hashField`) untuk pencarian NIK unik dan pengecekan duplikasi `O(1)` tanpa mendekripsi ciphertext di layer basis data.
+   - Menyertakan fallback transparan (*backward compatibility*) untuk membaca data historis tanpa error.
+2. **Normalisasi Relasional Skema Prisma (`prisma/schema.prisma`):**
+   - Membongkar kolom JSON `Application.stageData` menjadi 4 model relasional dengan integritas kunci asing (*foreign key*):
+     - `ApplicationAssessment`: Penilaian terstruktur untuk CV Screening, Interview HR, Psikotes, Test Skill, Interview User, dan Validasi BNSP.
+     - `MedicalCheckUp`: Pelacakan klinik, jadwal, status kebugaran (*FIT*, *FIT_WITH_RESTRICTION*, *TEMPORARY_UNFIT*, *UNFIT*), berkas bukti, dan kolom `doctorNotesEncrypted` yang terenkripsi AES-256-GCM.
+     - `OfferingLetterRecord`: Siklus penawaran kerja (*DRAFT*, *SENT*, *ACCEPTED*, *DECLINED*, *REJECTED_FINAL*), dokumen bertandatangan, serta enkripsi kompensasi (*baseSalaryEncrypted*).
+     - `ContractMobilization`: Manajemen penempatan *Labor Supply* mencakup nomor kontrak PKWT, NRP site, nomor Mine Permit/SIMPER, induksi, status BAST, dan mobilisasi fisik hingga tiba di *site* tambang.
+   - Menambahkan pelacakan kuota pada `JobOpening`: `headcountTarget`, `headcountFulfilled`, dan `headcountOnSite`.
+   - Menambahkan mekanisme penghapusan aman (*Soft Delete*) via `deletedAt DateTime?` pada tabel `CandidateProfile`, `JobOpening`, dan `Application`.
+   - Menambahkan indeks komposit performa tinggi untuk mencegah *full table scan*.
+3. **Penyusunan Berkas Migrasi SQL & Script Backfill Idempoten:**
+   - Membuat migrasi SQL formal [`prisma/migrations/20261113140000_fase2_normalization_and_pdp/migration.sql`](../prisma/migrations/20261113140000_fase2_normalization_and_pdp/migration.sql) untuk dieksekusi via `prisma migrate deploy` saat deployment.
+   - Membuat script migrasi dan transformasi data non-destruktif [`scripts/migrate-stagedata-to-relational.ts`](../scripts/migrate-stagedata-to-relational.ts) (`npm run db:migrate:fase2`).
+4. **Pembaruan Server Actions & Query Helpers:**
+   - Memperbarui `app/actions/candidate-profile.ts` untuk mengenkripsi NIK & KK secara transparan saat disimpan dan mendekripsi saat disajikan ke kandidat.
+   - Memperbarui `app/actions/job.ts`:
+     - Fungsi `syncStageDataToRelational` untuk sinkronisasi dua arah otomatis antara JSON `stageData` dan tabel relasional baru.
+     - Otomatisasi pembaruan kuota `headcountFulfilled` dan `headcountOnSite` saat status kandidat bergerak di pipeline.
+     - Validasi aturan 1 lamaran aktif per NIK menggunakan `nikHash` blind index.
+     - Dekripsi NIK pada daftar kandidat dan antarmuka verifikasi recruiter.
+   - Memperbarui `app/actions/candidate-application.ts` untuk menyinkronkan respon Offering Letter dan unggah bukti MCU ke tabel relasional formal.
+5. **Penyusunan Dokumentasi ADR-008 & Portfolio:**
+   - Menerbitkan [`docs/adr/ADR-008-database-normalization-and-pdp-compliance.md`](adr/ADR-008-database-normalization-and-pdp-compliance.md).
+   - Memperbarui [`CHANGELOG.md`](../CHANGELOG.md).
+6. **Verifikasi & Pengujian Mutu:**
+   - Menjalankan unit test kriptografi [`lib/__tests__/crypto.test.ts`](../lib/__tests__/crypto.test.ts) (**7/7 PASS**).
+   - Menjalankan seluruh test suite otomatis via `npm test` (**13/13 PASS**).
+   - Menjalankan static type checking `npx tsc --noEmit` (**0 ERROR**).
+   - Menjalankan full production build `npm run build` (**54 routes compiled cleanly via Turbopack**).
+
+### Status
+Fase 2 (Database Normalization & Kepatuhan UU PDP) selesai dengan sempurna dan terverifikasi secara menyeluruh. Menunggu instruksi dan persetujuan IT Leader sebelum melanjutkan ke Fase 3 (UI Redesign & Bulk Actions).
+
 
 

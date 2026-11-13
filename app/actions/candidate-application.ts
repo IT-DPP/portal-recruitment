@@ -5,6 +5,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
+import { encryptField } from "@/lib/crypto";
+import { OfferingLetterStatus, McuFitnessStatus } from "@prisma/client";
 
 interface FileAttachment {
   name: string;
@@ -12,6 +14,7 @@ interface FileAttachment {
   base64?: string;
   type?: string;
   sizeBytes?: number;
+  url?: string;
 }
 
 /**
@@ -160,6 +163,30 @@ export async function submitOfferingResponse(
         },
       });
 
+      // Sinkronisasi ke model relasional OfferingLetterRecord (Fase 2)
+      try {
+        await prisma.offeringLetterRecord.upsert({
+          where: { applicationId: appId },
+          create: {
+            applicationId: appId,
+            status: OfferingLetterStatus.ACCEPTED,
+            signedAt: new Date(signedAt),
+            signedDocumentUrl: payload.signedFile.url || null,
+            signedDocumentKey: payload.signedFile.objectKey || null,
+            candidateNote: payload.note || null,
+          },
+          update: {
+            status: OfferingLetterStatus.ACCEPTED,
+            signedAt: new Date(signedAt),
+            signedDocumentUrl: payload.signedFile.url || undefined,
+            signedDocumentKey: payload.signedFile.objectKey || undefined,
+            candidateNote: payload.note || undefined,
+          },
+        });
+      } catch (e) {
+        console.warn("OfferingLetterRecord sync warning:", e);
+      }
+
       revalidatePath("/candidate/history");
       revalidatePath("/candidate/past-applications");
       revalidatePath(`/dashboard/job-openings/${application.jobId}/verify/${application.candidateProfileId}`);
@@ -217,6 +244,24 @@ export async function submitOfferingResponse(
           },
         },
       });
+
+      // Sinkronisasi status penolakan ke OfferingLetterRecord (Fase 2)
+      try {
+        await prisma.offeringLetterRecord.upsert({
+          where: { applicationId: appId },
+          create: {
+            applicationId: appId,
+            status: OfferingLetterStatus.DECLINED,
+            candidateNote: note,
+          },
+          update: {
+            status: OfferingLetterStatus.DECLINED,
+            candidateNote: note,
+          },
+        });
+      } catch (e) {
+        console.warn("OfferingLetterRecord sync warning:", e);
+      }
 
       revalidatePath("/candidate/history");
       revalidatePath("/candidate/past-applications");
@@ -320,6 +365,27 @@ export async function uploadCandidateMcuProof(
         },
       },
     });
+
+    // Sinkronisasi bukti kandidat ke MedicalCheckUp (Fase 2)
+    try {
+      const notesEncrypted = notes ? encryptField(`Catatan Unggah Kandidat: ${notes}`) : null;
+      await prisma.medicalCheckUp.upsert({
+        where: { applicationId: appId },
+        create: {
+          applicationId: appId,
+          candidateProofUrl: proofFile.url || proofFile.objectKey || null,
+          candidateProofKey: proofFile.objectKey || null,
+          doctorNotesEncrypted: notesEncrypted,
+        },
+        update: {
+          candidateProofUrl: proofFile.url || proofFile.objectKey || undefined,
+          candidateProofKey: proofFile.objectKey || undefined,
+          doctorNotesEncrypted: notesEncrypted || undefined,
+        },
+      });
+    } catch (e) {
+      console.warn("MedicalCheckUp proof sync warning:", e);
+    }
 
     revalidatePath("/candidate/history");
     revalidatePath(`/dashboard/job-openings/${application.jobId}/verify/${application.candidateProfileId}`);
@@ -495,6 +561,19 @@ export async function resolveOfferDeclined(
           },
         },
       });
+
+      // Sinkronisasi status penolakan final ke OfferingLetterRecord (Fase 2)
+      try {
+        await prisma.offeringLetterRecord.update({
+          where: { applicationId: appId },
+          data: {
+            status: OfferingLetterStatus.REJECTED_FINAL,
+            recruiterResponse: payload?.reason || "Penolakan offering diterima oleh recruiter.",
+          },
+        });
+      } catch (e) {
+        console.warn("OfferingLetterRecord reject sync warning:", e);
+      }
 
       revalidatePath(`/dashboard/job-openings/${application.jobId}/verify/${application.candidateProfileId}`);
       revalidatePath(`/dashboard/job-openings/${application.jobId}`);

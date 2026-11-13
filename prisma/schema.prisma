@@ -86,30 +86,32 @@ model MasterCustomer {
 }
 
 model MasterSite {
-  id             String         @id @default(cuid())
-  code           String?        @unique
-  name           String
-  latitude       Float?
-  longitude      Float?
-  customerId     String
-  cityId         String
-  provinceId     String
-  useSpecificSla Boolean        @default(false)
-  mcuPackage     String?
-  jobs           JobOpening[]
-  city           MasterCity     @relation(fields: [cityId], references: [id])
-  customer       MasterCustomer @relation(fields: [customerId], references: [id])
-  province       MasterProvince @relation(fields: [provinceId], references: [id])
-  siteSlas       SiteSla[]
+  id                    String                 @id @default(cuid())
+  code                  String?                @unique
+  name                  String
+  latitude              Float?
+  longitude             Float?
+  customerId            String
+  cityId                String
+  provinceId            String
+  useSpecificSla        Boolean                @default(false)
+  mcuPackage            String?
+  jobs                  JobOpening[]
+  city                  MasterCity             @relation(fields: [cityId], references: [id])
+  customer              MasterCustomer         @relation(fields: [customerId], references: [id])
+  province              MasterProvince         @relation(fields: [provinceId], references: [id])
+  siteSlas              SiteSla[]
+  contractMobilizations ContractMobilization[]
 }
 
 model MasterClinic {
-  id         String         @id @default(cuid())
-  code       String?        @unique
-  name       String
-  provinceId String
-  address    String
-  province   MasterProvince @relation(fields: [provinceId], references: [id])
+  id              String           @id @default(cuid())
+  code            String?          @unique
+  name            String
+  provinceId      String
+  address         String
+  province        MasterProvince   @relation(fields: [provinceId], references: [id])
+  medicalCheckUps MedicalCheckUp[]
 }
 
 model MasterPosition {
@@ -189,9 +191,10 @@ model MasterCertification {
 }
 
 model CandidateProfile {
-  id                 String              @id @default(cuid())
+  id                   String              @id @default(cuid())
   userId               String              @unique
-  nik                  String?             @unique
+  nik                  String?
+  nikHash              String?             @unique
   kk                   String?
   birthPlace           String?
   birthDate            DateTime?
@@ -210,18 +213,22 @@ model CandidateProfile {
   cityId               String?
   provinceId           String?
   isProfileCompleted   Boolean             @default(false)
-  isTalentPool       Boolean             @default(false)
-  isBlacklisted      Boolean             @default(false)
-  blacklistReason    String?
-  blacklistedAt      DateTime?
-  isArchived         Boolean             @default(false)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  applications       Application[]
-  documents          CandidateDocument[]
-  city               MasterCity?         @relation(fields: [cityId], references: [id])
-  province           MasterProvince?     @relation(fields: [provinceId], references: [id])
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isTalentPool         Boolean             @default(false)
+  isBlacklisted        Boolean             @default(false)
+  blacklistReason      String?
+  blacklistedAt        DateTime?
+  isArchived           Boolean             @default(false)
+  deletedAt            DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  applications         Application[]
+  documents            CandidateDocument[]
+  city                 MasterCity?         @relation(fields: [cityId], references: [id])
+  province             MasterProvince?     @relation(fields: [provinceId], references: [id])
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deletedAt])
+  @@index([isTalentPool, isBlacklisted, isArchived])
 }
 
 model CandidateDocument {
@@ -237,38 +244,46 @@ model CandidateDocument {
 }
 
 model JobOpening {
-  id                String            @id @default(cuid())
-  noRegistrasi      String            @unique
-  positionId        String?
-  customerId        String
-  cityId            String
-  provinceId        String
-  siteId            String
-  statusPermintaan  String
-  jumlahPermintaan  Int
-  tanggalMasuk      DateTime
-  status            JobStatus         @default(DRAFT)
-  isPriority        Boolean           @default(false)
-  requiresSkillTest Boolean           @default(false)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  departmentId      String?
-  departmentName    String?
-  positionName      String?
-  benefit           String?
-  district          String?
-  kualifikasi       String?
-  noFormB1          String?
-  requiresBnsp      Boolean           @default(false)
-  publishedDate     DateTime?
-  applications      Application[]
-  city              MasterCity        @relation(fields: [cityId], references: [id])
-  customer          MasterCustomer    @relation(fields: [customerId], references: [id])
-  department        MasterDepartment? @relation(fields: [departmentId], references: [id])
-  position          MasterPosition?   @relation(fields: [positionId], references: [id])
-  province          MasterProvince    @relation(fields: [provinceId], references: [id])
-  site              MasterSite        @relation(fields: [siteId], references: [id])
-  timeline          JobTimeline[]
+  id                 String            @id @default(cuid())
+  noRegistrasi       String            @unique
+  positionId         String?
+  customerId         String
+  cityId             String
+  provinceId         String
+  siteId             String
+  statusPermintaan   String
+  jumlahPermintaan   Int
+  headcountTarget    Int               @default(1)
+  headcountFulfilled Int               @default(0)
+  headcountOnSite    Int               @default(0)
+  tanggalMasuk       DateTime
+  status             JobStatus         @default(DRAFT)
+  isPriority         Boolean           @default(false)
+  requiresSkillTest  Boolean           @default(false)
+  deletedAt          DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  departmentId       String?
+  departmentName     String?
+  positionName       String?
+  benefit            String?
+  district           String?
+  kualifikasi        String?
+  noFormB1           String?
+  requiresBnsp       Boolean           @default(false)
+  publishedDate      DateTime?
+  applications       Application[]
+  city               MasterCity        @relation(fields: [cityId], references: [id])
+  customer           MasterCustomer    @relation(fields: [customerId], references: [id])
+  department         MasterDepartment? @relation(fields: [departmentId], references: [id])
+  position           MasterPosition?   @relation(fields: [positionId], references: [id])
+  province           MasterProvince    @relation(fields: [provinceId], references: [id])
+  site               MasterSite        @relation(fields: [siteId], references: [id])
+  timeline           JobTimeline[]
+
+  @@index([status, customerId])
+  @@index([status, tanggalMasuk])
+  @@index([deletedAt])
 }
 
 model JobTimeline {
@@ -285,18 +300,28 @@ model JobTimeline {
 }
 
 model Application {
-  id                 String               @id @default(cuid())
-  jobId              String
-  candidateProfileId String
-  currentStageId     String?
-  status             ApplicationStatus    @default(ACTIVE)
-  applicationDate    DateTime             @default(now())
-  stageData          Json?                @default("{}")
-  candidateProfile   CandidateProfile     @relation(fields: [candidateProfileId], references: [id])
-  currentStage       MasterPipelineStage? @relation("CurrentStage", fields: [currentStageId], references: [id])
-  job                JobOpening           @relation(fields: [jobId], references: [id])
-  history            ApplicationHistory[]
-  interviews         Interview[]
+  id                   String                  @id @default(cuid())
+  jobId                String
+  candidateProfileId   String
+  currentStageId       String?
+  status               ApplicationStatus       @default(ACTIVE)
+  applicationDate      DateTime                @default(now())
+  stageData            Json?                   @default("{}")
+  deletedAt            DateTime?
+  candidateProfile     CandidateProfile        @relation(fields: [candidateProfileId], references: [id])
+  currentStage         MasterPipelineStage?    @relation("CurrentStage", fields: [currentStageId], references: [id])
+  job                  JobOpening              @relation(fields: [jobId], references: [id])
+  history              ApplicationHistory[]
+  interviews           Interview[]
+  assessments          ApplicationAssessment[]
+  medicalCheckUp       MedicalCheckUp?
+  offeringLetter       OfferingLetterRecord?
+  contractMobilization ContractMobilization?
+
+  @@index([jobId, status])
+  @@index([candidateProfileId, status])
+  @@index([currentStageId])
+  @@index([deletedAt])
 }
 
 model ApplicationHistory {
@@ -323,17 +348,111 @@ model Interview {
   application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 }
 
+model ApplicationAssessment {
+  id              String           @id @default(cuid())
+  applicationId   String
+  stageType       AssessmentStage
+  interviewerId   String?
+  interviewerName String?
+  scheduledDate   DateTime?
+  conductedDate   DateTime?
+  result          AssessmentResult @default(PENDING)
+  score           Float?
+  feedback        String?          @db.Text
+  attachmentUrl   String?
+  attachmentKey   String?
+  metadata        Json?            @default("{}")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  application     Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, stageType])
+  @@index([result])
+}
+
+model MedicalCheckUp {
+  id                   String           @id @default(cuid())
+  applicationId        String           @unique
+  clinicId             String?
+  clinicName           String?
+  scheduledDate        DateTime?
+  completedDate        DateTime?
+  packageMcu           String?
+  fitnessStatus        McuFitnessStatus @default(PENDING)
+  doctorNotesEncrypted String?          @db.Text
+  candidateProofUrl    String?
+  candidateProofKey    String?
+  certificateUrl       String?
+  certificateKey       String?
+  recheckDate          DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  application          Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  clinic               MasterClinic?    @relation(fields: [clinicId], references: [id])
+
+  @@index([clinicId])
+  @@index([fitnessStatus])
+}
+
+model OfferingLetterRecord {
+  id                     String               @id @default(cuid())
+  applicationId          String               @unique
+  baseSalaryEncrypted    String?
+  siteAllowanceEncrypted String?
+  issuedDate             DateTime?
+  status                 OfferingLetterStatus @default(DRAFT)
+  documentUrl            String?
+  documentKey            String?
+  signedDocumentUrl      String?
+  signedDocumentKey      String?
+  signedAt               DateTime?
+  candidateNote          String?              @db.Text
+  recruiterResponse      String?              @db.Text
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  application            Application          @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model ContractMobilization {
+  id                  String             @id @default(cuid())
+  applicationId       String             @unique
+  siteId              String?
+  contractNumber      String?
+  nrp                 String?
+  minePermitNumber    String?
+  trainingStartDate   DateTime?
+  trainingEndDate     DateTime?
+  inductionDate       DateTime?
+  pkwtStartDate       DateTime?
+  pkwtEndDate         DateTime?
+  mobilizationStatus  MobilizationStatus @default(PENDING)
+  bastStatus          String?
+  bastValidationLink  String?
+  contractDocumentUrl String?
+  contractDocumentKey String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  application         Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  site                MasterSite?        @relation(fields: [siteId], references: [id])
+
+  @@index([siteId])
+  @@index([mobilizationStatus])
+  @@index([nrp])
+}
+
 model AuditLog {
-  id          String   @id @default(cuid())
-  actorId     String?
-  actorEmail  String?
-  actorRole   String?
-  action      String
-  entityType  String
-  entityId    String?
-  metadata    Json?
-  ipAddress   String?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  actorRole  String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
 
   @@index([actorId])
   @@index([action])
@@ -359,4 +478,48 @@ enum ApplicationStatus {
   REJECTED
   HIRED
   WITHDRAWN
+}
+
+enum AssessmentStage {
+  CV_SCREENING
+  HR_INTERVIEW
+  PSIKOTES
+  SKILL_TEST
+  USER_INTERVIEW
+  BNSP_VALIDATION
+}
+
+enum AssessmentResult {
+  PENDING
+  PASSED
+  FAILED
+  RECOMMENDED
+  CONSIDERED
+  NOT_RECOMMENDED
+}
+
+enum McuFitnessStatus {
+  PENDING
+  FIT
+  FIT_WITH_RESTRICTION
+  TEMPORARY_UNFIT
+  UNFIT
+}
+
+enum OfferingLetterStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+  REJECTED_FINAL
+}
+
+enum MobilizationStatus {
+  PENDING
+  TRAINING
+  INDUCTION
+  READY_TO_DEPLOY
+  IN_TRANSIT
+  ARRIVED_ON_SITE
+  COMPLETED
 }
