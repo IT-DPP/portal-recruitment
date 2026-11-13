@@ -113,97 +113,25 @@ export const MCU_CLINICS: McuClinic[] = [
 ];
 
 export const DEFAULT_MCU_CONTACT = {
-  picName: "Annisa Nur Cahya Rahmadani",
-  picJabatan: "Recruitment Staff",
-  picPhone: "0895-2305-7314",
-  resultEmails: [
-    "annisa.rahmadani@dpp.co.id",
-    "indrajid.k@dpp.co.id",
-    "RecruitmentTeam@dpp.co.id",
-    "m.hidayat@dpp.co.id",
-    "pretty.tm@dpp.co.id",
-    "deo.felix@dpp.co.id",
-  ],
+  picName: process.env.NEXT_PUBLIC_MCU_PIC_NAME || "Tim Rekrutmen DPP",
+  picJabatan: process.env.NEXT_PUBLIC_MCU_PIC_TITLE || "Recruitment Specialist",
+  picPhone: process.env.NEXT_PUBLIC_MCU_PIC_PHONE || "021-00000000",
+  resultEmails: process.env.NEXT_PUBLIC_MCU_RESULT_EMAILS
+    ? process.env.NEXT_PUBLIC_MCU_RESULT_EMAILS.split(",").map((e) => e.trim())
+    : ["recruitment@dpp.co.id"],
   billing: {
     company: "PT. Dian Pandu Pratama",
-    up: "M Irfan Dzul Izzudin/ irfandzul@dpp.co.id",
+    up: "Finance & Accounting Department",
     address:
-      "Jl. Jababeka Blok I Kawasan Industri Jababeka (Patria Pos 7) Desa Harja Mekar, Kec. Cikarang Utara, Kab. Bekasi, Jawa Barat, 17530",
+      "Kawasan Industri Jababeka, Cikarang Utara, Kab. Bekasi, Jawa Barat",
   },
   signee: {
-    name: "Mursidi",
+    name: process.env.NEXT_PUBLIC_MCU_SIGNEE_NAME || "Recruitment & Development Dept. Head",
     title: "Recruitment & Development Dept. Head",
     city: "Cikarang",
   },
   footerText:
-    "Jl. Jababeka XII Blok I Kawasan Industri Jababeka Cikarang 17530 – Indonesia",
+    "PT Dian Pandu Pratama - Kawasan Industri Jababeka, Cikarang – Indonesia",
 };
 
-export const MOCK_MCU_CANDIDATES: McuCandidateRow[] = [
-  {
-    id: "mock-mcu-1",
-    nama: "MUHAMMAD DENIF",
-    nik: "6402082302080001",
-    posisi: "WELDER",
-    kategori: "PRE EMPLOYEE",
-    site: "Kideco",
-    customer: "PT. Dian Pandu Pratama",
-    paketMcu:
-      "MCU MELAK + SEROLOGI (HBSAG+ VDRL) + GOLONGAN DARAH (ABO + RHESUS) + URINE DRUG TEST 6 PARAMETER",
-  },
-  {
-    id: "mock-mcu-2",
-    nama: "MUHAMMAD ZIAN SAPUTRA",
-    nik: "6401061407060002",
-    posisi: "WELDER",
-    kategori: "PRE EMPLOYEE",
-    site: "Kideco",
-    customer: "PT. Dian Pandu Pratama",
-    paketMcu:
-      "MCU MELAK + SEROLOGI (HBSAG+ VDRL) + GOLONGAN DARAH (ABO + RHESUS) + URINE DRUG TEST 6 PARAMETER",
-  },
-  {
-    id: "mock-mcu-3",
-    nama: "BAMBANG TRI RAHARJO",
-    nik: "6471021509920003",
-    posisi: "HEAVY EQUIPMENT MECHANIC",
-    kategori: "PRE EMPLOYEE",
-    site: "KPC Sangatta Coal Mine",
-    customer: "PT Kaltim Prima Coal",
-    paketMcu:
-      "MCU STANDARD TAMBANG FIT TO WORK + SEROLOGI + DRUG TEST 6 PARAMETER + EKG",
-  },
-  {
-    id: "mock-mcu-4",
-    nama: "AGUS PRASETYO",
-    nik: "6402041103950004",
-    posisi: "SAFETY OFFICER (HSE)",
-    kategori: "PRE EMPLOYEE",
-    site: "Berau Coal Mine",
-    customer: "PT Berau Coal",
-    paketMcu:
-      "MCU FULL FIT TO WORK + DRUG TEST 6 PARAMETER + RONTGEN THORAX + LAB LENGKAP",
-  },
-  {
-    id: "mock-mcu-5",
-    nama: "SITI RAHMAWATI",
-    nik: "3216064501980005",
-    posisi: "RECRUITMENT ADMIN",
-    kategori: "PRE EMPLOYEE",
-    site: "Head Office / Cikarang",
-    customer: "PT. Dian Pandu Pratama",
-    paketMcu:
-      "MCU PRE EMPLOYEE CORPORATE + DRUG SCREENING 6 PARAMETER + RONTGEN",
-  },
-  {
-    id: "mock-mcu-6",
-    nama: "FAJAR MAULANA",
-    nik: "6408012010960006",
-    posisi: "DUMP TRUCK OPERATOR",
-    kategori: "PRE EMPLOYEE",
-    site: "Morowali Nickel Mining Area",
-    customer: "PT Vale Indonesia",
-    paketMcu:
-      "MCU FIT TO WORK HEAVY INDUSTRY + AUDIOMETRI + DRUG TEST 6 PARAMETER",
-  },
-];
+export const MOCK_MCU_CANDIDATES: McuCandidateRow[] = [];

@@ -61,6 +61,52 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // 4. API Gate: Global authentication & RBAC for API endpoints
+  if (pathname.startsWith("/api")) {
+    // Whitelisted public API endpoints
+    if (
+      pathname.startsWith("/api/auth") ||
+      pathname === "/api/health"
+    ) {
+      return NextResponse.next();
+    }
+
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (!token) {
+      return NextResponse.json(
+        { message: "Unauthorized: Sesi tidak valid atau telah berakhir." },
+        { status: 401 }
+      );
+    }
+
+    const role = token.role as string | undefined;
+
+    // Super Admin only endpoints
+    if (pathname.startsWith("/api/users") || pathname.startsWith("/api/audit-logs")) {
+      if (role !== "ADMIN") {
+        return NextResponse.json(
+          { message: "Forbidden: Operasi ini memerlukan hak akses Administrator." },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Staff only endpoints (batch zip archives, bast file proxy)
+    if (
+      pathname.startsWith("/api/candidates") ||
+      pathname.startsWith("/api/documents")
+    ) {
+      if (role !== "ADMIN" && role !== "RECRUITER") {
+        return NextResponse.json(
+          { message: "Forbidden: Hanya staf rekrutmen yang dapat mengakses rute ini." },
+          { status: 403 }
+        );
+      }
+    }
+
+    return NextResponse.next();
+  }
+
   return NextResponse.next();
 }
 
@@ -70,5 +116,6 @@ export const config = {
     "/jobs/:path*",
     "/dashboard/:path*",
     "/candidate/:path*",
+    "/api/:path*",
   ],
 };

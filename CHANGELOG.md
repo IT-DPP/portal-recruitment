@@ -4,7 +4,24 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — Phase 3 (MVP Polish, Audit Log, Login Rate-Limiting & R2 Storage Consolidation) — 2026-11-03
+## [Unreleased] — Revamp Option B: Phase 1 (Security & Dependency Hardening) — 2026-11-13
+
+### Added
+- `docs/adr/ADR-007-security-and-dependency-hardening.md`: Architecture Decision Record for server action auth guards, middleware API protection, and dependency elimination.
+- Global API authentication and RBAC gate in `middleware.ts` covering `/api/*` with whitelisted public paths (`/api/auth/*` and `/api/health`).
+
+### Changed
+- **Server Actions RBAC Hardening:**
+  - Enforced `requireStaffSession()` on previously unauthenticated pagination/filter server actions in `app/actions/job.ts`: `getPaginatedTalentPool`, `getPaginatedArchivedCandidates`, `getPaginatedBlacklistedCandidates`, `getPaginatedInterviewsDashboardData`, `getPaginatedJobOpenings`, and `getFilteredPipelineData` (mitigating critical candidate PII data leak).
+  - Enforced `requireStaffSession()` on certification schema mutations in `app/actions/master-data.ts`: `createCertificationSchema`, `updateCertificationSchema`, `deleteCertificationSchema`, and `ensureExtendedPipelineStages`.
+- **PII & Data Hygiene:**
+  - Sanitized `lib/mcu-clinics.ts`: removed hardcoded staff names, personal mobile numbers, and corporate emails, replacing them with configurable generic fallbacks (`process.env.NEXT_PUBLIC_MCU_*`).
+  - Purged `MOCK_MCU_CANDIDATES` merge logic from `app/dashboard/generate-documents/GenerateDocumentsClient.tsx` to prevent fake candidate data injection into real production documents.
+- **Dependency Cleanup & Vulnerability Mitigation:**
+  - Uninstalled vulnerable and unused dependencies: `xlsx` (Prototype Pollution & ReDoS vulnerability), `@tiptap/pm`, `@tiptap/react`, `@tiptap/starter-kit`, and `html-to-docx`.
+  - Removed unused `xlsx` import in `lib/document-generator.ts`.
+
+## [Phase 3] — (MVP Polish, Audit Log, Login Rate-Limiting & R2 Storage Consolidation) — 2026-11-03
 
 ### Added
 - `AuditLog` model in `prisma/schema.prisma` and migration `20261103043000_add_audit_log`.

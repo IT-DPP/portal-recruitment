@@ -104,3 +104,31 @@ Disetujui oleh IT Leader, dipisahkan ke branch lokal `docs/phase-1` dan `feat/ph
 ### Status
 Disetujui oleh IT Leader. Aplikasi telah berhasil diverifikasi di lokal (PostgreSQL lokal + Google OAuth + Cloudflare R2 `portal-recruitment`) dan berhasil di-deploy secara live di VM Azure Non-Odoo pada domain **`https://recruitment.dpp.co.id`** (dilengkapi DNS A Record cPanel, Nginx Reverse Proxy, dan sertifikat SSL Let's Encrypt/Certbot).
 
+---
+
+## 2026-11-13 — Revamp Opsi B: Fase 1 (Security & Dependency Hardening)
+
+### Aktivitas
+1. **Penyusunan Audit Komprehensif (9 Dokumen di `docs/audit/`):**
+   - Menganalisis seluruh 40.845 baris kode dari perspektif Principal Engineer, UX Auditor, Security Reviewer, dan Business Analyst.
+   - Mengidentifikasi celah keamanan kritis pada 6 Server Action dan pelanggaran data medis spesifik MCU di bawah UU PDP No. 27/2022.
+   - IT Leader secara formal memilih dan menginstruksikan pelaksanaan **Opsi B (Revamp Terarah)**.
+2. **Pengamanan 6 Server Action Terbuka (`ADR-007` & Temuan `SEC-01`):**
+   - Menambahkan guard `requireStaffSession()` pada `getPaginatedTalentPool`, `getPaginatedArchivedCandidates`, `getPaginatedBlacklistedCandidates`, `getPaginatedInterviewsDashboardData`, `getPaginatedJobOpenings`, dan `getFilteredPipelineData` di [`app/actions/job.ts`](../app/actions/job.ts).
+   - Menutup celah eksfiltrasi data pribadi kandidat (NIK, KK, kontak WhatsApp) oleh pihak luar tanpa login.
+3. **Pengamanan Mutasi Master Data Sertifikasi (`SEC-04`):**
+   - Menambahkan guard `requireStaffSession()` pada `createCertificationSchema`, `updateCertificationSchema`, `deleteCertificationSchema`, dan `ensureExtendedPipelineStages` di [`app/actions/master-data.ts`](../app/actions/master-data.ts).
+4. **Perluasan Proteksi Middleware ke Endpoint API (`SEC-03`):**
+   - Menambahkan matcher `/api/:path*` di [`middleware.ts`](../middleware.ts) dengan verifikasi sesi dan otorisasi RBAC global, serta pengecualian rute publik (`/api/auth/*` dan `/api/health`).
+5. **Sanitasi PII Karyawan & Penghapusan Mock Data (`SEC-02` & `AI-Slop`):**
+   - Menghapus nama, nomor handphone, dan email staf DPP yang sebelumnya hardcoded di [`lib/mcu-clinics.ts`](../lib/mcu-clinics.ts), digantikan dengan fallback environment variable aman.
+   - Menghapus logika penggabungan `MOCK_MCU_CANDIDATES` di [`app/dashboard/generate-documents/GenerateDocumentsClient.tsx`](../app/dashboard/generate-documents/GenerateDocumentsClient.tsx) agar dokumen cetak hanya memproses kandidat asli dari database.
+6. **Eliminasi Paket Dependensi Rentan & Terlantar:**
+   - Menghapus 104 paket dependensi melalui `npm uninstall xlsx @tiptap/pm @tiptap/react @tiptap/starter-kit html-to-docx`.
+   - Menghilangkan celah keamanan Prototype Pollution dan ReDoS dari library `xlsx`.
+   - Menghapus impor `xlsx` yang tidak terpakai di [`lib/document-generator.ts`](../lib/document-generator.ts).
+
+### Status
+Fase 1 (Security & Dependency Hardening) selesai dan terverifikasi. Siap untuk peninjauan dan persetujuan IT Leader sebelum melangkah ke Fase 2 (Database Normalization & Kepatuhan UU PDP).
+
+

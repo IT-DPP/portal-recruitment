@@ -1164,6 +1164,9 @@ export async function getPaginatedTalentPool({
   education = "",
 }: PaginatedTalentPoolParams = {}) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
+
     const where: any = {};
     if (education) {
       if (education === "SMA/SMK") {
@@ -1310,6 +1313,9 @@ export async function getPaginatedArchivedCandidates({
   endDate = "",
 }: PaginatedArchivedCandidatesParams = {}) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
+
     const where: any = {
       status: "REJECTED",
       candidateProfile: {
@@ -1423,6 +1429,9 @@ export async function getPaginatedBlacklistedCandidates({
   search = "",
 }: PaginatedBlacklistParams = {}) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
+
     const where: any = { isBlacklisted: true };
     if (search && search.trim()) {
       const q = search.trim();
@@ -1523,6 +1532,9 @@ export async function getPaginatedInterviewsDashboardData({
   customerId = "",
 }: PaginatedInterviewsParams = {}) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
+
     const stages = await prisma.masterPipelineStage.findMany({
       orderBy: { orderIndex: "asc" }
     });
@@ -1704,6 +1716,9 @@ export async function getPaginatedJobOpenings({
   endDate = "",
 }: PaginatedJobOpeningsParams = {}) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
+
     const where: any = {};
 
     if (status) {
@@ -1791,6 +1806,9 @@ export async function getFilteredPipelineData({
   endDate = "",
 }: PipelineFilterParams = {}) {
   try {
+    const auth = await requireStaffSession();
+    if (!auth.authorized) return { success: false, error: auth.error };
+
     const jobWhere: any = { status: "ACTIVE" };
     if (customerId) jobWhere.customerId = customerId;
     if (position) {

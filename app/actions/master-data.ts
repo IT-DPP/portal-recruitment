@@ -572,6 +572,8 @@ export async function getCertificationSchemas() {
 
 export async function createCertificationSchema(data: CertificationInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = CertificationSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const payload = { ...parsed.data, code: parsed.data.code || null }
@@ -585,6 +587,8 @@ export async function createCertificationSchema(data: CertificationInput) {
 
 export async function updateCertificationSchema(id: string, data: CertificationInput) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const parsed = CertificationSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: "Validasi gagal: " + parsed.error.message }
     const payload = { ...parsed.data, code: parsed.data.code || null }
@@ -598,6 +602,8 @@ export async function updateCertificationSchema(id: string, data: CertificationI
 
 export async function deleteCertificationSchema(id: string) {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     await prisma.masterCertificationSchema.delete({ where: { id } })
     revalidatePath("/dashboard/settings/master-data/skema-sertifikasi")
     return { success: true }
@@ -666,6 +672,8 @@ export async function deleteRejectionMessage(id: string) {
 
 export async function ensureExtendedPipelineStages() {
   try {
+    const auth = await requireStaffSession()
+    if (!auth.authorized) return { success: false, error: auth.error }
     const newStages = [
       { id: "stage_8", name: "Training", orderIndex: 8, slaDays: 0, reminderDays: 0 },
       { id: "stage_9", name: "Induction", orderIndex: 9, slaDays: 0, reminderDays: 0 },

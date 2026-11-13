@@ -27,7 +27,6 @@ import {
   McuClinic,
   McuCandidateRow,
   DEFAULT_MCU_CONTACT,
-  MOCK_MCU_CANDIDATES,
 } from "@/lib/mcu-clinics";
 import {
   FileText,
@@ -967,15 +966,7 @@ export default function GenerateDocumentsClient({
         };
       });
 
-    // Merge with prototype mock candidates so it is immediately interactive out of the box
-    const existingIds = new Set(dbCandidates.map((c) => c.id));
-    const merged = [...dbCandidates];
-    for (const mock of MOCK_MCU_CANDIDATES) {
-      if (!existingIds.has(mock.id)) {
-        merged.push(mock);
-      }
-    }
-    return merged;
+    return dbCandidates;
   }, [applications, jobs, sites, customers]);
 
   // Unique Filter Options

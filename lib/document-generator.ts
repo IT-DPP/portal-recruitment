@@ -1,6 +1,5 @@
 import { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun, Table, TableRow, TableCell, WidthType, BorderStyle } from "docx";
 import { saveAs } from "file-saver";
-import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 
 export interface OfferingLetterData {
