@@ -13,6 +13,7 @@ import {
   Award,
   ShieldAlert,
   CheckCircle2,
+  Lock,
 } from "lucide-react";
 import { applyToJob } from "@/app/actions/job";
 
@@ -59,6 +60,12 @@ export default function CandidateJobsClient({
     })
   );
 
+  // Company Rule: 1 candidate cannot apply to more than 1 job opening (restricted by NIK)
+  const activeApplication = candidateProfile?.applications?.find(
+    (app: any) => app.status === "ACTIVE" || (app.status === "HIRED" && app.currentStageId && app.currentStageId !== "Hired")
+  );
+  const hasActiveApplication = Boolean(activeApplication);
+
   // Debounce search effect
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -96,8 +103,28 @@ export default function CandidateJobsClient({
       return;
     }
 
+    if (!candidateProfile?.nik || !candidateProfile?.nik.trim()) {
+      setErrorModalMessage(
+        "Nomor Induk Kependudukan (NIK) belum terdaftar pada profil Anda. Harap lengkapi data NIK Anda di menu My Profile terlebih dahulu.",
+      );
+      return;
+    }
+
     if (appliedJobIds.includes(selectedJob.id)) {
       setErrorModalMessage("Anda sudah pernah melamar ke lowongan ini.");
+      return;
+    }
+
+    // Company Policy: 1 candidate cannot apply to more than 1 job opening
+    if (hasActiveApplication) {
+      const activeJobTitle =
+        activeApplication.job?.positionName ||
+        activeApplication.job?.position?.name ||
+        "Lowongan Lain";
+      const activeJobRef = activeApplication.job?.noRegistrasi || "-";
+      setErrorModalMessage(
+        `Sesuai aturan rekrutmen perusahaan, 1 kandidat (NIK: ${candidateProfile.nik}) hanya diperbolehkan melamar ke 1 lowongan pekerjaan. Anda saat ini masih memiliki proses lamaran aktif untuk posisi "${activeJobTitle}" (Ref: ${activeJobRef}).`,
+      );
       return;
     }
 
@@ -170,6 +197,27 @@ export default function CandidateJobsClient({
         </div>
       </div>
 
+      {/* 1 Job Limit Rule Alert Banner */}
+      {hasActiveApplication && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 flex items-start gap-4 shadow-xs">
+          <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-700 mt-0.5 border border-amber-200">
+            <Lock className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-bold text-amber-950 text-sm">
+              Aturan Rekrutmen Perusahaan: Pembatasan 1 Lowongan per NIK
+            </h4>
+            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+              Berdasarkan regulasi rekrutmen perusahaan, setiap kandidat (NIK: <strong>{candidateProfile?.nik || "-"}</strong>) hanya diperbolehkan memiliki 1 proses lamaran aktif. Saat ini Anda sedang mengikuti proses seleksi untuk posisi{" "}
+              <strong className="text-amber-950 font-bold">
+                {activeApplication?.job?.positionName || activeApplication?.job?.position?.name || "Lowongan Pekerjaan"}
+              </strong>{" "}
+              (Ref: {activeApplication?.job?.noRegistrasi || "-"}). Anda tidak dapat melamar ke lowongan lain selama proses ini masih berjalan.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Jobs Grid */}
       {initialJobs.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-table-border shadow-sm">
@@ -216,6 +264,11 @@ export default function CandidateJobsClient({
                   {hasApplied ? (
                     <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-full border border-emerald-100 uppercase tracking-wider">
                       Applied
+                    </span>
+                  ) : hasActiveApplication ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-50 text-amber-800 text-xs font-bold rounded-full border border-amber-200 uppercase tracking-wider">
+                      <Lock className="w-3 h-3 text-amber-600" />
+                      Locked
                     </span>
                   ) : (
                     <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-full border border-blue-100 uppercase tracking-wider">
@@ -374,6 +427,19 @@ export default function CandidateJobsClient({
                 >
                   Sudah Melamar
                 </button>
+              ) : hasActiveApplication ? (
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                  <span className="text-xs text-amber-900 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    Terkunci: Maksimal 1 lowongan per NIK
+                  </span>
+                  <button
+                    disabled
+                    className="px-6 py-2.5 bg-gray-200 text-gray-500 text-sm font-bold rounded-xl shadow-sm cursor-not-allowed"
+                  >
+                    Batasan 1 Lowongan
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={confirmApply}

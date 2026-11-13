@@ -38,7 +38,7 @@ export default function JobDetailClient({
   const router = useRouter();
   const modal = useModal();
   const [job, setJob] = useState<any>(initialJob);
-  const [slaConfig, setSlaConfig] = useState<any>(null);
+  const [slaConfig, setSlaConfig] = useState<any>({});
 
   // For overdue feedback modal
   const [showFeedbackModal, setShowFeedbackModal] = useState<string | null>(
@@ -67,7 +67,7 @@ export default function JobDetailClient({
     }
     // Convert DB timeline to prototype shape if they exist
     if (initialJob.timeline && initialJob.timeline.length > 0) {
-      const formattedTimeline = initialJob.timeline.map((t: any) => ({
+      let formattedTimeline = initialJob.timeline.map((t: any) => ({
         id: t.stage.id,
         title: t.stage.name,
         status: t.status,
@@ -76,9 +76,21 @@ export default function JobDetailClient({
         completionDate: t.completionDate,
         overdueNotes: t.overdueNotes
       }));
+
+      // Filter out Test Skill / Technical Test stage if the job does not require it
+      if (!initialJob.requiresSkillTest) {
+        formattedTimeline = formattedTimeline.filter((t: any) => {
+          const isSkill = t.id === "stage_4" || 
+            (t.title || "").toLowerCase().includes("skill") || 
+            (t.title || "").toLowerCase().includes("technical");
+          return !isSkill;
+        });
+      }
+
       setJob({ ...initialJob, timeline: formattedTimeline, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionName || initialJob.position?.name || "Posisi Umum" });
     } else {
-      setJob({ ...initialJob, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionName || initialJob.position?.name || "Posisi Umum" });
+      const previewTimeline = calculateTimelines(initialJob.publishedDate || new Date().toISOString(), initialJob.requiresSkillTest, config);
+      setJob({ ...initialJob, timeline: previewTimeline, globalStatus: initialJob.status === 'DRAFT' ? 'Draft' : initialJob.status, posisi: initialJob.positionName || initialJob.position?.name || "Posisi Umum" });
     }
     setSlaConfig(config);
 
@@ -131,18 +143,24 @@ export default function JobDetailClient({
   const calculateTimelines = (
     publishDateStr: string,
     needTestSkill: boolean,
+    customConfig?: any
   ) => {
     const timelines: any[] = [];
     let currentDate = new Date(publishDateStr);
+    const activeConfig = customConfig || slaConfig || {};
 
     pipelineStages.forEach((s) => {
-      // Assuming Test Skill verification stage has a specific name or keyword
-      if (s.name.includes("Test Skill") && !needTestSkill) return;
+      // Check if this stage is Test Skill / Technical Test
+      const isSkillStage = s.id === "stage_4" || 
+        (s.name || "").toLowerCase().includes("skill") || 
+        (s.name || "").toLowerCase().includes("technical");
 
-      const config = slaConfig[s.id] || { totalDays: 0 };
+      if (isSkillStage && !needTestSkill) return;
+
+      const config = activeConfig[s.id] || { totalDays: s.slaDays || 0 };
       const startDate = new Date(currentDate);
       const deadlineDate = new Date(currentDate);
-      deadlineDate.setDate(deadlineDate.getDate() + config.totalDays);
+      deadlineDate.setDate(deadlineDate.getDate() + (config.totalDays || 0));
 
       timelines.push({
         id: s.id,

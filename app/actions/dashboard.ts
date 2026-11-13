@@ -56,6 +56,10 @@ export interface DashboardCandidate {
   province?: string;
   city?: string;
   trainingCenter?: string;
+  trainingCenterType?: string;
+  educationInstitution?: string;
+  latestEducation?: string;
+  educationType?: string;
 }
 
 export interface DashboardInstitute {
@@ -130,6 +134,10 @@ export async function getExecutiveDashboardData() {
               province: { select: { name: true } },
               city: { select: { name: true } },
               trainingCenterName: true,
+              trainingCenterType: true,
+              educationInstitution: true,
+              latestEducation: true,
+              educationType: true,
             },
           },
         },
@@ -191,6 +199,10 @@ export async function getExecutiveDashboardData() {
           province: a.candidateProfile.province?.name || "",
           city: a.candidateProfile.city?.name || "",
           trainingCenter: a.candidateProfile.trainingCenterName || "",
+          trainingCenterType: a.candidateProfile.trainingCenterType || "",
+          educationInstitution: a.candidateProfile.educationInstitution || "",
+          latestEducation: a.candidateProfile.latestEducation || "",
+          educationType: a.candidateProfile.educationType || "",
         };
       }
 
@@ -308,6 +320,10 @@ export async function getGeoSourceDashboardData() {
               province: { select: { name: true } },
               city: { select: { name: true } },
               trainingCenterName: true,
+              trainingCenterType: true,
+              educationInstitution: true,
+              latestEducation: true,
+              educationType: true,
             },
           },
         },
@@ -324,6 +340,10 @@ export async function getGeoSourceDashboardData() {
           province: a.candidateProfile.province?.name || "",
           city: a.candidateProfile.city?.name || "",
           trainingCenter: a.candidateProfile.trainingCenterName || "",
+          trainingCenterType: a.candidateProfile.trainingCenterType || "",
+          educationInstitution: a.candidateProfile.educationInstitution || "",
+          latestEducation: a.candidateProfile.latestEducation || "",
+          educationType: a.candidateProfile.educationType || "",
         };
       }
 

@@ -1,18 +1,44 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { Search, Filter, X, User as UserIcon, Archive, ChevronLeft, ChevronRight } from "lucide-react";
+import { 
+  Search, 
+  Filter, 
+  X, 
+  User as UserIcon, 
+  Archive, 
+  Loader2 
+} from "lucide-react";
+import PaginationBar from "@/components/ui/PaginationBar";
+import { useDebounce } from "@/hooks/useDebounce";
+import { getPaginatedArchivedCandidates } from "@/app/actions/job";
 
-export default function ArchivedCandidatesClient({ initialApplications = [], initialJobs = [] }: { initialApplications?: any[], initialJobs?: any[] }) {
-  const [jobs, setJobs] = useState<any[]>(initialJobs);
+interface ArchivedCandidatesClientProps {
+  initialApplications?: any[];
+  initialPositions?: string[];
+  initialPagination?: {
+    totalItems: number;
+    totalPages: number;
+    currentPage: number;
+    limit: number;
+  };
+}
+
+export default function ArchivedCandidatesClient({ 
+  initialApplications = [], 
+  initialPositions = [],
+  initialPagination = { totalItems: 0, totalPages: 1, currentPage: 1, limit: 10 }
+}: ArchivedCandidatesClientProps) {
   const [applications, setApplications] = useState<any[]>(initialApplications);
-  const [candidateProfiles, setCandidateProfiles] = useState<Record<string, any>>({});
+  const [positions, setPositions] = useState<string[]>(initialPositions);
+  const [pagination, setPagination] = useState(initialPagination);
   
   // Search & Filters
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 400);
+
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  
   const [filterPosition, setFilterPosition] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
@@ -24,33 +50,39 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
   });
 
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(initialPagination.currentPage || 1);
+  const [itemsPerPage, setItemsPerPage] = useState(initialPagination.limit || 10);
+  const [isPending, startTransition] = useTransition();
+
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    setJobs(initialJobs);
-    setApplications(initialApplications);
+    if (!hasMounted) {
+      setHasMounted(true);
+      return;
+    }
 
-    const profiles: Record<string, any> = {};
-    initialApplications.forEach((app: any) => {
-      if (app.candidateProfile) {
-        const photoDoc = app.candidateProfile.documents?.find((d: any) => (d.documentType || "").toLowerCase() === "photo" || (d.documentType || "").toLowerCase() === "pas foto");
-        const photoUrl = photoDoc?.objectKey 
-          ? `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}`
-          : photoDoc?.fileUrl || app.candidateProfile.user?.image || null;
+    startTransition(async () => {
+      const res = await getPaginatedArchivedCandidates({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: debouncedSearch,
+        position: activeFilters.position,
+        startDate: activeFilters.startDate,
+        endDate: activeFilters.endDate,
+      });
 
-        profiles[app.candidateProfileId] = {
-          ...app.candidateProfile,
-          fullName: app.candidateProfile.user?.name || "Unknown",
-          email: app.candidateProfile.user?.email || "-",
-          phone: app.candidateProfile.whatsapp || app.candidateProfile.phone || "-",
-          nik: app.candidateProfile.nik,
-          filePhoto: photoUrl ? { base64: photoUrl } : null
-        };
+      if (res.success && res.data) {
+        setApplications(res.data);
+        if (res.allPositions) {
+          setPositions(res.allPositions);
+        }
+        if (res.pagination) {
+          setPagination(res.pagination);
+        }
       }
     });
-    setCandidateProfiles(profiles);
-  }, [initialApplications, initialJobs]);
+  }, [currentPage, itemsPerPage, debouncedSearch, activeFilters, hasMounted]);
 
   const handleApplyFilter = () => {
     setActiveFilters({
@@ -58,7 +90,7 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
       startDate: filterStartDate,
       endDate: filterEndDate,
     });
-    setCurrentPage(1); // Reset to first page when filtering
+    setCurrentPage(1);
     setIsFilterModalOpen(false);
   };
 
@@ -92,192 +124,159 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
     return { date: app.applicationDate, reason: "Ditolak (Tanpa Catatan)", lastStage };
   };
 
-  const getJobName = (jobId: string) => {
-    const job = jobs.find(j => j.id === jobId);
-    return job ? job.posisi : jobId;
-  };
-
-  const allPositions = Array.from(
-    new Set(jobs.filter((j) => j.posisi).map((j) => j.posisi))
-  ).sort();
-
-  // Apply Filters & Search
-  const filteredApps = applications.filter(app => {
-    let match = true;
-    
-    // Search query
-    const profile = candidateProfiles[app.candidateProfileId];
-    if (searchQuery) {
-      if (!profile) return false;
-      const q = searchQuery.toLowerCase();
-      const name = (profile.fullName || "").toLowerCase();
-      const nik = profile.nik || "";
-      const email = (profile.email || "").toLowerCase();
-      const phone = profile.phone || "";
-      if (!name.includes(q) && !nik.includes(q) && !email.includes(q) && !phone.includes(q)) {
-        match = false;
-      }
-    }
-
-    // Position Filter
-    if (activeFilters.position) {
-      const job = jobs.find(j => j.id === app.jobId);
-      if (!job || job.posisi !== activeFilters.position) {
-        match = false;
-      }
-    }
-
-    // Date Filters
-    if (activeFilters.startDate || activeFilters.endDate) {
-      const { date } = getRejectionDetails(app);
-      if (date) {
-        const rejectDate = new Date(date);
-        rejectDate.setHours(0,0,0,0);
-        
-        if (activeFilters.startDate) {
-          const sDate = new Date(activeFilters.startDate);
-          sDate.setHours(0,0,0,0);
-          if (rejectDate < sDate) match = false;
-        }
-        
-        if (activeFilters.endDate) {
-          const eDate = new Date(activeFilters.endDate);
-          eDate.setHours(0,0,0,0);
-          if (rejectDate > eDate) match = false;
-        }
-      } else {
-        match = false;
-      }
-    }
-
-    return match;
-  });
-
-  // Sorting: Newest rejected first
-  filteredApps.sort((a, b) => {
-    const dateA = new Date(getRejectionDetails(a).date || 0).getTime();
-    const dateB = new Date(getRejectionDetails(b).date || 0).getTime();
-    return dateB - dateA;
-  });
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredApps.length / itemsPerPage) || 1;
-  const paginatedApps = filteredApps.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
-  };
-
-  const goToPrevPage = () => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
-  };
+  const hasActiveFilters = Boolean(
+    activeFilters.position || activeFilters.startDate || activeFilters.endDate
+  );
 
   return (
     <div className="w-full min-w-0 space-y-6 pb-12 flex flex-col h-[calc(100vh-100px)]">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0 shrink-0">
         <div className="shrink-0">
-          <h2 className="text-2xl font-bold text-primary tracking-tight flex items-center gap-2">
-            <Archive className="w-6 h-6" /> Archived Candidates
+          <h2 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+            <Archive className="w-6 h-6 text-primary" /> Archived Candidates
           </h2>
-          <p className="text-sm text-on-surface-variant font-medium">
-            Monitor dan tinjau ulang kandidat yang tidak lolos seleksi.
+          <p className="text-sm text-on-surface-variant font-medium mt-1">
+            Daftar seluruh kandidat yang lamarannya berstatus ditolak (rejected).
           </p>
         </div>
 
-        <div className="flex items-center gap-3 min-w-0 w-full lg:w-auto">
-          <div className="relative min-w-0 flex-1 max-w-sm">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+        <div className="flex flex-col sm:flex-row items-center gap-3 min-w-0 w-full lg:w-auto shrink-0">
+          <div className="relative min-w-0 flex-1 w-full sm:w-auto sm:max-w-xs">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
             <input
               type="text"
-              placeholder="Cari nama / NIK..."
-              value={searchQuery}
+              placeholder="Cari nama, NIK, kontak, posisi..."
+              value={searchInput}
               onChange={(e) => {
-                setSearchQuery(e.target.value);
+                setSearchInput(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-10 pr-4 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow bg-white"
+              className="w-full pl-10 pr-9 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow bg-white text-slate-900 shadow-2xs"
             />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput("");
+                  setCurrentPage(1);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
+
           <button
             onClick={() => setIsFilterModalOpen(true)}
-            className="px-4 py-2 bg-white border border-outline-variant text-on-surface font-semibold rounded-xl hover:bg-surface-container-low transition-colors flex items-center gap-2 shadow-sm shrink-0 whitespace-nowrap"
+            className={`px-4 py-2 border rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0 ${
+              hasActiveFilters
+                ? "bg-primary text-white border-primary shadow-xs"
+                : "bg-white border-outline-variant text-on-surface hover:bg-surface-container-low shadow-2xs"
+            }`}
           >
-            <Filter className="w-4 h-4" /> 
-            Filters
-            {(activeFilters.position || activeFilters.startDate || activeFilters.endDate) && (
-              <span className="flex h-2 w-2 rounded-full bg-primary relative -top-1 -right-1"></span>
+            <Filter className="w-4 h-4" />
+            <span>Filter</span>
+            {hasActiveFilters && (
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             )}
           </button>
         </div>
       </div>
 
-      {/* Main Content Table */}
+      {/* Main Table Container */}
       <div className="flex-1 overflow-hidden flex flex-col bg-white border border-table-border rounded-xl shadow-sm">
-        <div className="flex-1 overflow-auto custom-scrollbar">
+        <div className="flex-1 overflow-auto custom-scrollbar relative">
+          {isPending && (
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-2xs z-20 flex items-center justify-center">
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-md border border-slate-200 text-sm font-semibold text-primary">
+                <Loader2 className="w-4 h-4 animate-spin" /> Memuat data...
+              </div>
+            </div>
+          )}
+
           <table className="w-full text-sm text-left">
             <thead className="bg-surface-container-lowest sticky top-0 z-10 text-xs uppercase font-bold text-on-surface-variant border-b border-table-border">
               <tr>
-                <th className="px-6 py-4 whitespace-nowrap">Kandidat</th>
-                <th className="px-6 py-4 whitespace-nowrap">Kontak</th>
-                <th className="px-6 py-4 whitespace-nowrap">Posisi Job</th>
-                <th className="px-6 py-4 whitespace-nowrap">Tahapan Terakhir</th>
-                <th className="px-6 py-4 whitespace-nowrap">Tanggal Ditolak</th>
+                <th className="px-6 py-4">Kandidat</th>
+                <th className="px-6 py-4">Posisi Dilamar</th>
+                <th className="px-6 py-4">Tahapan Terakhir</th>
+                <th className="px-6 py-4">Tanggal Ditolak</th>
                 <th className="px-6 py-4">Alasan Penolakan</th>
-                <th className="px-6 py-4 text-center whitespace-nowrap">Aksi</th>
+                <th className="px-6 py-4 text-center">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-table-border">
-              {paginatedApps.length > 0 ? (
-                paginatedApps.map((app) => {
-                  const profile = candidateProfiles[app.candidateProfileId] || {};
+            <tbody className="divide-y divide-table-border font-medium text-slate-800">
+              {applications.length > 0 ? (
+                applications.map((app) => {
+                  const profile = app.candidateProfile;
+                  const photoDoc = profile?.documents?.find(
+                    (d: any) =>
+                      (d.documentType || "").toLowerCase() === "photo" ||
+                      (d.documentType || "").toLowerCase() === "pas foto"
+                  );
+                  const photoUrl = photoDoc?.objectKey
+                    ? `/api/file?key=${encodeURIComponent(photoDoc.objectKey)}`
+                    : photoDoc?.fileUrl || profile?.user?.image || null;
+
                   const { date, reason, lastStage } = getRejectionDetails(app);
-                  
+                  const jobName = app.job?.positionName || app.job?.position?.name || "General";
+
                   return (
-                    <tr key={app.id} className="hover:bg-surface-container-lowest transition-colors group">
+                    <tr key={app.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0 overflow-hidden border border-slate-200">
-                            {profile.filePhoto?.base64 ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={profile.filePhoto.base64} alt="avatar" className="w-full h-full object-cover" />
+                          <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                            {photoUrl ? (
+                              <img 
+                                src={photoUrl} 
+                                alt={profile?.user?.name || "User"} 
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
-                              <UserIcon className="w-5 h-5 text-on-surface-variant" />
+                              <UserIcon className="w-5 h-5 text-slate-400" />
                             )}
                           </div>
                           <div>
-                            <p className="font-bold text-black">{profile.fullName || "Unknown"}</p>
-                            <p className="text-xs text-on-surface-variant font-mono">{profile.nik || "No NIK"}</p>
+                            <div className="font-bold text-slate-900 leading-tight">
+                              {profile?.user?.name || "Unknown"}
+                            </div>
+                            <div className="text-xs text-on-surface-variant mt-0.5">
+                              NIK: {profile?.nik || "-"}
+                            </div>
+                            <div className="text-xs text-slate-400">
+                              {profile?.user?.email || "-"}
+                            </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-medium text-black text-sm">{profile.email || "-"}</p>
-                        <p className="text-xs text-on-surface-variant font-mono mt-0.5">{profile.phone || "-"}</p>
+                        <span className="font-semibold text-slate-800">{jobName}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-semibold text-primary">{getJobName(app.jobId)}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-bold border border-slate-200">
-                          {lastStage || "-"}
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                          {lastStage}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-xs font-mono bg-surface-container px-2 py-1 rounded text-on-surface">
-                          {date ? new Date(date).toLocaleDateString("id-ID") : "-"}
-                        </span>
+                      <td className="px-6 py-4 text-xs text-slate-600">
+                        {date ? new Date(date).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric"
+                        }) : "-"}
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm text-status-error font-medium line-clamp-2" title={reason}>
+                        <p className="text-xs text-rose-700 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 line-clamp-2 max-w-xs font-normal" title={reason}>
                           {reason}
                         </p>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <Link 
+                        <Link
                           href={`/dashboard/job-openings/${app.jobId}/verify/${app.candidateProfileId}`}
-                          className="inline-block px-4 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-lg hover:bg-primary hover:text-white transition-colors"
+                          className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-semibold text-primary hover:bg-primary/10 transition-colors border border-primary/20"
                         >
-                          Detail Riwayat
+                          Lihat Profil
                         </Link>
                       </td>
                     </tr>
@@ -285,11 +284,12 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-on-surface-variant">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <Archive className="w-10 h-10 opacity-20" />
-                      <p>Tidak ada data kandidat yang diarsipkan atau ditolak.</p>
-                    </div>
+                  <td colSpan={6} className="px-6 py-16 text-center text-on-surface-variant">
+                    <Archive className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p className="text-base font-semibold text-slate-700">Tidak ada kandidat terarsip</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      Belum ada kandidat yang ditolak atau sesuai dengan kriteria filter saat ini.
+                    </p>
                   </td>
                 </tr>
               )}
@@ -297,52 +297,20 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        {filteredApps.length > 0 && (
-          <div className="p-4 border-t border-table-border bg-surface-bright flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-on-surface-variant">
-              Menampilkan <span className="font-bold text-black">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-bold text-black">{Math.min(currentPage * itemsPerPage, filteredApps.length)}</span> dari <span className="font-bold text-black">{filteredApps.length}</span> kandidat
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-on-surface-variant">Baris per halaman:</span>
-                <select 
-                  value={itemsPerPage} 
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="px-2 py-1 border border-outline-variant rounded text-sm outline-none focus:border-primary"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1}
-                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <span className="text-sm font-semibold min-w-[3rem] text-center">
-                  {currentPage} / {totalPages}
-                </span>
-                <button
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Unified Standard Pagination Bar */}
+        <PaginationBar
+          currentPage={currentPage}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={(newLimit) => {
+            setItemsPerPage(newLimit);
+            setCurrentPage(1);
+          }}
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          isLoading={isPending}
+        />
       </div>
 
       {/* Filter Modal */}
@@ -370,7 +338,7 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
                   className="w-full px-3 py-2 border border-outline-variant rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-white"
                 >
                   <option value="">Semua Posisi</option>
-                  {allPositions.map((pos: any) => (
+                  {positions.map((pos: any) => (
                     <option key={pos} value={pos}>
                       {pos}
                     </option>
@@ -380,7 +348,7 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-1.5">Mulai Tanggal Ditolak</label>
+                  <label className="block text-sm font-semibold text-black mb-1.5">Mulai Tanggal</label>
                   <input
                     type="date"
                     value={filterStartDate}
@@ -389,7 +357,7 @@ export default function ArchivedCandidatesClient({ initialApplications = [], ini
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-1.5">Sampai Tanggal Ditolak</label>
+                  <label className="block text-sm font-semibold text-black mb-1.5">Sampai Tanggal</label>
                   <input
                     type="date"
                     value={filterEndDate}

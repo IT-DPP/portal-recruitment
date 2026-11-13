@@ -1,101 +1,98 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Search, User as UserIcon, UserX, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { getBlacklistedCandidates } from "@/app/actions/job";
+import React, { useState, useEffect, useTransition } from "react";
+import { Search, User as UserIcon, UserX, X, Loader2 } from "lucide-react";
+import { getPaginatedBlacklistedCandidates } from "@/app/actions/job";
+import PaginationBar from "@/components/ui/PaginationBar";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function BlacklistedCandidatesPage() {
   const [blacklistedProfiles, setBlacklistedProfiles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({
+    totalItems: 0,
+    totalPages: 1,
+    currentPage: 1,
+    limit: 10,
+  });
   
   // Search
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 400);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    async function fetchBlacklisted() {
-      setLoading(true);
-      const res = await getBlacklistedCandidates();
+    startTransition(async () => {
+      const res = await getPaginatedBlacklistedCandidates({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: debouncedSearch,
+      });
+
       if (res.success && res.data) {
         setBlacklistedProfiles(res.data);
+        if (res.pagination) {
+          setPagination(res.pagination);
+        }
       }
-      setLoading(false);
-    }
-    fetchBlacklisted();
-  }, []);
-
-  // Apply Search
-  const filteredProfiles = blacklistedProfiles.filter(profile => {
-    let match = true;
-    
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const name = (profile.fullName || "").toLowerCase();
-      const nik = profile.nik || "";
-      const email = (profile.email || "").toLowerCase();
-      const phone = profile.phone || "";
-      if (!name.includes(q) && !nik.includes(q) && !email.includes(q) && !phone.includes(q)) {
-        match = false;
-      }
-    }
-
-    return match;
-  });
-
-  // Sorting: Newest blacklisted first
-  filteredProfiles.sort((a, b) => {
-    const dateA = new Date(a.blacklistedDate || 0).getTime();
-    const dateB = new Date(b.blacklistedDate || 0).getTime();
-    return dateB - dateA;
-  });
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredProfiles.length / itemsPerPage) || 1;
-  const paginatedProfiles = filteredProfiles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
-  };
-
-  const goToPrevPage = () => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
-  };
+    });
+  }, [currentPage, itemsPerPage, debouncedSearch]);
 
   return (
     <div className="w-full min-w-0 space-y-6 pb-12 flex flex-col h-[calc(100vh-100px)]">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0 shrink-0">
         <div className="shrink-0">
           <h2 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
             <UserX className="w-6 h-6 text-red-600" /> Blacklisted Candidates
           </h2>
-          <p className="text-sm text-on-surface-variant font-medium">
+          <p className="text-sm text-on-surface-variant font-medium mt-1">
             Daftar kandidat yang telah masuk ke dalam daftar hitam (blacklist).
           </p>
         </div>
 
         <div className="flex items-center gap-3 min-w-0 w-full lg:w-auto">
           <div className="relative min-w-0 flex-1 max-w-sm">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
             <input
               type="text"
               placeholder="Cari nama, NIK, email, no hp..."
-              value={searchQuery}
+              value={searchInput}
               onChange={(e) => {
-                setSearchQuery(e.target.value);
+                setSearchInput(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-10 pr-4 py-2 border border-outline-variant rounded-xl text-sm focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition-shadow bg-white"
+              className="w-full pl-10 pr-9 py-2 border border-outline-variant rounded-xl text-sm focus:border-slate-800 focus:ring-1 focus:ring-slate-800 outline-none transition-shadow bg-white text-slate-900 shadow-2xs"
             />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput("");
+                  setCurrentPage(1);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Main Content Table */}
       <div className="flex-1 overflow-hidden flex flex-col bg-white border border-table-border rounded-xl shadow-sm">
-        <div className="flex-1 overflow-auto custom-scrollbar">
+        <div className="flex-1 overflow-auto custom-scrollbar relative">
+          {isPending && (
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-2xs z-20 flex items-center justify-center">
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-md border border-slate-200 text-sm font-semibold text-slate-800">
+                <Loader2 className="w-4 h-4 animate-spin text-red-600" /> Memuat data blacklist...
+              </div>
+            </div>
+          )}
+
           <table className="w-full text-sm text-left">
             <thead className="bg-surface-container-lowest sticky top-0 z-10 text-xs uppercase font-bold text-on-surface-variant border-b border-table-border">
               <tr>
@@ -107,24 +104,14 @@ export default function BlacklistedCandidatesPage() {
                 <th className="px-6 py-4">Catatan (Reason)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-table-border">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                      <p>Memuat data blacklist...</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : paginatedProfiles.length > 0 ? (
-                paginatedProfiles.map((profile) => (
-                  <tr key={profile.id} className="hover:bg-surface-container-lowest transition-colors group">
+            <tbody className="divide-y divide-table-border font-medium text-slate-800">
+              {blacklistedProfiles.length > 0 ? (
+                blacklistedProfiles.map((profile) => (
+                  <tr key={profile.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0 overflow-hidden border border-slate-200">
                           {profile.filePhoto?.base64 ? (
-                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={profile.filePhoto.base64} alt="avatar" className="w-full h-full object-cover" />
                           ) : (
                             <UserIcon className="w-5 h-5 text-on-surface-variant" />
@@ -162,11 +149,12 @@ export default function BlacklistedCandidatesPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <UserX className="w-10 h-10 opacity-20" />
-                      <p>Tidak ada data kandidat yang di-blacklist.</p>
-                    </div>
+                  <td colSpan={6} className="px-6 py-16 text-center text-on-surface-variant">
+                    <UserX className="w-12 h-12 mx-auto mb-3 opacity-20 text-red-500" />
+                    <p className="text-base font-semibold text-slate-700">Tidak ada data kandidat yang di-blacklist.</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      Kandidat yang masuk daftar hitam akan muncul di sini.
+                    </p>
                   </td>
                 </tr>
               )}
@@ -174,52 +162,20 @@ export default function BlacklistedCandidatesPage() {
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        {filteredProfiles.length > 0 && (
-          <div className="p-4 border-t border-table-border bg-surface-bright flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-on-surface-variant">
-              Menampilkan <span className="font-bold text-black">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-bold text-black">{Math.min(currentPage * itemsPerPage, filteredProfiles.length)}</span> dari <span className="font-bold text-black">{filteredProfiles.length}</span> kandidat
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-on-surface-variant">Baris per halaman:</span>
-                <select 
-                  value={itemsPerPage} 
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="px-2 py-1 border border-outline-variant rounded text-sm outline-none focus:border-slate-800"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1}
-                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <span className="text-sm font-semibold min-w-[3rem] text-center">
-                  {currentPage} / {totalPages}
-                </span>
-                <button
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                  className="p-1.5 rounded hover:bg-surface-container disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Unified Standard Pagination Bar */}
+        <PaginationBar
+          currentPage={currentPage}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={(newLimit) => {
+            setItemsPerPage(newLimit);
+            setCurrentPage(1);
+          }}
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          isLoading={isPending}
+        />
       </div>
     </div>
   );

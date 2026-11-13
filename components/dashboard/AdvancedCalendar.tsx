@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, dateFnsLocalizer, Event, View } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale/en-US';
@@ -31,11 +31,27 @@ export interface AdvancedCalendarEvent extends Event {
 interface Props {
   events: AdvancedCalendarEvent[];
   onEventClick?: (event: AdvancedCalendarEvent) => void;
+  currentDate?: Date;
+  onNavigate?: (newDate: Date) => void;
 }
 
-export default function AdvancedCalendar({ events, onEventClick }: Props) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+export default function AdvancedCalendar({ events, onEventClick, currentDate: propDate, onNavigate: propOnNavigate }: Props) {
+  const [internalDate, setInternalDate] = useState<Date>(() => propDate || new Date());
   const [currentView, setCurrentView] = useState<View>('month');
+
+  // Sync internal date if propDate changes
+  useEffect(() => {
+    if (propDate) {
+      setInternalDate(propDate);
+    }
+  }, [propDate]);
+
+  const activeDate = propDate || internalDate;
+
+  const handleDateNavigate = (newDate: Date) => {
+    setInternalDate(newDate);
+    propOnNavigate?.(newDate);
+  };
 
   const eventPropGetter = (event: AdvancedCalendarEvent) => {
     let backgroundColor = '#3b82f6'; // default blue
@@ -46,27 +62,35 @@ export default function AdvancedCalendar({ events, onEventClick }: Props) {
         backgroundColor = '#eab308'; // yellow-500
       } else if (event.stageName?.includes('User')) {
         backgroundColor = '#22c55e'; // green-500
-      } else if (event.stageName?.includes('CV')) {
+      } else if (event.stageName?.includes('CV') || event.stageName?.includes('Admin') || event.stageName?.includes('Screening')) {
         backgroundColor = '#0f4c81'; // dark blue
       } else if (event.stageName?.includes('Psikotes')) {
-        backgroundColor = '#1976D2';
-      } else if (event.stageName?.includes('Technical')) {
-        backgroundColor = '#0288D1';
+        backgroundColor = '#6366f1'; // indigo-500
+      } else if (event.stageName?.includes('Technical') || event.stageName?.includes('Skill')) {
+        backgroundColor = '#0288D1'; // sky-600
       } else if (event.stageName?.includes('Offering')) {
-        backgroundColor = '#00796B';
+        backgroundColor = '#0d9488'; // teal-600
       } else if (event.stageName?.includes('MCU')) {
-        backgroundColor = '#2E7D32';
+        backgroundColor = '#16a34a'; // green-600
       } else {
         backgroundColor = '#3b82f6';
       }
     } else {
-      // General mode
+      // General mode (current active schedules)
       if (event.type === 'hr') {
         backgroundColor = '#eab308'; // yellow-500
       } else if (event.type === 'user') {
         backgroundColor = '#22c55e'; // green-500
       } else if (event.type === 'skill') {
-        backgroundColor = '#3b82f6'; // blue-500
+        backgroundColor = '#0288D1'; // sky-600
+      } else if (event.type === 'psikotes') {
+        backgroundColor = '#6366f1'; // indigo-500
+      } else if (event.type === 'mcu') {
+        backgroundColor = '#16a34a'; // green-600
+      } else if (event.type === 'offering') {
+        backgroundColor = '#0d9488'; // teal-600
+      } else if (event.type === 'administration') {
+        backgroundColor = '#0f4c81'; // dark blue
       }
     }
     
@@ -90,14 +114,17 @@ export default function AdvancedCalendar({ events, onEventClick }: Props) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-table-border p-5 h-[700px] flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 className="font-bold text-on-surface">Recruitment Calendar</h3>
-        <div className="flex gap-4 text-xs font-medium text-on-surface-variant">
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-yellow-500"></div>HR Interview</div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-green-500"></div>User Interview</div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-blue-500"></div>Skill/Technical</div>
-          <div className="flex items-center gap-1.5 ml-4 border-l pl-4 border-table-border">
-            <div className="w-3 h-3 rounded-full bg-[#0f4c81]"></div>Pipeline Stages (Candidate Mode)
+        <div className="flex flex-wrap gap-3 text-xs font-medium text-on-surface-variant">
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-yellow-500"></div>HR Intv</div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-green-500"></div>User Intv</div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-[#0288D1]"></div>Skill/Tech</div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-[#6366f1]"></div>Psikotes</div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-[#16a34a]"></div>MCU</div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-[#0d9488]"></div>Offering</div>
+          <div className="flex items-center gap-1.5 ml-2 border-l pl-3 border-table-border">
+            <div className="w-3 h-3 rounded-full bg-[#0f4c81]"></div>Administrasi / Pipeline
           </div>
         </div>
       </div>
@@ -141,8 +168,8 @@ export default function AdvancedCalendar({ events, onEventClick }: Props) {
           eventPropGetter={eventPropGetter}
           views={['month', 'week', 'day']}
           toolbar={true}
-          date={currentDate}
-          onNavigate={(newDate) => setCurrentDate(newDate)}
+          date={activeDate}
+          onNavigate={handleDateNavigate}
           view={currentView}
           onView={(newView) => setCurrentView(newView)}
           onSelectEvent={onEventClick}

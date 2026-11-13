@@ -8,6 +8,9 @@ import {
   generateMcuDocx,
   generateMcuBatchDocx,
   generateBastExcel,
+  generateBastZipPackage,
+  generateBastStatementLetterPDF,
+  BastZipProgress,
   getBase64FromUrl,
   McuLetterData,
   McuBatchDocumentData,
@@ -53,7 +56,12 @@ import {
   Building,
   Briefcase,
   ExternalLink,
+  FolderArchive,
+  Archive,
+  Clock,
+  FileCheck,
 } from "lucide-react";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 
 
 // -------------------------------------------------------------------------
@@ -269,6 +277,9 @@ export default function GenerateDocumentsClient({
   const [bastInputs, setBastInputs] = useState<Record<string, any>>({});
   const [isSavingBast, setIsSavingBast] = useState(false);
   const [isGeneratingBastExcel, setIsGeneratingBastExcel] = useState(false);
+  const [isGeneratingBastZip, setIsGeneratingBastZip] = useState(false);
+  const [bastZipProgress, setBastZipProgress] = useState<BastZipProgress | null>(null);
+  const [isGeneratingStatementPdf, setIsGeneratingStatementPdf] = useState(false);
 
   // -------------------------------------------------------------------------
   // 3. MCU STATES (Prototype Surat Pengantar MCU Batch)
@@ -430,6 +441,37 @@ export default function GenerateDocumentsClient({
     return jobApplications.filter(isOfferingOrAbove);
   }, [jobApplications]);
 
+  const jobOptions = useMemo(() => {
+    return eligibleJobs.map((job) => ({
+      value: job.id,
+      label: `${job.noRegistrasi || "LOWONGAN"} - ${job.posisi}`,
+      subLabel: `${job.customerName || "Customer"} • Site: ${job.location || "-"}${
+        job.noB1 && job.noB1 !== "-" ? ` • No B1: ${job.noB1}` : ""
+      }`,
+      badge: job.customerName || undefined,
+      badgeColor: "blue" as const,
+    }));
+  }, [eligibleJobs]);
+
+  const candidateOptions = useMemo(() => {
+    return eligibleCandidates.map((app) => {
+      const name = app.candidateProfile?.user?.name || "Kandidat";
+      const stageName = app.currentStage?.name || app.status || "Offering";
+      const nik = app.candidateProfile?.nik ? `NIK: ${app.candidateProfile.nik}` : "";
+      const phone = app.candidateProfile?.user?.phone
+        ? `Telp: ${app.candidateProfile.user.phone}`
+        : "";
+      const meta = [nik, phone].filter(Boolean).join(" • ");
+      return {
+        value: app.id,
+        label: name,
+        subLabel: meta || `Posisi: ${selectedJob?.posisi || "-"}`,
+        badge: stageName,
+        badgeColor: "green" as const,
+      };
+    });
+  }, [eligibleCandidates, selectedJob]);
+
   const selectedApp = useMemo(() => {
     return applications.find((a) => a.id === selectedAppId);
   }, [applications, selectedAppId]);
@@ -499,6 +541,15 @@ export default function GenerateDocumentsClient({
   // -------------------------------------------------------------------------
   // BAST LOGIC
   // -------------------------------------------------------------------------
+  const customerOptions = useMemo(() => {
+    return customers.map((c) => ({
+      value: c.id,
+      label: c.name,
+      subLabel: c.code ? `Kode Perusahaan: ${c.code}` : undefined,
+      badge: c.code || "Mitra",
+      badgeColor: "blue" as const,
+    }));
+  }, [customers]);
   const availableBastJobs = useMemo(() => {
     if (!bastCustomerId) return [];
 
@@ -656,6 +707,64 @@ export default function GenerateDocumentsClient({
     setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
+  const getCandidateDocStatus = (app: any) => {
+    const docs = app?.candidateProfile?.documents || [];
+    const certDoc = docs.find((d: any) => {
+      const t = (d.documentType || "").toLowerCase();
+      return t.includes("sertifikat") || t.includes("bnsp");
+    });
+
+    let stageData: any = {};
+    try {
+      stageData =
+        typeof app?.stageData === "string"
+          ? JSON.parse(app.stageData)
+          : app?.stageData || {};
+    } catch (e) {
+      stageData = {};
+    }
+
+    const bnspVal = stageData?.bnspValidation;
+    const hasValidationFile = !!bnspVal?.file;
+    const isValidationApproved = bnspVal?.isApproved;
+
+    return {
+      hasCert: !!certDoc,
+      hasValidation: hasValidationFile,
+      isApproved: isValidationApproved,
+    };
+  };
+
+  const getBastRowsData = () => {
+    return bastSelectedApps
+      .map((appId, index) => {
+        const app = applications.find((a) => a.id === appId);
+        if (!app) return null;
+        const job = jobs.find((j) => j.id === app.jobId);
+        const cand = app.candidateProfile;
+        const inputs = bastInputs[appId] || {};
+        const site = sites.find((s) => s.id === job?.siteId);
+
+        return {
+          no: index + 1,
+          noRequest: job?.noRegistrasi || "-",
+          noB1: job?.noB1 || "-",
+          tanggalTerimaB1: job?.tanggalMasuk || "-",
+          nama: cand?.user?.name || cand?.nik || "-",
+          nik: cand?.nik || "-",
+          posisi: job?.posisi || "-",
+          status: inputs.status || "LOKAL",
+          nrpDpp: inputs.nrp || "-",
+          areaKerja: site?.name || job?.location || "-",
+          awalKontrak: inputs.start || "-",
+          akhirKontrak: inputs.end || "-",
+          linkSertifikat: inputs.link || "-",
+          validasi: inputs.validasi || "Valid",
+        };
+      })
+      .filter(Boolean);
+  };
+
   const handleDownloadExcelBAST = async () => {
     if (bastSelectedApps.length === 0) {
       alert("Pilih minimal satu kandidat yang ingin disertakan dalam BAST.");
@@ -665,34 +774,7 @@ export default function GenerateDocumentsClient({
     setIsGeneratingBastExcel(true);
     try {
       const currentCustomer = customers.find((c) => c.id === bastCustomerId);
-
-      const rows = bastSelectedApps
-        .map((appId, index) => {
-          const app = applications.find((a) => a.id === appId);
-          if (!app) return null;
-          const job = jobs.find((j) => j.id === app.jobId);
-          const cand = app.candidateProfile;
-          const inputs = bastInputs[appId] || {};
-          const site = sites.find((s) => s.id === job?.siteId);
-
-          return {
-            no: index + 1,
-            noRequest: job?.noRegistrasi || "-",
-            noB1: job?.noB1 || "-",
-            tanggalTerimaB1: job?.tanggalMasuk || "-",
-            nama: cand?.user?.name || cand?.nik || "-",
-            nik: cand?.nik || "-",
-            posisi: job?.posisi || "-",
-            status: inputs.status || "LOKAL",
-            nrpDpp: inputs.nrp || "-",
-            areaKerja: site?.name || job?.location || "-",
-            awalKontrak: inputs.start || "-",
-            akhirKontrak: inputs.end || "-",
-            linkSertifikat: inputs.link || "-",
-            validasi: inputs.validasi || "Valid",
-          };
-        })
-        .filter(Boolean);
+      const rows = getBastRowsData();
 
       await generateBastExcel(rows, {
         customerName: currentCustomer?.name || "Customer",
@@ -705,6 +787,96 @@ export default function GenerateDocumentsClient({
       alert("Terjadi kesalahan saat memproses file Excel BAST.");
     } finally {
       setIsGeneratingBastExcel(false);
+    }
+  };
+
+  const handleDownloadStatementPdfBAST = async () => {
+    if (bastSelectedApps.length === 0) {
+      alert("Pilih minimal satu kandidat yang ingin disertakan dalam Surat Pernyataan BAST.");
+      return;
+    }
+
+    setIsGeneratingStatementPdf(true);
+    try {
+      const currentCustomer = customers.find((c) => c.id === bastCustomerId);
+      const rows = getBastRowsData();
+
+      await generateBastStatementLetterPDF(rows, {
+        customerName: currentCustomer?.name || "Customer",
+        month: bastMonth,
+        nomorBast: bastNomorSurat,
+        logoUrl: "/logo_company.png",
+      });
+    } catch (err: any) {
+      console.error("Error generating Surat Pernyataan BAST PDF:", err);
+      alert("Terjadi kesalahan saat memproses Surat Pernyataan BAST PDF: " + (err?.message || err));
+    } finally {
+      setIsGeneratingStatementPdf(false);
+    }
+  };
+
+  const handleDownloadZipBAST = async () => {
+    if (bastSelectedApps.length === 0) {
+      alert("Pilih minimal satu kandidat yang ingin disertakan dalam paket BAST.");
+      return;
+    }
+
+    setIsGeneratingBastZip(true);
+    setBastZipProgress({
+      step: 1,
+      totalSteps: 5,
+      message: "Menginisialisasi paket BAST...",
+      percent: 5,
+    });
+
+    try {
+      const currentCustomer = customers.find((c) => c.id === bastCustomerId);
+      const rows = getBastRowsData();
+
+      const candidateItems = bastSelectedApps
+        .map((appId) => {
+          const app = applications.find((a) => a.id === appId);
+          if (!app) return null;
+          const cand = app.candidateProfile;
+          const inputs = bastInputs[appId] || {};
+          const job = jobs.find((j) => j.id === app.jobId);
+          const site = sites.find((s) => s.id === job?.siteId);
+
+          return {
+            appId: app.id,
+            nama: cand?.user?.name || cand?.nik || "Kandidat",
+            nik: cand?.nik || "-",
+            nrp: inputs.nrp || "",
+            posisi: job?.posisi || "-",
+            areaKerja: site?.name || job?.location || "-",
+          };
+        })
+        .filter(Boolean) as any[];
+
+      const res = await generateBastZipPackage(
+        rows,
+        candidateItems,
+        {
+          customerName: currentCustomer?.name || "Customer",
+          month: bastMonth,
+          nomorBast: bastNomorSurat,
+          logoUrl: "/logo_company.png",
+        },
+        (progress) => {
+          setBastZipProgress(progress);
+        }
+      );
+
+      setFeedbackMsg({
+        type: "success",
+        text: `Paket BAST (.zip) berhasil diunduh (${res.totalCandidates} kandidat).`,
+      });
+    } catch (err: any) {
+      console.error("Error generating ZIP BAST:", err);
+      alert("Terjadi kesalahan saat membuat paket BAST: " + (err?.message || err));
+    } finally {
+      setIsGeneratingBastZip(false);
+      setBastZipProgress(null);
     }
   };
 
@@ -821,6 +993,52 @@ export default function GenerateDocumentsClient({
     const custs = Array.from(new Set(allMcuCandidates.map((c) => c.customer))).filter(Boolean);
     return custs.sort();
   }, [allMcuCandidates]);
+
+  const provinceOptions = useMemo(() => {
+    return provinces.map((prov) => ({
+      value: prov.id,
+      label: prov.name,
+      subLabel: prov.code ? `Kode Wilayah: ${prov.code}` : undefined,
+      badge: prov.code || undefined,
+      badgeColor: "purple" as const,
+    }));
+  }, [provinces]);
+
+  const clinicOptions = useMemo(() => {
+    return availableMcuClinics.map((clinic) => {
+      const name = clinic.name || clinic.nama || "Klinik";
+      const provName = clinic.province?.name || clinic.wilayah || "";
+      const addr = clinic.address || clinic.alamat || "";
+      return {
+        value: clinic.id,
+        label: name,
+        subLabel: `${addr ? `${addr} • ` : ""}Wilayah: ${provName || "-"}`,
+        badge: clinic.code || "Klinik",
+        badgeColor: "green" as const,
+      };
+    });
+  }, [availableMcuClinics]);
+
+  const mcuPosisiOptions = useMemo(() => {
+    return mcuPositions.map((pos) => ({
+      value: pos,
+      label: pos,
+    }));
+  }, [mcuPositions]);
+
+  const mcuSiteOptions = useMemo(() => {
+    return mcuSites.map((site) => ({
+      value: site,
+      label: site,
+    }));
+  }, [mcuSites]);
+
+  const mcuCustomerOptions = useMemo(() => {
+    return mcuCustomers.map((cust) => ({
+      value: cust,
+      label: cust,
+    }));
+  }, [mcuCustomers]);
 
   // Filtered Candidate List
   const filteredMcuCandidates = useMemo(() => {
@@ -1234,21 +1452,16 @@ export default function GenerateDocumentsClient({
                   <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
                     Lowongan Pekerjaan <span className="text-red-500">*</span>
                   </label>
-                  <select
+                  <SearchableSelect
+                    options={jobOptions}
                     value={selectedJobId}
-                    onChange={(e) => {
-                      setSelectedJobId(e.target.value);
+                    onChange={(val) => {
+                      setSelectedJobId(val);
                       setSelectedAppId("");
                     }}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
-                  >
-                    <option value="">-- Pilih Lowongan Pekerjaan --</option>
-                    {eligibleJobs.map((job) => (
-                      <option key={job.id} value={job.id}>
-                        {job.noRegistrasi} - {job.posisi} ({job.customerName})
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="-- Pilih Lowongan Pekerjaan --"
+                    searchPlaceholder="Cari registrasi, posisi, customer, site..."
+                  />
                   {eligibleJobs.length === 0 && (
                     <p className="text-[11px] text-amber-600 mt-1">
                       Belum ada lowongan dengan kandidat di tahap Offering Letter atau di atasnya.
@@ -1268,33 +1481,20 @@ export default function GenerateDocumentsClient({
                       </span>
                     )}
                   </div>
-                  <select
+                  <SearchableSelect
+                    options={candidateOptions}
                     value={selectedAppId}
-                    onChange={(e) => setSelectedAppId(e.target.value)}
+                    onChange={(val) => setSelectedAppId(val)}
                     disabled={!selectedJobId || eligibleCandidates.length === 0}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface disabled:opacity-50"
-                  >
-                    <option value="">
-                      {!selectedJobId
+                    placeholder={
+                      !selectedJobId
                         ? "-- Pilih Lowongan Terlebih Dahulu --"
                         : eligibleCandidates.length === 0
                           ? "-- Tidak ada kandidat eligible --"
-                          : "-- Pilih Kandidat --"}
-                    </option>
-                    {eligibleCandidates.map((app) => {
-                      const name =
-                        app.candidateProfile?.user?.name || "Kandidat";
-                      const stageName = app.currentStage?.name || app.status;
-                      const nik = app.candidateProfile?.nik
-                        ? ` - NIK: ${app.candidateProfile.nik}`
-                        : "";
-                      return (
-                        <option key={app.id} value={app.id}>
-                          {name} ({stageName}){nik}
-                        </option>
-                      );
-                    })}
-                  </select>
+                          : "-- Pilih Kandidat --"
+                    }
+                    searchPlaceholder="Cari nama kandidat, NIK, stage..."
+                  />
                 </div>
 
                 {/* Nama (autofill, disabled) */}
@@ -1578,23 +1778,18 @@ export default function GenerateDocumentsClient({
                   <label className="block text-xs font-semibold text-on-surface uppercase mb-1.5">
                     Customer / Perusahaan Mitra
                   </label>
-                  <select
+                  <SearchableSelect
+                    options={customerOptions}
                     value={bastCustomerId}
-                    onChange={(e) => {
-                      setBastCustomerId(e.target.value);
+                    onChange={(val) => {
+                      setBastCustomerId(val);
                       setBastSelectedAreas([]);
                       setBastSelectedJobs([]);
                       setBastSelectedApps([]);
                     }}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
-                  >
-                    <option value="">-- Pilih Customer --</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {c.code ? `(${c.code})` : ""}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="-- Pilih Customer / Perusahaan Mitra --"
+                    searchPlaceholder="Cari nama atau kode perusahaan mitra..."
+                  />
                   <p className="text-[11px] text-on-surface-variant mt-1">
                     Perusahaan mitra penerima serah terima.
                   </p>
@@ -1751,6 +1946,12 @@ export default function GenerateDocumentsClient({
                           </th>
                           <th className="px-3 py-3 font-semibold">NIK</th>
                           <th className="px-3 py-3 font-semibold">Posisi</th>
+                          <th className="px-3 py-3 font-semibold text-center">
+                            Sertifikat
+                          </th>
+                          <th className="px-3 py-3 font-semibold text-center">
+                            Validasi Recruiter
+                          </th>
                           <th className="px-3 py-3 font-semibold">Status</th>
                           <th className="px-3 py-3 font-semibold min-w-[120px]">
                             NRP DPP
@@ -1773,7 +1974,7 @@ export default function GenerateDocumentsClient({
                         {filteredBastCandidates.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={11}
+                              colSpan={13}
                               className="px-4 py-8 text-center text-on-surface-variant italic"
                             >
                               Tidak ada kandidat lolos pada lowongan yang
@@ -1788,6 +1989,7 @@ export default function GenerateDocumentsClient({
                             const isSelected = bastSelectedApps.includes(
                               app.id,
                             );
+                            const docStatus = getCandidateDocStatus(app);
 
                             return (
                               <tr
@@ -1822,6 +2024,40 @@ export default function GenerateDocumentsClient({
                                 </td>
                                 <td className="px-3 py-2.5 whitespace-nowrap text-on-surface">
                                   {job?.posisi || "-"}
+                                </td>
+                                <td className="px-3 py-2.5 whitespace-nowrap text-center">
+                                  {docStatus.hasCert ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      Tersedia
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                                      <Clock className="w-3 h-3 text-slate-400" />
+                                      Belum Ada
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2.5 whitespace-nowrap text-center">
+                                  {docStatus.hasValidation ? (
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                        docStatus.isApproved
+                                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                                          : "bg-amber-50 text-amber-700 border-amber-200"
+                                      }`}
+                                    >
+                                      <CheckCircle2 className="w-3 h-3" />
+                                      {docStatus.isApproved
+                                        ? "Approved"
+                                        : "Terlampir"}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                                      <Clock className="w-3 h-3 text-slate-400" />
+                                      Belum Ada
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="px-3 py-2.5">
                                   <input
@@ -1924,33 +2160,98 @@ export default function GenerateDocumentsClient({
               )}
 
               {/* Action Buttons for BAST */}
-              <div className="pt-4 border-t border-table-border flex items-center justify-between">
-                <span className="text-xs text-on-surface-variant font-medium">
-                  {bastSelectedApps.length} kandidat siap diekspor ke Excel BAST
-                </span>
-                <div className="flex items-center gap-3">
+              <div className="pt-4 border-t border-table-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-on-surface">
+                      {bastSelectedApps.length} kandidat siap diserahterimakan
+                    </span>
+                    {bastSelectedApps.length > 0 && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary">
+                        Periode: {bastMonth || "-"}
+                      </span>
+                    )}
+                  </div>
+                  {bastSelectedApps.length > 0 && (() => {
+                    const statuses = bastSelectedApps.map((id) => {
+                      const a = applications.find((x) => x.id === id);
+                      return a ? getCandidateDocStatus(a) : null;
+                    });
+                    const missingCert = statuses.filter((s) => !s?.hasCert).length;
+                    const missingVal = statuses.filter((s) => !s?.hasValidation).length;
+
+                    if (missingCert > 0 || missingVal > 0) {
+                      return (
+                        <p className="text-[11px] text-amber-700 flex items-center gap-1.5 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                          <span>
+                            Audit Alert: {missingCert} sertifikat & {missingVal} bukti validasi belum lengkap. File catatan audit otomatis akan disertakan dalam ZIP.
+                          </span>
+                        </p>
+                      );
+                    }
+                    return (
+                      <p className="text-[11px] text-emerald-700 flex items-center gap-1.5 font-medium">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+                        <span>Seluruh berkas sertifikat dan bukti validasi kandidat terpilih lengkap.</span>
+                      </p>
+                    );
+                  })()}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
                   <button
                     onClick={handleBatchSaveBast}
                     disabled={bastSelectedApps.length === 0 || isSavingBast}
-                    className="px-4 py-2 bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+                    className="px-3.5 py-2 bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-2xs"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    <span>Simpan Perubahan ke DB</span>
+                    <span>{isSavingBast ? "Menyimpan..." : "Simpan ke DB"}</span>
                   </button>
+
+                  <button
+                    onClick={handleDownloadStatementPdfBAST}
+                    disabled={bastSelectedApps.length === 0 || isGeneratingStatementPdf}
+                    className="px-3.5 py-2 bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-2xs"
+                    title="Unduh Surat Pernyataan Serah Terima Resmi (PDF)"
+                  >
+                    {isGeneratingStatementPdf ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <FileText className="w-3.5 h-3.5 text-rose-600" />
+                    )}
+                    <span>Surat Pernyataan (.pdf)</span>
+                  </button>
+
                   <button
                     onClick={handleDownloadExcelBAST}
                     disabled={bastSelectedApps.length === 0 || isGeneratingBastExcel}
-                    className="px-5 py-2.5 text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
+                    className="px-3.5 py-2 bg-surface border border-emerald-300 hover:bg-emerald-50 text-emerald-800 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-2xs"
+                    title="Unduh Lembar Kerja Excel Rekapitulasi BAST"
                   >
                     {isGeneratingBastExcel ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                    ) : (
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                    )}
+                    <span>Excel BAST (.xlsx)</span>
+                  </button>
+
+                  <button
+                    onClick={handleDownloadZipBAST}
+                    disabled={bastSelectedApps.length === 0 || isGeneratingBastZip}
+                    className="px-5 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
+                    title="Unduh 1 Bundel ZIP: Excel BAST, Surat Pernyataan PDF, Folder Sertifikat, dan Folder Validasi"
+                  >
+                    {isGeneratingBastZip ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Menyiapkan Excel BAST...</span>
+                        <span>Menyiapkan ZIP...</span>
                       </>
                     ) : (
                       <>
-                        <FileSpreadsheet className="w-4 h-4" />
-                        <span>Download Excel BAST (.xlsx)</span>
+                        <FolderArchive className="w-4 h-4" />
+                        <span>Download Paket Lengkap BAST (.zip)</span>
                       </>
                     )}
                   </button>
@@ -2026,21 +2327,16 @@ export default function GenerateDocumentsClient({
                       Provinsi Klinik <span className="text-red-500">*</span>
                     </label>
                     <span className="text-[11px] text-on-surface-variant font-medium">
-                      Master Wilayah
+                      Master Wilayah ({provinces.length})
                     </span>
                   </div>
-                  <select
+                  <SearchableSelect
+                    options={provinceOptions}
                     value={mcuProvinceId}
-                    onChange={(e) => handleProvinceChange(e.target.value)}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface font-medium cursor-pointer"
-                  >
-                    <option value="">-- Semua Provinsi --</option>
-                    {provinces.map((prov) => (
-                      <option key={prov.id} value={prov.id}>
-                        {prov.name} ({prov.code})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => handleProvinceChange(val)}
+                    placeholder="-- Semua Provinsi --"
+                    searchPlaceholder="Cari nama provinsi atau kode wilayah..."
+                  />
                   <p className="text-[11px] text-on-surface-variant mt-1">
                     Pilih provinsi untuk memfilter daftar klinik rujukan.
                   </p>
@@ -2056,21 +2352,18 @@ export default function GenerateDocumentsClient({
                       {availableMcuClinics.length} klinik tersedia
                     </span>
                   </div>
-                  <select
+                  <SearchableSelect
+                    options={clinicOptions}
                     value={mcuClinicId}
-                    onChange={(e) => setMcuClinicId(e.target.value)}
-                    className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface font-medium cursor-pointer"
-                  >
-                    {availableMcuClinics.length === 0 ? (
-                      <option value="">Belum ada klinik di provinsi terpilih</option>
-                    ) : (
-                      availableMcuClinics.map((clinic) => (
-                        <option key={clinic.id} value={clinic.id}>
-                          {clinic.name || clinic.nama} {clinic.code ? `(${clinic.code})` : ""}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                    onChange={(val) => setMcuClinicId(val)}
+                    disabled={availableMcuClinics.length === 0}
+                    placeholder={
+                      availableMcuClinics.length === 0
+                        ? "-- Belum ada klinik di provinsi terpilih --"
+                        : "-- Pilih Klinik MCU --"
+                    }
+                    searchPlaceholder="Cari nama klinik, kode, atau alamat..."
+                  />
                   <p className="text-[11px] text-on-surface-variant mt-1">
                     Klinik tujuan pelaksanaan pemeriksaan kesehatan kandidat.
                   </p>
@@ -2165,18 +2458,14 @@ export default function GenerateDocumentsClient({
                     <label className="block text-[11px] font-semibold text-on-surface-variant uppercase mb-1">
                       Filter Posisi / Job
                     </label>
-                    <select
+                    <SearchableSelect
+                      options={mcuPosisiOptions}
                       value={mcuFilterPosisi}
-                      onChange={(e) => setMcuFilterPosisi(e.target.value)}
-                      className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="">Semua Posisi ({mcuPositions.length})</option>
-                      {mcuPositions.map((pos) => (
-                        <option key={pos} value={pos}>
-                          {pos}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setMcuFilterPosisi(val)}
+                      placeholder={`Semua Posisi (${mcuPositions.length})`}
+                      searchPlaceholder="Cari posisi pekerjaan..."
+                      className="text-xs"
+                    />
                   </div>
 
                   {/* Filter Site Operations */}
@@ -2184,18 +2473,14 @@ export default function GenerateDocumentsClient({
                     <label className="block text-[11px] font-semibold text-on-surface-variant uppercase mb-1">
                       Filter Site Operations
                     </label>
-                    <select
+                    <SearchableSelect
+                      options={mcuSiteOptions}
                       value={mcuFilterSite}
-                      onChange={(e) => setMcuFilterSite(e.target.value)}
-                      className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="">Semua Site ({mcuSites.length})</option>
-                      {mcuSites.map((site) => (
-                        <option key={site} value={site}>
-                          {site}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setMcuFilterSite(val)}
+                      placeholder={`Semua Site (${mcuSites.length})`}
+                      searchPlaceholder="Cari site operasional..."
+                      className="text-xs"
+                    />
                   </div>
 
                   {/* Filter Customer */}
@@ -2203,18 +2488,14 @@ export default function GenerateDocumentsClient({
                     <label className="block text-[11px] font-semibold text-on-surface-variant uppercase mb-1">
                       Filter Customer
                     </label>
-                    <select
+                    <SearchableSelect
+                      options={mcuCustomerOptions}
                       value={mcuFilterCustomer}
-                      onChange={(e) => setMcuFilterCustomer(e.target.value)}
-                      className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="">Semua Customer ({mcuCustomers.length})</option>
-                      {mcuCustomers.map((cust) => (
-                        <option key={cust} value={cust}>
-                          {cust}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setMcuFilterCustomer(val)}
+                      placeholder={`Semua Customer (${mcuCustomers.length})`}
+                      searchPlaceholder="Cari customer / mitra..."
+                      className="text-xs"
+                    />
                   </div>
 
                   {/* Search Query */}
@@ -2872,6 +3153,117 @@ export default function GenerateDocumentsClient({
           showSignature={true}
         />
       </div>
+
+      {/* BAST ZIP Package Generation Progress Modal */}
+      {isGeneratingBastZip && bastZipProgress && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-surface-container-lowest border border-table-border rounded-2xl shadow-xl max-w-md w-full p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <FolderArchive className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-on-surface">
+                  Menyiapkan Paket Dokumen BAST (.zip)
+                </h3>
+                <p className="text-xs text-on-surface-variant font-mono">
+                  {bastNomorSurat || "DPP/247/BASTMP/IX/2026"}
+                </p>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-on-surface">
+                  Langkah {bastZipProgress.step} dari {bastZipProgress.totalSteps}
+                </span>
+                <span className="font-bold text-primary">
+                  {bastZipProgress.percent}%
+                </span>
+              </div>
+              <div className="w-full h-2.5 bg-surface-container-high rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${bastZipProgress.percent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Status Steps */}
+            <div className="space-y-2.5 bg-surface-container-low p-3.5 rounded-xl border border-table-border text-xs">
+              <div className="flex items-center gap-2">
+                {bastZipProgress.step > 1 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : bastZipProgress.step === 1 ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                )}
+                <span className={bastZipProgress.step === 1 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                  1. Format Spreadsheet Excel BAST
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {bastZipProgress.step > 2 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : bastZipProgress.step === 2 ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                )}
+                <span className={bastZipProgress.step === 2 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                  2. Surat Pernyataan Serah Terima Manpower (PDF)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {bastZipProgress.step > 3 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : bastZipProgress.step === 3 ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                )}
+                <span className={bastZipProgress.step === 3 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                  3. Mengumpulkan Berkas Sertifikat Kandidat
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {bastZipProgress.step > 4 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : bastZipProgress.step === 4 ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                )}
+                <span className={bastZipProgress.step === 4 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                  4. Mengumpulkan Berkas Bukti Validasi Recruiter
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {bastZipProgress.step >= 5 && bastZipProgress.percent === 100 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : bastZipProgress.step === 5 ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                )}
+                <span className={bastZipProgress.step === 5 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                  5. Mengompresi dan Mengunduh Bundel ZIP
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-center text-on-surface-variant italic">
+              {bastZipProgress.message || "Mohon menunggu hingga seluruh berkas terkumpul..."}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

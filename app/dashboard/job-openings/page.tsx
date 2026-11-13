@@ -1,26 +1,27 @@
 import React from "react";
 import prisma from "@/lib/prisma";
 import JobClient from "./JobClient";
+import { getPaginatedJobOpenings } from "@/app/actions/job";
 
 export const dynamic = "force-dynamic";
 
 export default async function JobOpeningsPage() {
-  const [jobs, customers] = await Promise.all([
-    prisma.jobOpening.findMany({
-      include: {
-        position: true,
-        department: true,
-        customer: true,
-        city: true,
-        province: true,
-        site: true,
-      },
-      orderBy: { createdAt: "desc" },
-    }),
+  const [jobResult, customers] = await Promise.all([
+    getPaginatedJobOpenings({ page: 1, limit: 10 }),
     prisma.masterCustomer.findMany({
       orderBy: { name: "asc" },
     }),
   ]);
 
-  return <JobClient initialData={jobs} customers={customers} />;
+  return (
+    <JobClient
+      initialData={jobResult.success ? jobResult.data : []}
+      initialPagination={
+        jobResult.success
+          ? jobResult.pagination
+          : { totalItems: 0, totalPages: 1, currentPage: 1, limit: 10 }
+      }
+      customers={customers}
+    />
+  );
 }

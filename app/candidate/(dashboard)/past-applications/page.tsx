@@ -11,7 +11,8 @@ import {
   MapPin, 
   FileText, 
   AlertTriangle,
-  Briefcase
+  Briefcase,
+  ArrowRightLeft
 } from "lucide-react";
 import Link from "next/link";
 
@@ -21,11 +22,12 @@ export default async function CandidateHistoryApplicationPage() {
   const isBlacklisted = !!profile?.isBlacklisted;
   const blacklistReason = profile?.blacklistReason;
 
-  // Filter completed/past applications (REJECTED, HIRED, or job is CLOSED, or if candidate is blacklisted)
+  // Filter completed/past applications (REJECTED, WITHDRAWN, HIRED, or job is CLOSED, or if candidate is blacklisted)
   const allApplications = profile?.applications || [];
   const pastApplications = allApplications.filter((app: any) => {
     return (
       app.status === "REJECTED" ||
+      app.status === "WITHDRAWN" ||
       (app.status === "HIRED" && (!app.currentStageId || app.currentStageId === "Hired")) ||
       app.job?.status === "CLOSED" ||
       isBlacklisted
@@ -94,19 +96,24 @@ export default async function CandidateHistoryApplicationPage() {
             // Determine status type
             const isHired = app.status === "HIRED";
             const isRejected = app.status === "REJECTED";
-            const isJobClosed = job.status === "CLOSED" && !isHired && !isRejected;
+            const isWithdrawn = app.status === "WITHDRAWN";
+            const isJobClosed = job.status === "CLOSED" && !isHired && !isRejected && !isWithdrawn;
 
             // Extract rejection or notes from history
-            const rejectedMilestone = app.history?.find((h: any) => h.stageId === "Rejected" || h.stageName === "Rejected");
-            const rejectionReason = rejectedMilestone?.note?.replace("Reason: ", "") || "Kualifikasi kandidat belum sesuai dengan kebutuhan posisi ini saat ini.";
+            const rejectedMilestone = app.history?.find((h: any) => h.stageId === "Rejected" || h.stageName === "Rejected" || h.stageName === "Transferred");
+            const rejectionReason = isWithdrawn 
+              ? (app.history?.find((h: any) => h.stageName === "Transferred")?.note || "Lamaran dialihkan ke lowongan lain atas persetujuan kandidat.")
+              : (rejectedMilestone?.note?.replace("Reason: ", "") || "Kualifikasi kandidat belum sesuai dengan kebutuhan posisi ini saat ini.");
 
             // Non-rejected milestones for last stage
-            const nonRejectHistory = app.history?.filter((h: any) => h.stageName !== "Rejected" && h.stageName !== "Hired") || [];
+            const nonRejectHistory = app.history?.filter((h: any) => h.stageName !== "Rejected" && h.stageName !== "Hired" && h.stageName !== "Transferred") || [];
             const lastStage = isHired 
               ? "Hired (Diterima)"
-              : nonRejectHistory.length > 0 
-                ? nonRejectHistory[nonRejectHistory.length - 1].stageName 
-                : (app.currentStage?.name || "Administrasi");
+              : isWithdrawn
+                ? "Dialihkan ke Lowongan Lain"
+                : nonRejectHistory.length > 0 
+                  ? nonRejectHistory[nonRejectHistory.length - 1].stageName 
+                  : (app.currentStage?.name || "Administrasi");
 
             const positionTitle = job.positionName || job.position?.name || "Posisi Pekerjaan";
 
@@ -115,6 +122,7 @@ export default async function CandidateHistoryApplicationPage() {
                 key={app.id} 
                 className={`bg-white rounded-2xl shadow-sm border overflow-hidden relative transition-all ${
                   isHired ? 'border-emerald-200 hover:border-emerald-300' :
+                  isWithdrawn ? 'border-indigo-200 hover:border-indigo-300' :
                   isRejected || isBlacklisted ? 'border-red-200 hover:border-red-300' :
                   'border-table-border'
                 }`}
@@ -128,6 +136,10 @@ export default async function CandidateHistoryApplicationPage() {
                   ) : isBlacklisted ? (
                     <div className="bg-red-100 text-red-800 px-4 py-1.5 rounded-bl-xl text-xs font-bold flex items-center gap-1.5 border-b border-l border-red-200">
                       <Ban className="w-3.5 h-3.5 text-red-600" /> Blacklisted
+                    </div>
+                  ) : isWithdrawn ? (
+                    <div className="bg-indigo-100 text-indigo-800 px-4 py-1.5 rounded-bl-xl text-xs font-bold flex items-center gap-1.5 border-b border-l border-indigo-200">
+                      <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-600" /> Dialihkan ke Lowongan Lain
                     </div>
                   ) : isRejected ? (
                     <div className="bg-red-100 text-red-700 px-4 py-1.5 rounded-bl-xl text-xs font-bold flex items-center gap-1.5 border-b border-l border-red-200">

@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud, MessageSquare, Send, ChevronDown, UserX, Clock } from "lucide-react";
+import { ChevronRight, FileText, Download, Printer, Search, AlertCircle, Save, CheckCircle, Ban, ArrowRight, ArrowLeft, XCircle, UploadCloud, MessageSquare, Send, ChevronDown, UserX, Clock, Lock, ArrowRightLeft, Building2, MapPin, Loader2 } from "lucide-react";
 import { MASTER_SKEMA_SERTIFIKASI, MASTER_REJECTION_MESSAGE } from "@/lib/masterData";
 import HiredCandidateStageAccordions from "@/components/dashboard/HiredCandidateStageAccordions";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 
 export default function AdvancedDocumentVerificationPage({
   params,
@@ -88,29 +89,53 @@ export default function AdvancedDocumentVerificationPage({
   const [customPreviewFile, setCustomPreviewFile] = useState<{ name: string; url?: string; base64?: string; type?: string } | null>(null);
 
   const [activeDocTab, setActiveDocTab] = useState("KTP");
+  const [activeTimelineTab, setActiveTimelineTab] = useState<"chat" | "history">("chat");
   const [failureReason, setFailureReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [masterRejection, setMasterRejection] = useState<any[]>([]);
   const [showActionModal, setShowActionModal] = useState(false);
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [showBlacklistModal, setShowBlacklistModal] = useState(false);
   const [blacklistNote, setBlacklistNote] = useState("");
   const [showMoveJobModal, setShowMoveJobModal] = useState(false);
   const [selectedMoveJobId, setSelectedMoveJobId] = useState("");
+  const [moveReason, setMoveReason] = useState("");
+  const [isSubmittingMove, setIsSubmittingMove] = useState(false);
   const [activeJobs, setActiveJobs] = useState<any[]>([]);
   const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
+  const moveJobOptions = React.useMemo(() => {
+    return activeJobs.map((j: any) => ({
+      value: j.id,
+      label: `${j.positionName || j.position?.name || "Posisi"} (${j.noRegistrasi || "-"})`,
+      subLabel: `${j.customerName || j.customer?.name || "Customer Umum"} • ${j.siteName || j.site?.name || "Site"} • Kuota: ${j.openPositions || "-"}`,
+      badge: j.departmentName || j.department?.name || undefined,
+      badgeColor: "blue" as const,
+    }));
+  }, [activeJobs]);
+
   useEffect(() => {
+    // Load Active Jobs for Move using Server Action
+    const loadActiveJobs = async () => {
+      try {
+        const { getActiveJobOpeningsForMove } = await import("@/app/actions/candidate-application");
+        const res = await getActiveJobOpeningsForMove(unwrappedParams.id);
+        if (res.success && res.data) {
+          setActiveJobs(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to load active jobs for move:", err);
+      }
+    };
+    loadActiveJobs();
+
     // Load Job
     const allJobs = JSON.parse(localStorage.getItem("ugz_jobs") || "[]");
     const foundJob = allJobs.find((j: any) => j.id === unwrappedParams.id);
     if (foundJob) setJob(foundJob);
-
-    // Set active jobs for move
-    const otherActiveJobs = allJobs.filter((j: any) => j.globalStatus === "Active" && j.id !== unwrappedParams.id);
-    setActiveJobs(otherActiveJobs);
 
     // Load Profile
     const profiles = JSON.parse(localStorage.getItem("ugz_candidate_profiles") || "{}");
@@ -502,6 +527,40 @@ export default function AdvancedDocumentVerificationPage({
     return { actor, actorEmail };
   };
 
+  const handleDownloadZip = async () => {
+    try {
+      setIsDownloadingZip(true);
+      const res = await fetch(`/api/candidates/${unwrappedParams.candidateId}/documents-zip`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.message || "Gagal mengunduh berkas ZIP dokumen.");
+      }
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const contentDisposition = res.headers.get("content-disposition");
+      let fileName = `Dokumen_${(profile?.fullName || "Kandidat").replace(/[^a-zA-Z0-9_\-]/g, "_")}.zip`;
+      if (contentDisposition && contentDisposition.includes("filename=")) {
+        const match = contentDisposition.match(/filename="?([^";]+)"?/);
+        if (match && match[1]) fileName = match[1];
+      }
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setShowActionModal(false);
+    } catch (err: unknown) {
+      console.error("Download ZIP error:", err);
+      const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat mengunduh dokumen ZIP.";
+      window.alert(msg);
+    } finally {
+      setIsDownloadingZip(false);
+    }
+  };
+
   const handleApproveNextStage = async () => {
     if (isAdministration && !isApproved) {
       window.alert("Anda harus menandai validasi sertifikat BNSP sebagai 'Approved' sebelum melanjutkan ke tahap berikutnya.");
@@ -539,6 +598,13 @@ export default function AdvancedDocumentVerificationPage({
     if (isOfferingLetter) {
       if (!offeringDate || !offeringFile) {
         window.alert("Anda harus melengkapi seluruh form pada stage Offering Letter (Tanggal dan File Offering) sebelum melanjutkan ke tahap berikutnya.");
+        return;
+      }
+      const candidateResp = application?.offeringLetter?.candidateResponse || (
+        application?.stageData ? (typeof application.stageData === "string" ? JSON.parse(application.stageData).offeringLetter?.candidateResponse : application.stageData.offeringLetter?.candidateResponse) : null
+      );
+      if (candidateResp?.status !== "ACCEPTED") {
+        window.alert("Kandidat belum menyetujui dan menandatangani Offering Letter. Anda tidak dapat memindahkan kandidat ke tahap berikutnya sebelum ada konfirmasi resmi dari kandidat.");
         return;
       }
     }
@@ -613,30 +679,40 @@ export default function AdvancedDocumentVerificationPage({
 
   const handleMoveCandidateRequest = async () => {
     if (!selectedMoveJobId) {
-      window.alert("Please select a target job opening.");
+      window.alert("Silakan pilih lowongan tujuan terlebih dahulu.");
       return;
     }
 
-    if (application.moveProposal?.status === "Pending") {
-      window.alert("There is already a pending job move proposal for this candidate.");
-      return;
-    }
-
-    const updatedApp = {
-      ...application,
-      moveProposal: {
-        toJobId: selectedMoveJobId,
-        status: "Pending",
-        createdAt: new Date().toISOString()
+    const currentProposalStatus = application?.stageData?.moveProposal?.status || application?.moveProposal?.status;
+    if (currentProposalStatus === "PENDING") {
+      if (!window.confirm("Sudah ada proposal pemindahan lowongan yang menunggu konfirmasi kandidat. Apakah Anda yakin ingin memperbarui/mengirim ulang proposal ini?")) {
+        return;
       }
-    };
+    }
 
-    const success = await safeSaveApplications(updatedApp);
-    if (success) {
-      window.alert("Move request sent successfully. Waiting for candidate approval.");
-      setShowMoveJobModal(false);
-      setSelectedMoveJobId("");
-      setShowActionModal(false);
+    setIsSubmittingMove(true);
+    try {
+      const { resolveOfferDeclined } = await import("@/app/actions/candidate-application");
+      const res = await resolveOfferDeclined(application.id, "MOVE_JOB", {
+        targetJobId: selectedMoveJobId,
+        reason: moveReason.trim() || undefined,
+      });
+
+      if (res.success) {
+        window.alert("Tawaran pemindahan lowongan berhasil dikirim ke kandidat. Menunggu konfirmasi kandidat di dashboard My Applications.");
+        setShowMoveJobModal(false);
+        setSelectedMoveJobId("");
+        setMoveReason("");
+        setShowActionModal(false);
+        window.location.reload();
+      } else {
+        window.alert(res.error || "Gagal mengirim tawaran pemindahan lowongan.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      window.alert("Terjadi kesalahan: " + (err.message || String(err)));
+    } finally {
+      setIsSubmittingMove(false);
     }
   };
 
@@ -670,7 +746,7 @@ export default function AdvancedDocumentVerificationPage({
       window.alert("All verification approved. Returning to Pipeline.");
       router.push(`/dashboard/job-openings/${job.id}`);
     } else {
-      window.alert("Gagal menyetujui semua tahap.");
+      window.alert(res.error || "Gagal menyetujui semua tahap.");
     }
   };
 
@@ -1717,6 +1793,18 @@ export default function AdvancedDocumentVerificationPage({
               </h3>
 
               {/* Candidate Response Status Banner */}
+              {(!application?.offeringLetter?.candidateResponse || application?.offeringLetter?.candidateResponse?.status === "PENDING") && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                  <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
+                    <Lock className="w-5 h-5 text-amber-600 shrink-0" />
+                    <span>Menunggu Konfirmasi & Tanda Tangan Offering Letter dari Kandidat</span>
+                  </div>
+                  <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                    Kandidat belum menyetujui atau menandatangani dokumen Offering Letter. Pemindahan ke tahap seleksi berikutnya dikunci sampai kandidat mengirimkan persetujuan resmi.
+                  </p>
+                </div>
+              )}
+
               {application?.offeringLetter?.candidateResponse && (
                 <div className="mb-4">
                   {application.offeringLetter.candidateResponse.status === "ACCEPTED" && (
@@ -1773,6 +1861,57 @@ export default function AdvancedDocumentVerificationPage({
                           "{application.offeringLetter.candidateResponse.note}"
                         </p>
                       </div>
+
+                      {/* Move Proposal Status Display */}
+                      {((application.stageData?.moveProposal?.status === "PENDING") || (application.moveProposal?.status === "PENDING")) && (
+                        <div className="mt-3 bg-amber-50 border border-amber-300 rounded-lg p-3 text-xs text-amber-900">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold flex items-center gap-1.5 text-amber-800">
+                              <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+                              Tawaran Pemindahan Lowongan Terkirim (Menunggu Konfirmasi Kandidat)
+                            </span>
+                            <span className="text-[11px] font-mono text-amber-700">
+                              Ref: {(application.stageData?.moveProposal || application.moveProposal)?.targetJobRegistrationNo}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-800">
+                            Lowongan Tujuan: <strong>{(application.stageData?.moveProposal || application.moveProposal)?.targetJobTitle}</strong>
+                          </p>
+                          {(application.stageData?.moveProposal || application.moveProposal)?.note && (
+                            <p className="mt-0.5 text-xs text-gray-600 italic">
+                              Catatan Recruiter: "{(application.stageData?.moveProposal || application.moveProposal)?.note}"
+                            </p>
+                          )}
+                          <p className="mt-1.5 text-[11px] text-amber-700">
+                            * Kandidat sedang diminta konfirmasi melalui portal kandidat untuk menerima atau menolak tawaran ini.
+                          </p>
+                        </div>
+                      )}
+
+                      {((application.stageData?.moveProposal?.status === "DECLINED") || (application.moveProposal?.status === "DECLINED")) && (
+                        <div className="mt-3 bg-red-100/70 border border-red-300 rounded-lg p-3 text-xs text-red-900">
+                          <span className="font-bold flex items-center gap-1.5 text-red-800">
+                            <AlertCircle className="w-4 h-4 text-red-600" />
+                            Kandidat Menolak Pemindahan Lowongan ke: {(application.stageData?.moveProposal || application.moveProposal)?.targetJobTitle}
+                          </span>
+                          <p className="mt-1 text-xs text-red-700">
+                            Alasan Penolakan Kandidat: "{(application.stageData?.moveProposal || application.moveProposal)?.candidateDeclineReason || "Kandidat tidak berminat"}"
+                          </p>
+                        </div>
+                      )}
+
+                      {((application.stageData?.moveProposal?.status === "ACCEPTED") || (application.moveProposal?.status === "ACCEPTED")) && (
+                        <div className="mt-3 bg-emerald-50 border border-emerald-300 rounded-lg p-3 text-xs text-emerald-900">
+                          <span className="font-bold flex items-center gap-1.5 text-emerald-800">
+                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            Kandidat Telah Menyetujui Pemindahan ke Lowongan: {(application.stageData?.moveProposal || application.moveProposal)?.targetJobTitle}
+                          </span>
+                          <p className="mt-1 text-xs text-emerald-700">
+                            Lamaran ini telah dialihkan dan lamaran baru berstatus ACTIVE telah dibuat di lowongan tujuan.
+                          </p>
+                        </div>
+                      )}
+
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <button
                           type="button"
@@ -1786,7 +1925,10 @@ export default function AdvancedDocumentVerificationPage({
                           onClick={() => setShowMoveJobModal(true)}
                           className="px-3.5 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-sm"
                         >
-                          <ArrowRight className="w-3.5 h-3.5" /> Pindahkan ke Lowongan Lain
+                          <ArrowRight className="w-3.5 h-3.5" />
+                          {((application.stageData?.moveProposal?.status === "PENDING") || (application.moveProposal?.status === "PENDING"))
+                            ? "Kirim Ulang / Ganti Pilihan Lowongan"
+                            : "Pindahkan ke Lowongan Lain"}
                         </button>
                       </div>
                     </div>
@@ -2389,39 +2531,164 @@ export default function AdvancedDocumentVerificationPage({
             </div>
           </div>
           
-          {/* Section 3: Recruitment History */}
-          <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1">
-            <h3 className="text-lg font-bold text-black flex items-center gap-2 mb-6">
-              <Clock className="w-5 h-5 text-blue-600" /> 3. Recruitment History
-            </h3>
-            
-            <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-outline-variant before:to-transparent">
-              {(() => {
-                const combinedHistory = [
-                  ...(application.history || []).map((h: any) => ({ ...h, type: 'stage' })),
-                  ...(application.messages || []).map((m: any) => ({ ...m, type: 'message', stageName: 'Message Sent', note: m.text }))
-                ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          {/* Section 3: Recruitment History & Room Chat (Dual Tab) */}
+          <div className="bg-white rounded-2xl shadow-sm border border-table-border p-6 flex-1 flex flex-col">
+            {/* Tab Selector Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-table-border pb-4 mb-5 gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTimelineTab("chat")}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    activeTimelineTab === "chat"
+                      ? "bg-primary text-white shadow-xs"
+                      : "bg-surface-container-low text-on-surface hover:bg-surface-container"
+                  }`}
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Room Chat</span>
+                  {application.messages?.length > 0 && (
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      activeTimelineTab === "chat" ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                    }`}>
+                      {application.messages.length}
+                    </span>
+                  )}
+                </button>
 
-                return combinedHistory.length > 0 ? combinedHistory.map((hist: any, index: number) => (
-                  <div key={index} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                    <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 ${hist.type === 'message' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
-                      {hist.type === 'message' ? <MessageSquare className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                    </div>
-                    <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm hover:border-primary/50 transition-colors">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-bold text-black text-sm">{hist.stageName}</h4>
-                        <time className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md text-right">
-                          {new Date(hist.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </time>
-                      </div>
-                      <p className="text-sm text-on-surface-variant mt-2">{hist.note || "Memasuki tahapan ini."}</p>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="text-center py-8 text-sm text-on-surface-variant relative z-10 bg-white border border-outline-variant rounded-xl mx-10">Belum ada riwayat terekam.</div>
-                );
-              })()}
+                <button
+                  type="button"
+                  onClick={() => setActiveTimelineTab("history")}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    activeTimelineTab === "history"
+                      ? "bg-primary text-white shadow-xs"
+                      : "bg-surface-container-low text-on-surface hover:bg-surface-container"
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>Riwayat Tahapan</span>
+                  {application.history?.length > 0 && (
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      activeTimelineTab === "history" ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                    }`}>
+                      {application.history.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {profile?.whatsapp && (
+                <a
+                  href={`https://wa.me/${profile.whatsapp.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors self-start sm:self-auto"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>WhatsApp</span>
+                </a>
+              )}
             </div>
+
+            {/* TAB 1: Room Chat (Pusat Komunikasi Recruiter & Kandidat) */}
+            {activeTimelineTab === "chat" && (
+              <div className="flex flex-col flex-1 min-h-[380px]">
+                <div className="flex-1 space-y-3 overflow-y-auto max-h-[400px] p-4 bg-surface-container-lowest rounded-xl border border-table-border custom-scrollbar mb-4">
+                  {(!application.messages || application.messages.length === 0) ? (
+                    <div className="text-center py-12 text-on-surface-variant text-xs">
+                      <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30 text-primary" />
+                      <p className="font-semibold text-slate-800">Belum ada percakapan</p>
+                      <p className="text-[11px] text-slate-500 mt-1">Kirim pesan pertama kepada kandidat melalui form input di bawah.</p>
+                    </div>
+                  ) : (
+                    application.messages.map((m: any, idx: number) => {
+                      const isRecruiter = m.sender === "RECRUITER" || !m.sender;
+                      return (
+                        <div
+                          key={m.id || idx}
+                          className={`flex flex-col ${isRecruiter ? "items-end" : "items-start"}`}
+                        >
+                          <div className="flex items-center gap-1.5 mb-1 px-1">
+                            <span className="text-[10px] font-bold text-slate-700">
+                              {isRecruiter ? "Recruiter" : m.senderName || profile?.fullName || "Kandidat"}
+                            </span>
+                            <span className="text-[9px] text-on-surface-variant font-mono">
+                              {m.date ? new Date(m.date).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : ""}
+                            </span>
+                          </div>
+                          <div
+                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-2xs ${
+                              isRecruiter
+                                ? "bg-primary text-white rounded-br-xs"
+                                : "bg-white border border-outline-variant text-slate-900 rounded-bl-xs"
+                            }`}
+                          >
+                            <p className="whitespace-pre-wrap">{m.text}</p>
+                          </div>
+                          <span className="text-[9px] text-slate-400 mt-0.5 px-1 font-mono">
+                            {m.date ? new Date(m.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : ""}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Inline Chat Input */}
+                <div className="border border-outline-variant rounded-xl p-2.5 bg-white flex flex-col gap-2 shadow-2xs">
+                  <textarea
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="Tulis pesan atau instruksi untuk kandidat..."
+                    rows={2}
+                    className="w-full px-2 py-1 text-xs text-slate-900 placeholder:text-slate-400 outline-none resize-none"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                    <span className="text-[10px] text-slate-400">Enter untuk kirim, Shift+Enter untuk baris baru</span>
+                    <button
+                      type="button"
+                      onClick={handleSendMessage}
+                      disabled={!messageText.trim()}
+                      className="px-3.5 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary-container transition-colors disabled:opacity-40 flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <Send className="w-3.5 h-3.5" /> Kirim
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: Riwayat Tahapan (History & Milestones) */}
+            {activeTimelineTab === "history" && (
+              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-outline-variant before:to-transparent py-2">
+                {application.history && application.history.length > 0 ? (
+                  application.history.map((hist: any, index: number) => (
+                    <div key={index} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 bg-blue-100 text-blue-600">
+                        <CheckCircle className="w-4 h-4" />
+                      </div>
+                      <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm hover:border-primary/50 transition-colors">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="font-bold text-black text-sm">{hist.stageName}</h4>
+                          <time className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md text-right">
+                            {new Date(hist.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </time>
+                        </div>
+                        <p className="text-sm text-on-surface-variant mt-2">{hist.note || "Memasuki tahapan ini."}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-sm text-on-surface-variant relative z-10 bg-white border border-outline-variant rounded-xl mx-10">Belum ada riwayat terekam.</div>
+                )}
+              </div>
+            )}
           </div>
           
         </div>
@@ -2586,6 +2853,11 @@ export default function AdvancedDocumentVerificationPage({
                 <div className="w-full px-5 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold rounded-lg text-sm flex items-center justify-between shadow-sm">
                   <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-emerald-600" /> Seluruh Onboarding Selesai (Resmi Active Employee)</span>
                 </div>
+              ) : isOfferingLetter && application?.offeringLetter?.candidateResponse?.status !== "ACCEPTED" ? (
+                <div className="w-full px-4 py-3 bg-amber-50 border border-amber-300 text-amber-900 font-medium rounded-lg text-xs flex items-center gap-2.5 shadow-sm">
+                  <Lock className="w-5 h-5 text-amber-600 shrink-0" />
+                  <span>Kandidat belum menyetujui Offering Letter. Aksi memajukan tahapan dikunci.</span>
+                </div>
               ) : (
                 <button onClick={() => { setShowActionModal(false); handleApproveNextStage(); }} className="w-full px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm">
                   <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5" /> {isMcu ? "Loloskan MCU & Tetapkan Hired" : isLastStage || isPkwt ? "Selesaikan Onboarding PKWT (Hired Selesai)" : "Approve to Next Stage"}</span>
@@ -2595,6 +2867,18 @@ export default function AdvancedDocumentVerificationPage({
               <button onClick={() => { setShowActionModal(false); handleApproveAll(); }} className="w-full px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm">
                 <span className="flex items-center gap-2"><CheckCircle className="w-5 h-5" /> Approve All Stages</span>
                 <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadZip}
+                disabled={isDownloadingZip}
+                className="w-full px-5 py-3 border border-blue-500 text-blue-700 bg-blue-50 hover:bg-blue-100 font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm disabled:opacity-50"
+              >
+                <span className="flex items-center gap-2">
+                  <Download className={`w-5 h-5 text-blue-600 ${isDownloadingZip ? "animate-bounce" : ""}`} />
+                  {isDownloadingZip ? "Mengunduh Berkas ZIP..." : "Unduh Dokumen Pokok (.ZIP)"}
+                </span>
+                <span className="text-[11px] font-medium text-blue-600/90 bg-white/80 border border-blue-200 px-2 py-0.5 rounded shadow-2xs">KTP, CV, Ijazah, dll</span>
               </button>
               <button onClick={() => { setShowActionModal(false); setShowMessageModal(true); }} className="w-full px-5 py-3 border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm">
                 <MessageSquare className="w-5 h-5" /> Send Message
@@ -2668,48 +2952,81 @@ export default function AdvancedDocumentVerificationPage({
       {showMoveJobModal && (
         <div className="fixed inset-0 bg-black/60 z-[100] flex justify-center items-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-table-border bg-amber-500 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <ArrowRight className="w-5 h-5" /> Move Candidate
+            <div className="p-5 border-b border-table-border bg-gradient-to-r from-amber-500 to-amber-600 flex justify-between items-center">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <ArrowRight className="w-5 h-5" /> Tawarkan Pemindahan ke Lowongan Lain
               </h3>
-              <button onClick={() => setShowMoveJobModal(false)} className="p-1.5 text-white/80 hover:bg-amber-600 hover:text-white rounded-lg transition-colors">
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-sm text-black mb-4">
-                Select an active job opening to move <strong>{profile?.fullName}</strong> to. The candidate will need to approve this move on their dashboard.
-              </p>
-              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Target Job Opening</label>
-              <select
-                value={selectedMoveJobId}
-                onChange={(e) => setSelectedMoveJobId(e.target.value)}
-                className="w-full px-3 py-2 border border-outline-variant rounded focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm text-black bg-white"
-              >
-                <option value="">-- Select Job --</option>
-                {activeJobs.map((j) => (
-                  <option key={j.id} value={j.id}>
-                    {j.positionName || j.position?.name} (Ref: {j.noRegistrasi})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="p-4 bg-surface-container-lowest border-t border-table-border flex justify-end gap-3">
-              <button
+              <button 
                 onClick={() => {
                   setShowMoveJobModal(false);
                   setSelectedMoveJobId("");
-                }}
-                className="px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low rounded transition-colors"
+                  setMoveReason("");
+                }} 
+                className="p-1.5 text-white/80 hover:bg-amber-600 hover:text-white rounded-lg transition-colors"
               >
-                Cancel
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-gray-700 leading-relaxed">
+                Pilih lowongan pekerjaan aktif untuk menawarkan pengalihan kandidat <strong>{profile?.fullName}</strong>. Kandidat akan menerima tawaran ini dan diminta persetujuan pada dashboard My Applications mereka.
+              </p>
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">
+                  Lowongan Tujuan Aktif <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
+                  options={moveJobOptions}
+                  value={selectedMoveJobId}
+                  onChange={(val) => setSelectedMoveJobId(val)}
+                  placeholder="-- Cari nama posisi, ref registrasi, customer, atau site --"
+                  searchPlaceholder="Ketik untuk mencari lowongan aktif..."
+                  debounceMs={250}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">
+                  Catatan / Alasan Rekomendasi Recruiter
+                </label>
+                <textarea
+                  rows={3}
+                  value={moveReason}
+                  onChange={(e) => setMoveReason(e.target.value)}
+                  placeholder="Contoh: Mengingat kualifikasi Anda cocok untuk unit kerja di Site B, kami menawarkan pengalihan ke lowongan ini..."
+                  className="w-full px-3.5 py-2.5 border border-table-border rounded-xl focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs text-black bg-white"
+                />
+              </div>
+            </div>
+            <div className="p-4 bg-surface-container-lowest border-t border-table-border flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMoveJobModal(false);
+                  setSelectedMoveJobId("");
+                  setMoveReason("");
+                }}
+                disabled={isSubmittingMove}
+                className="px-4 py-2 text-xs font-bold text-on-surface-variant hover:bg-surface-container-low rounded-xl transition-colors"
+              >
+                Batal
               </button>
               <button
+                type="button"
                 onClick={handleMoveCandidateRequest}
-                disabled={!selectedMoveJobId}
-                className="px-4 py-2 bg-amber-500 text-white text-sm font-semibold rounded hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                disabled={!selectedMoveJobId || isSubmittingMove}
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-2"
               >
-                <Send className="w-4 h-4" /> Send Proposal
+                {isSubmittingMove ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Mengirim Proposal...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Kirim Proposal ke Kandidat</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
