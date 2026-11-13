@@ -92,21 +92,21 @@ export default function RegisterPage() {
               <ArrowLeft className="w-3.5 h-3.5" /> Kembali ke Beranda
             </Link>
 
-            <div className="w-14 h-14 bg-white rounded-2xl p-1.5 border border-slate-200 shadow-2xs flex items-center justify-center mx-auto">
+            <div className="mb-2 flex justify-center">
               <Image
-                src="/icon.png"
-                alt="DPP Logo"
-                width={48}
-                height={48}
-                className="object-contain"
+                src="/images/branding/dpp-logo-new.png"
+                alt="Logo PT Dian Pandu Pratama"
+                width={180}
+                height={78}
+                className="h-11 w-auto object-contain"
                 priority
               />
             </div>
-            <h1 className="text-xl font-bold text-[#0A2540] tracking-tight">
+            <h1 className="text-xl font-bold text-zinc-950 tracking-tight">
               Pendaftaran Akun Pelamar
             </h1>
-            <p className="text-xs text-slate-500">
-              PT Dian Pandu Pratama • Member of YKBUT (United Tractors Group)
+            <p className="text-xs text-zinc-500 font-medium">
+              E-Recruitment Portal • PT Dian Pandu Pratama
             </p>
           </div>
 

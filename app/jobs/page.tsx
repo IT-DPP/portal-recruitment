@@ -10,7 +10,7 @@ import PublicJobsClient from "./PublicJobsClient";
 
 export const metadata = {
   title: "Lowongan Pekerjaan | PT Dian Pandu Pratama (DPP)",
-  description: "Daftar peluang karir resmi PT Dian Pandu Pratama (Member of YKBUT) untuk sektor pertambangan dan manufaktur alat berat.",
+  description: "Daftar peluang karir resmi PT Dian Pandu Pratama untuk sektor pertambangan dan manufaktur alat berat.",
 };
 
 export default async function PublicJobsPage({
@@ -55,7 +55,7 @@ export default async function PublicJobsPage({
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium">
-                Portal Karir & Rekrutmen Resmi • YKBUT
+                Portal Karir &amp; Rekrutmen Resmi
               </p>
             </div>
           </Link>
@@ -132,7 +132,7 @@ export default async function PublicJobsPage({
       {/* Footer */}
       <footer className="bg-[#07192B] text-slate-400 text-xs py-8 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© {new Date().getFullYear()} PT Dian Pandu Pratama (DPP) • Yayasan Karya Bakti United Tractors</p>
+          <p>© {new Date().getFullYear()} PT Dian Pandu Pratama (DPP). All Rights Reserved.</p>
           <p>Kawasan Industri Jababeka XII Cikarang Utara, Bekasi, Jawa Barat</p>
         </div>
       </footer>

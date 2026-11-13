@@ -79,7 +79,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
               DIAN PANDU PRATAMA
             </h1>
             <p className="text-[10px] font-medium text-slate-500 truncate mt-0.5">
-              E-Recruitment • YKBUT
+              E-Recruitment Portal
             </p>
             <span className="inline-block text-[9px] font-bold text-[#D9232A] uppercase tracking-wider">
               Labor & Job Supply

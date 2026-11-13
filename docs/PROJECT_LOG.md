@@ -270,15 +270,13 @@ IT Leader DPP menginstruksikan penyelarasan tema dan branding platform e-recruit
    - Next.js Turbopack Production Build `npm run build` (**54 routes compiled successfully**).
 
 ### Status
-Fase 4 (Corporate Branding Overhaul & Refinements) selesai 100%. Landing page kini memiliki identitas visual minimalis, kokoh, dan berwibawa:
-- Mengadopsi tema cerah (*bright theme*) yang terbuka, percaya diri, dan prestisius (menghilangkan background gelap pada Hero dan Jaringan Operasional).
-- Logo resmi PT DPP (`dpp-logo-new.png`) kini tampil jernih, tajam, dan kontras di Navbar transparan dan Footer.
-- Hero section 100vh diperkaya dengan **overlay elemen berjenjang** (visual juru las + floating card pabrik Cikarang + badge sertifikasi K3/BNSP + ribbon metrik).
-- Bagian Jaringan Operasional diubah menjadi terang dengan kartu floating overlay di atas peta resmi operasional Indonesia.
-- Kalimat berlebih pada Budaya S.M.A.R.T dihapus sehingga banner dan kartu ubin 3D tampil fokus dan bersih.
-- Bagian Mitra & Klien Strategis diperbarui menampilkan 5 logo resmi yang diunggah (PATRIA ASTRA, TRIATRA, UNITED TRACTORS, PATRIA Maritim Perkasa, PATRIA Maritime Lines) dalam carousel marquee horizontal berkesinambungan.
-- Menu navigasi: Lowongan Kerja diletakkan di depan, diikuti menu About terpadu (Budaya SMART, Mitra & Klien, Jaringan Operasi).
-- Palet warna teks dan elemen UI dibatasi secara ketat pada Hitam, Putih, dan Merah DPP (`#D9232A`).
+Fase 4 (Corporate Branding Overhaul & Job Portal Alignment) selesai 100%. Platform e-recruitment kini memiliki identitas visual yang sepenuhnya selaras dengan arahan IT Leader:
+- **Identitas Job Portal Kental**: Hero section secara eksplisit mengomunikasikan portal karir dan rekrutmen resmi PT DPP dengan bilah pencarian interaktif dan kata kunci posisi populer.
+- **Tata Letak Berurutan Sempurna**: Hero $\rightarrow$ Mitra & Klien $\rightarrow$ Jaringan Operasi Nasional $\rightarrow$ Budaya S.M.A.R.T $\rightarrow$ Fokus Utama Bisnis $\rightarrow$ Lowongan Kerja $\rightarrow$ Footer.
+- **Ubin Budaya S.M.A.R.T**: Gambar banner dihapus; ubin 3D ditata di bagian atas tiap kartu sehingga kata panjang `Responsibility` memiliki ruang bernapas lega dan tidak mepet tepi kartu.
+- **Fokus Bisnis dengan Foto Riil**: Ikon diganti dengan foto industri autentik (welder & greenplant Cikarang) dengan latar cerah tanpa background hitam.
+- **Pembersihan Total Elemen YKBUT**: Seluruh logo, label, dan kalimat YKBUT / Yayasan Karya Bakti United Tractors di seluruh platform dihapus tanpa sisa.
+- **Logo Kartu Login**: Logo resmi PT DPP terpasang jelas di bagian atas kartu login pelamar & staf.
 
 
 

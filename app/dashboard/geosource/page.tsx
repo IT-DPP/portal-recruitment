@@ -395,7 +395,7 @@ export default function GeoSourceDashboard() {
               DPP NATIONWIDE SITES &amp; INSTITUTION SOURCING
             </span>
             <span className="text-xs text-slate-400">•</span>
-            <span className="text-xs font-medium text-slate-500">YKBUT Labor Supply Network</span>
+            <span className="text-xs font-medium text-slate-500">DPP Labor Supply Network</span>
           </div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">GeoSource &amp; Talent Distribution</h2>
           <p className="text-sm text-slate-500">

@@ -29,6 +29,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Added infinite horizontal CSS marquee animations (`@keyframes marquee`, `.animate-marquee`).
 
 ### Changed
+- **Penyelarasan Identitas Job Portal DPP & Perubahan Tata Letak (Layout Overhaul):**
+  - **Identitas Job Portal Sejati**: Mengubah tajuk dan pesan pada Hero section agar secara lugas merepresentasikan platform pencarian kerja dan rekrutmen resmi PT Dian Pandu Pratama, dilengkapi bilah pencarian interaktif (*quick job search*), tag posisi populer (*Welder, Mekanik, Surveyor, K3*), dan tombol aksi pelamar.
+  - **Penataan Ulang Urutan Seksi (Section Order)**:
+    1. Hero Section (100vh, identitas job portal cerah dengan elemen *overlay*)
+    2. Mitra & Klien Strategis (Carousel 5 logo resmi klien segera setelah Hero)
+    3. Jangkauan Operasional Nasional (Peta sebaran site tambang dengan badge mengambang)
+    4. Budaya Perusahaan S.M.A.R.T (Hanya menampilkan kartu nilai tanpa gambar banner)
+    5. Fokus Utama Bisnis PT DPP (Menggunakan fotografi riil juru las & greenplant, berlatar cerah tanpa background hitam)
+    6. Lowongan Kerja Aktif (`PublicJobsClient`)
+    7. Footer Korporat
+  - **Penyempurnaan Kartu Budaya S.M.A.R.T**: Menghapus gambar banner dan menata ubin 3D berada di atas kata nilai dengan margin horizontal longgar, sehingga kata terpanjang `Responsibility` memiliki ruang bernapas proporsional dan tidak mepet tepi kartu.
+  - **Fokus Utama Bisnis Berbasis Fotografi Riil**: Mengganti ikon generik dengan kartu foto autentik (`welder-specialist.jpg` untuk Job & Labour Supply, `dpp-plant.jpg` untuk Product Support & Fabrication) pada kartu berlatar putih bersih.
+  - **Penghapusan Total Elemen YKBUT**: Menghapus seluruh logo, label, dan kalimat yang menyebutkan YKBUT / Yayasan Karya Bakti United Tractors di seluruh halaman dan komponen (landing page, login, register, jobs, header, sidebar, geosource).
+  - **Perbaikan Logo pada Kartu Login**: Menyematkan logo resmi PT DPP (`dpp-logo-new.png`) langsung pada kartu formulir login (`/login`) serta memperbarui panel kiri.
 - **Bright Corporate Visual Identity (Anti "Menutup Diri"):**
   - Replaced dark backgrounds with bright, open, prestigious surfaces (`bg-gradient-to-b from-white via-zinc-50 to-[#F8FAFC]`, `bg-zinc-50`, `bg-white`) on Hero, Operational Network, and footer.
   - Hero section (100vh) now features multi-layered **UI Overlay Elements**:

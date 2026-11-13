@@ -66,7 +66,7 @@ export default async function PublicJobDetailPage({ params }: { params: Promise<
                   DPP
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 font-medium">Job & Labour Supply • YKBUT</p>
+              <p className="text-[10px] text-slate-500 font-medium">Job &amp; Labour Supply</p>
             </div>
           </Link>
 
@@ -178,7 +178,7 @@ export default async function PublicJobDetailPage({ params }: { params: Promise<
       {/* Footer */}
       <footer className="bg-[#07192B] text-slate-400 text-xs py-8 border-t border-slate-800 mt-12">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© {new Date().getFullYear()} PT Dian Pandu Pratama (DPP) • YKBUT</p>
+          <p>© {new Date().getFullYear()} PT Dian Pandu Pratama (DPP). All Rights Reserved.</p>
           <p>Kawasan Industri Jababeka XII Cikarang Utara, Bekasi, Jawa Barat</p>
         </div>
       </footer>

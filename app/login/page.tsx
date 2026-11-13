@@ -111,20 +111,21 @@ function LoginFormContent() {
           </Link>
 
           <div>
-            <div className="w-12 h-12 bg-white rounded-xl p-1.5 border border-white/20 flex items-center justify-center shadow-md mb-3">
+            <div className="mb-4">
               <Image
-                src="/icon.png"
-                alt="DPP Logo"
-                width={40}
-                height={40}
-                className="object-contain"
+                src="/images/branding/dpp-logo-white-text.png"
+                alt="Logo PT Dian Pandu Pratama"
+                width={190}
+                height={82}
+                className="h-11 w-auto object-contain"
+                priority
               />
             </div>
             <h2 className="text-xl font-extrabold tracking-tight text-white">
               PT DIAN PANDU PRATAMA
             </h2>
             <p className="text-xs text-slate-300 font-medium mt-1">
-              Member of YKBUT (Yayasan Karya Bakti United Tractors) — AHEMCE Group
+              Job &amp; Labour Supply • Heavy Equipment Product Support
             </p>
           </div>
 
@@ -157,9 +158,19 @@ function LoginFormContent() {
 
       {/* Right Login Form Panel */}
       <div className="md:col-span-7 p-8 sm:p-12 flex flex-col justify-center bg-white">
-        <div className="mb-8">
+        <div className="mb-6">
+          <div className="mb-4">
+            <Image
+              src="/images/branding/dpp-logo-new.png"
+              alt="Logo PT Dian Pandu Pratama"
+              width={180}
+              height={78}
+              className="h-10 w-auto object-contain"
+              priority
+            />
+          </div>
           <div className="inline-block px-2.5 py-0.5 bg-[#D9232A]/10 text-[#D9232A] rounded-full text-[11px] font-bold uppercase tracking-wider mb-2">
-            Portal Masuk
+            Portal Masuk E-Recruitment
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Selamat Datang di Portal Karir DPP

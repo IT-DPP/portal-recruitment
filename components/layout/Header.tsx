@@ -22,7 +22,7 @@ export default function Header() {
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-bold text-slate-800">PT Dian Pandu Pratama</span>
           <span className="text-slate-400">•</span>
-          <span className="text-slate-600 font-medium">E-Recruitment Portal (YKBUT)</span>
+          <span className="text-slate-600 font-medium">E-Recruitment Portal</span>
           <span className="text-slate-400">•</span>
           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-[#D9232A] border border-red-200">
             Labor & Job Supply
