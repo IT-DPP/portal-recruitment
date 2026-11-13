@@ -91,7 +91,6 @@ export async function getCalendarData() {
         } catch {
           sd = {};
         }
-        }
       }
 
       // Map history entries with their stage orderIndex
