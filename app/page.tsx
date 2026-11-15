@@ -14,20 +14,12 @@ import {
   MapPin,
   ShieldCheck,
 } from "lucide-react";
-import PublicJobsClient from "@/app/jobs/PublicJobsClient";
 import LandingNavbar from "@/components/landing/LandingNavbar";
 import ClientLogosCarousel from "@/components/landing/ClientLogosCarousel";
 import ManpowerFormationShowcase from "@/components/landing/ManpowerFormationShowcase";
 import LandingFooter from "@/components/landing/LandingFooter";
-import { getPublicJobs } from "@/app/actions/job";
-import { getProvinces, getDepartments } from "@/app/actions/master-data";
 
 export default async function Home() {
-  const [jobsRes, provincesRes, deptsRes] = await Promise.all([
-    getPublicJobs(),
-    getProvinces(),
-    getDepartments(),
-  ]);
 
   const smartValues = [
     {
@@ -96,21 +88,21 @@ export default async function Home() {
                     Cari posisi: Welder, Mekanik, Surveyor, K3...
                   </span>
                 </div>
-                <a
-                  href="#lowongan"
+                <Link
+                  href="/jobs"
                   className="w-full sm:w-auto px-5 py-2.5 bg-[#C81E25] hover:bg-[#A8181E] text-white rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-xs shrink-0"
                 >
                   Cari Lowongan
-                </a>
+                </Link>
               </div>
 
               {/* Popular Job Keywords */}
               <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600 pt-1">
                 <span className="font-semibold text-zinc-800">Posisi Populer:</span>
-                <a href="#lowongan" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-md font-medium transition-colors">Welder 6G/4G</a>
-                <a href="#lowongan" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-md font-medium transition-colors">Mekanik Alat Berat</a>
-                <a href="#lowongan" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg font-medium transition-colors">Mine Surveyor</a>
-                <a href="#lowongan" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg font-medium transition-colors">K3 / EHS Officer</a>
+                <Link href="/jobs?q=Welder" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-md font-medium transition-colors">Welder 6G/4G</Link>
+                <Link href="/jobs?q=Mekanik" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-md font-medium transition-colors">Mekanik Alat Berat</Link>
+                <Link href="/jobs?q=Surveyor" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg font-medium transition-colors">Mine Surveyor</Link>
+                <Link href="/jobs?q=HSE" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg font-medium transition-colors">K3 / EHS Officer</Link>
               </div>
             </div>
 
@@ -362,30 +354,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 5. OPEN VACANCIES SECTION — Interactive Job Search & Listings */}
-      <section id="lowongan" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-zinc-200 bg-white">
-        <div className="max-w-3xl mb-12">
-          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">
-            Peluang Karir Terbuka
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
-            Lowongan Kerja Aktif PT DPP
-          </h2>
-          <p className="text-sm text-zinc-600 mt-2 font-normal">
-            Pilih posisi pekerjaan yang sesuai dengan keahlian dan domisili penempatan Anda di Head Office maupun Site Operasi.
-          </p>
-        </div>
-
-        <div className="w-full">
-          <PublicJobsClient
-            initialJobs={jobsRes.success ? jobsRes.data || [] : []}
-            provinces={provincesRes.success ? provincesRes.data || [] : []}
-            departments={deptsRes.success ? deptsRes.data || [] : []}
-          />
-        </div>
-      </section>
-
-      {/* 6. CORPORATE FOOTER — Bright Theme & Latest Logo */}
+      {/* 5. CORPORATE FOOTER — Bright Theme & Latest Logo */}
       <LandingFooter />
     </div>
   );

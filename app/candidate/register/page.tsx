@@ -86,28 +86,31 @@ export default function RegisterPage() {
     <div className="bg-slate-100 min-h-screen flex items-center justify-center p-4 md:p-8 font-sans">
       <main className="w-full max-w-md">
         <div className="bg-white border border-slate-200 rounded-3xl shadow-xl p-8 sm:p-10 space-y-6">
-          {/* Header */}
-          <div className="text-center space-y-2">
-            <Link href="/" className="inline-flex items-center gap-2 mb-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors">
+          {/* Top Bar: Navigasi Kembali & Logo DPP Space-Between */}
+          <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+            >
               <ArrowLeft className="w-3.5 h-3.5" /> Kembali ke Beranda
             </Link>
 
-            <div className="mb-2 flex justify-center">
+            <Link href="/" aria-label="Beranda PT Dian Pandu Pratama">
               <Image
                 src="/images/branding/dpp-logo-new.png"
                 alt="Logo PT Dian Pandu Pratama"
-                width={180}
-                height={78}
-                className="h-11 w-auto object-contain"
+                width={140}
+                height={60}
+                className="h-8 sm:h-9 w-auto object-contain"
                 priority
               />
-            </div>
+            </Link>
+          </div>
+
+          <div className="space-y-1 pt-1">
             <h1 className="text-xl font-bold text-zinc-950 tracking-tight">
               Pendaftaran Akun Pelamar
             </h1>
-            <p className="text-xs text-zinc-500 font-medium">
-              E-Recruitment Portal • PT Dian Pandu Pratama
-            </p>
           </div>
 
           {/* Error Message */}
@@ -191,7 +194,7 @@ export default function RegisterPage() {
             {/* Privacy notice */}
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-500 space-y-1">
               <p className="font-semibold text-slate-700 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Pelindungan Data Pribadi:
+                <ShieldCheck className="w-3.5 h-3.5 text-[#C81E25]" /> Pelindungan Data Pribadi:
               </p>
               <p>
                 Dengan mendaftar, data diri Anda diproteksi dengan enkripsi AES-256-GCM sesuai Undang-Undang PDP No. 27 Tahun 2022.
@@ -201,7 +204,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-11 bg-[#0A2540] hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-2xs hover:shadow-xs focus:outline-hidden transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+              className="w-full h-11 bg-[#C81E25] hover:bg-[#A8181E] text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-sm focus:outline-hidden transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSubmitting ? (
                 <>
@@ -209,10 +212,7 @@ export default function RegisterPage() {
                   Mendaftarkan Akun...
                 </>
               ) : (
-                <>
-                  <UserPlus className="w-4 h-4 text-emerald-400" />
-                  Daftar Sekarang
-                </>
+                "Daftar Sekarang"
               )}
             </button>
           </form>

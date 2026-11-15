@@ -4,6 +4,21 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Phase 4.7 Landing Redirection, Login & Register UI Polish] — Dedicated Jobs Route, Clean Auth Panels, and Register Header Space-Between — 2026-11-15
+
+### Changed
+- **Dedicated Job Listings Routing (`app/page.tsx`, `components/landing/LandingNavbar.tsx`):**
+  - Updated navbar "Lowongan Kerja" (desktop and mobile) and hero CTA button "Cari Lowongan" to route directly to `/jobs`.
+  - Removed embedded `<section id="lowongan">` and unused data queries from the landing page to focus all job browsing on the dedicated, high-performance `/jobs` route.
+- **Login Page Brand Cleanup (`app/login/page.tsx`):**
+  - Re-encoded and fixed `dpp-logo-white-text.png` with standard PNG filter-0 scanlines and valid CRCs, resolving the invisible logo bug on the navy left panel.
+  - Removed redundant logo and "Portal Masuk E-Recruitment" badge from the right form panel.
+  - Styled login submit button with corporate DPP red (`bg-[#C81E25] hover:bg-[#A8181E]`).
+- **Register Page UI Refinements (`app/candidate/register/page.tsx`):**
+  - Restructured top bar with `flex items-center justify-between` layout, separating "Kembali ke Beranda" and the official DPP logo.
+  - Removed legacy text "E-Recruitment Portal • PT Dian Pandu Pratama".
+  - Removed icon from "Daftar Sekarang" submit button, standardizing to solid text and corporate red color scheme.
+
 ## [Phase 4.6 Shared Landing Footer & Sticky Jobs Filter] — Unified Corporate Bright Footer and Sticky Job Search Bar — 2026-11-15
 
 ### Added

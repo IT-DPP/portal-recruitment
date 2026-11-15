@@ -467,6 +467,38 @@ IT Leader DPP menginstruksikan 2 pembaruan pengalaman pengguna (UX) dan keseraga
 ### Status
 Fase 4.6 selesai 100%. Seluruh halaman publik portal rekrutmen DPP kini memiliki footer seragam yang elegan dan fungsionalitas filter sticky yang mempermudah navigasi pencari kerja.
 
+---
+
+## 2026-11-15 — Fase 4.7: Navigasi Khusus /jobs, Perbaikan Logo Login, dan Polish Halaman Registrasi
+
+### Konteks & Arahan IT Leader
+IT Leader DPP menginstruksikan 3 penyempurnaan alur dan visual:
+1. Navigasi navbar "Lowongan Kerja" dan tombol "Cari Lowongan" pada beranda diarahkan langsung ke `/jobs`, serta menghilangkan seksi daftar lowongan di beranda agar eksplorasi lowongan fokus di halaman `/jobs`.
+2. Pada halaman login (`/login`), memperbaiki logo yang tidak muncul di panel kiri (navy), menghapus logo redundan di panel kanan (form login), dan menghapus label badge "Portal Masuk E-Recruitment".
+3. Pada halaman registrasi kandidat (`/candidate/register`), menata navigasi "Kembali" dan logo DPP menjadi *space-between*, menghapus label teks "E-Recruitment Portal • PT Dian Pandu Pratama", dan menghilangkan ikon pada tombol submit "Daftar Sekarang".
+
+### Apa yang dikerjakan
+1. **Pemusatan Eksplorasi Lowongan ke `/jobs` (`app/page.tsx`, `components/landing/LandingNavbar.tsx`):**
+   - Menghapus `<section id="lowongan">` dari `app/page.tsx` beserta pemanggilan query database yang tidak lagi diperlukan di halaman utama (`getPublicJobs`, `getProvinces`, `getDepartments`).
+   - Mengubah tautan "Lowongan Kerja" di navbar (desktop dan drawer mobile) menjadi `<Link href="/jobs">`.
+   - Mengubah tombol "Cari Lowongan" dan chip kata kunci populer di hero section menjadi tautan langsung ke `/jobs`.
+2. **Pembersihan & Perbaikan Logo Halaman Login (`app/login/page.tsx`):**
+   - Menganalisis dan memperbaiki encoding file PNG `dpp-logo-white-text.png` dengan unfilter scanlines secara matematis (filter type 2 $\rightarrow$ filter type 0) dan kalkulasi CRC valid, sehingga gambar logo dengan teks putih kini tampil sempurna pada panel navy.
+   - Menghapus logo sekunder dan label "Portal Masuk E-Recruitment" pada panel form kanan untuk tampilan yang lebih bersih (*uncluttered*).
+   - Menyelaraskan tombol submit dengan warna merah korporat DPP `#C81E25`.
+3. **Penyempurnaan Halaman Registrasi (`app/candidate/register/page.tsx`):**
+   - Mengatur bar atas form pendaftaran menggunakan `flex items-center justify-between` sehingga link "Kembali ke Beranda" berada di kiri dan logo resmi DPP berada di kanan.
+   - Menghapus teks redundan "E-Recruitment Portal • PT Dian Pandu Pratama".
+   - Menghapus ikon `<UserPlus />` pada tombol "Daftar Sekarang", menyajikan tombol solid teks merah korporat `#C81E25` yang profesional.
+4. **Verifikasi Kualitas:**
+   - Static Type Checking `npx tsc --noEmit` (**0 ERROR**).
+   - Unit Tests Suite `npm test` (**20/20 PASS**).
+   - End-to-End Suite `npm run check:e2e` (**21/21 PASS**).
+   - Pengujian HTTP Status: `/` (200 OK), `/login` (200 OK), `/candidate/register` (200 OK).
+
+### Status
+Fase 4.7 selesai 100%. Alur penjelajahan lowongan kini terpusat di `/jobs`, dan antarmuka otentikasi (login & registrasi) tampil lebih bersih, proporsional, dan berstandar korporat modern.
+
 
 
 

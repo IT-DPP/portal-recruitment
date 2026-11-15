@@ -151,7 +151,7 @@ function LoginFormContent() {
 
         {/* Security Tag */}
         <div className="relative z-10 pt-6 mt-6 border-t border-white/15 flex items-center gap-2 text-[11px] text-slate-300">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+          <ShieldCheck className="w-4 h-4 text-[#C81E25] shrink-0" />
           <span>Sistem aman terproteksi enkripsi UU PDP No. 27 Tahun 2022.</span>
         </div>
       </div>
@@ -159,19 +159,6 @@ function LoginFormContent() {
       {/* Right Login Form Panel */}
       <div className="md:col-span-7 p-8 sm:p-12 flex flex-col justify-center bg-white">
         <div className="mb-6">
-          <div className="mb-4">
-            <Image
-              src="/images/branding/dpp-logo-new.png"
-              alt="Logo PT Dian Pandu Pratama"
-              width={180}
-              height={78}
-              className="h-10 w-auto object-contain"
-              priority
-            />
-          </div>
-          <div className="inline-block px-2.5 py-0.5 bg-[#D9232A]/10 text-[#D9232A] rounded-full text-[11px] font-bold uppercase tracking-wider mb-2">
-            Portal Masuk E-Recruitment
-          </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Selamat Datang di Portal Karir DPP
           </h1>
@@ -271,7 +258,7 @@ function LoginFormContent() {
           <button
             type="submit"
             disabled={isAuthenticating}
-            className="w-full flex justify-center py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-[#0A2540] hover:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-70 disabled:cursor-not-allowed transition-colors shadow-2xs"
+            className="w-full flex justify-center py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-[#C81E25] hover:bg-[#A8181E] focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-[#C81E25] disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-xs cursor-pointer"
           >
             {isAuthenticating ? (
               <>

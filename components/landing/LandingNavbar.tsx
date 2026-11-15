@@ -68,13 +68,13 @@ export default function LandingNavbar() {
             Beranda
           </a>
 
-          {/* Lowongan Kerja placed first */}
-          <a
-            href="#lowongan"
+          {/* Lowongan Kerja placed first — direct navigation to /jobs */}
+          <Link
+            href="/jobs"
             className="hover:text-zinc-950 transition-colors"
           >
             Lowongan Kerja
-          </a>
+          </Link>
 
           {/* About Dropdown with Seamless Bridge & Click Outside Guard */}
           <div
@@ -164,13 +164,13 @@ export default function LandingNavbar() {
             >
               Beranda
             </a>
-            <a
-              href="#lowongan"
+            <Link
+              href="/jobs"
               onClick={() => setIsMobileMenuOpen(false)}
               className="py-1 hover:text-zinc-950"
             >
               Lowongan Kerja
-            </a>
+            </Link>
 
             <div className="pt-2 border-t border-zinc-200 space-y-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
