@@ -108,7 +108,7 @@ export default function PublicJobsClient({
           {initialJobs.map((job) => (
             <Link 
               key={job.id} 
-              href={`/jobs/${job.id}`}
+              href={`/jobs/${job.slug || job.id}`}
               className="bg-white rounded-3xl p-6 border border-table-border shadow-sm hover:shadow-md hover:border-primary/40 transition-all group flex flex-col h-full"
             >
               <div className="mb-4">

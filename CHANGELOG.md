@@ -4,6 +4,30 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Phase 4.3 SEO URLs] — Human-Readable Job Slugs & Seamless Backward Compatibility — 2026-11-15
+
+### Added
+- **SEO & Human-Readable URL Slug Generation (`lib/slug.ts`):**
+  - Utility functions `slugify` and `generateJobSlug` producing standardized `/jobs/{posisi}-at-{customer}` paths with accent stripping, sanitization, and automatic suffix disambiguation.
+- **Database Schema Column (`prisma/schema.prisma`):**
+  - Added `slug String? @unique` to `JobOpening` model in PostgreSQL.
+- **Automated Backfill Script (`scripts/backfill-job-slugs.ts`):**
+  - Populated unique SEO slugs across all 13 active job openings in the database.
+- **Unit Testing Suite (`lib/__tests__/slug.test.ts`):**
+  - Added unit test coverage for slug generation, sanitization, customer attribution, and suffix formatting (20/20 unit tests pass).
+- **Singular URL Redirection (`app/job/[slug]/page.tsx`):**
+  - Support for `/job/{slug}` gracefully forwarding to `/jobs/{slug}`.
+
+### Changed
+- **Next.js Route Migration (`app/jobs/[slug]/page.tsx`):**
+  - Migrated dynamic route from `app/jobs/[id]` to `app/jobs/[slug]`.
+  - Implemented automatic 301 permanent redirect if accessed via legacy CUID ID (`/jobs/cmw0...`), ensuring zero broken bookmarks or indexing issues.
+- **Server Action Enhancements (`app/actions/job.ts`):**
+  - Updated `createJobOpening` to automatically resolve position and customer names to generate unique slugs on job creation.
+  - Updated `getPublicJobById` to support query by either `slug` or `id`.
+- **Public Jobs Link Integration (`app/jobs/PublicJobsClient.tsx`):**
+  - Updated job cards to navigate to `/jobs/${job.slug || job.id}`.
+
 ## [Phase 4.2 Polish] — Manpower Formation Full Height, Hero Width Alignment, Overlaid Map Section & Borderless Imagery — 2026-11-15
 
 ### Changed

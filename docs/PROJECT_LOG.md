@@ -335,6 +335,42 @@ Fase 4.1 Polish selesai 100%. Landing page memenuhi seluruh kriteria visual bers
 ### Status
 Fase 4.2 Polish selesai 100%. Tampilan visual landing page bersih, leluasa, dan berstandar enterprise.
 
+---
+
+## 2026-11-15 — Fase 4.3: Implementasi SEO-Friendly URL Slugs (`/jobs/{posisi}-at-{customer}`)
+
+### Konteks & Arahan IT Leader
+IT Leader DPP menginstruksikan perubahan format URL halaman detail lowongan dari menampilkan ID CUID generik (`/jobs/clw9...`) ke format ramah SEO dan manusia: `/jobs/{nama-posisi-lengkap}-at-{nama-customer-atau-client}`.
+
+### Apa yang dikerjakan
+1. **Schema Prisma & Database Migration:**
+   - Menambahkan field `slug String? @unique` pada tabel `JobOpening` di `prisma/schema.prisma`.
+   - Mengaplikasikan migrasi skema ke PostgreSQL lokal via `npx prisma db push`.
+   - Menjalankan `npx prisma generate` untuk memperbarui Prisma Client.
+2. **Utilitas Pembentukan Slug (`lib/slug.ts`):**
+   - Membuat fungsi `slugify(text)` dan `generateJobSlug(position, customer, suffix)` dengan pembersihan aksen, konversi `&` menjadi `-and-`, pembersihan karakter non-alphanumerik, dan penanganan suffix angka jika terjadi duplikasi.
+3. **Backfill Script Data Lowongan Existing (`scripts/backfill-job-slugs.ts`):**
+   - Menjalankan script backfill otomatis untuk meng-generate slug unik pada seluruh 13 lowongan aktif yang ada di database:
+     - Contoh: `/jobs/operator-excavator-pc2000-pc1250-at-pt-kaltim-prima-coal`
+     - Contoh: `/jobs/mine-surveyor-and-geodetic-specialist-at-pt-berau-coal`
+     - Contoh: `/jobs/hse-mining-inspector-pengawas-k3-tambang-at-pt-indonesia-morowali-industrial-park`
+4. **Pembaruan Server Actions (`app/actions/job.ts`):**
+   - `createJobOpening`: Otomatis meng-generate dan memvalidasi keunikan `slug` saat lowongan baru dibuat oleh tim recruiter.
+   - `getPublicJobById`: Mendukung pencarian fleksibel berbasis `slug` maupun `id` CUID via klausa `OR: [{ slug }, { id }]`.
+5. **Migrasi Routing Next.js & Backward Compatibility:**
+   - Memindahkan rute dari `app/jobs/[id]` ke `app/jobs/[slug]/page.tsx`.
+   - Menyematkan auto 301 Permanent Redirect: jika pengunjung membuka URL lama dengan ID CUID, sistem secara otomatis me-redirect ke URL slug baru tanpa tautan rusak.
+   - Menambahkan rute singular `app/job/[slug]/page.tsx` yang secara otomatis me-redirect ke `/jobs/[slug]`.
+   - Memperbarui tautan kartu lowongan di `app/jobs/PublicJobsClient.tsx` menggunakan `job.slug || job.id`.
+6. **Verifikasi Mutu & Testing:**
+   - Membuat unit test suite baru `lib/__tests__/slug.test.ts` (20/20 unit tests lulus 100%).
+   - Static Type Checking `npx tsc --noEmit` (**0 ERROR**).
+   - End-to-End Suite `npm run check:e2e` (**21/21 PASS**).
+   - Next.js Turbopack Production Build `npm run build` (**26/26 routes compiled successfully**).
+
+### Status
+Fase 4.3 SEO URLs selesai 100%. Platform e-recruitment kini memiliki URL publik berstandar industri dengan pengindeksan mesin pencari yang optimal.
+
 
 
 

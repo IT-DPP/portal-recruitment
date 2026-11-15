@@ -16,6 +16,7 @@ import {
   OfferingLetterStatus,
   MobilizationStatus,
 } from "@prisma/client";
+import { generateJobSlug } from "@/lib/slug";
 
 export async function getJobOpenings() {
   try {
@@ -294,6 +295,21 @@ export async function createJobOpening(data: JobOpeningInput) {
       departmentId = null;
     }
 
+    // Generate unique slug
+    let resolvedPos = positionName;
+    if (!resolvedPos && positionId) {
+      const pos = await prisma.masterPosition.findUnique({ where: { id: positionId } });
+      resolvedPos = pos?.name;
+    }
+    const cust = await prisma.masterCustomer.findUnique({ where: { id: restData.customerId } });
+    const baseSlug = generateJobSlug(resolvedPos || "posisi", cust?.name || "dpp");
+    let slug = baseSlug;
+    let counter = 2;
+    while (await prisma.jobOpening.findUnique({ where: { slug } })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
     const result = await prisma.jobOpening.create({
       data: {
         ...restData,
@@ -301,6 +317,7 @@ export async function createJobOpening(data: JobOpeningInput) {
         departmentId,
         positionName,
         departmentName,
+        slug,
       },
     });
 
@@ -556,11 +573,14 @@ export async function getPublicJobs(search?: string, provinceId?: string, cityId
   }
 }
 
-export async function getPublicJobById(id: string) {
+export async function getPublicJobById(idOrSlug: string) {
   try {
     const job = await prisma.jobOpening.findFirst({
       where: {
-        id,
+        OR: [
+          { slug: idOrSlug },
+          { id: idOrSlug },
+        ],
         status: "ACTIVE"
       },
       include: {

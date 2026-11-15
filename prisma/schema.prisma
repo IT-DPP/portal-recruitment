@@ -272,6 +272,7 @@ model JobOpening {
   noFormB1           String?
   requiresBnsp       Boolean           @default(false)
   publishedDate      DateTime?
+  slug               String?           @unique
   applications       Application[]
   city               MasterCity        @relation(fields: [cityId], references: [id])
   customer           MasterCustomer    @relation(fields: [customerId], references: [id])

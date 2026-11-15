@@ -17,11 +17,11 @@ import {
   LogIn,
   HardHat,
 } from "lucide-react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const res = await getPublicJobById(id);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const res = await getPublicJobById(slug);
   if (!res.success || !res.data) return { title: "Lowongan Tidak Ditemukan" };
 
   const title = res.data.positionName || res.data.position?.name || "Lowongan Pekerjaan";
@@ -30,15 +30,21 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function PublicJobDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const res = await getPublicJobById(id);
+export default async function PublicJobDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const res = await getPublicJobById(slug);
 
   if (!res.success || !res.data) {
     notFound();
   }
 
   const job = res.data;
+
+  // Backward compatibility: if accessed via legacy CUID ID, redirect permanently to clean SEO slug
+  if (job.slug && slug !== job.slug && slug === job.id) {
+    redirect(`/jobs/${job.slug}`);
+  }
+
   const title = job.positionName || job.position?.name || "Lowongan Pekerjaan";
 
   return (
