@@ -131,36 +131,32 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 2. JARINGAN OPERASI NASIONAL — High-Res Operational Map with Overlaid Dominant Title */}
-      <section
-        id="jaringan-operasi"
-        className="py-12 sm:py-16 lg:py-20 bg-white border-b border-zinc-200 text-zinc-900 overflow-hidden"
-      >
+      {/* 2. JARINGAN OPERASI NASIONAL — High-Res Operational Map with Section Header Matching Budaya & Fokus Bisnis */}
+      <section id="jaringan-operasi" className="py-20 bg-white border-b border-zinc-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative w-full max-w-6xl mx-auto min-h-[440px] sm:min-h-[520px] lg:min-h-[600px] xl:min-h-[660px] rounded-2xl overflow-hidden border border-zinc-200/80 bg-zinc-50/50 shadow-xs flex flex-col justify-between p-4 sm:p-6 lg:p-8">
-            {/* The High-Resolution Map Image (Base / Background) */}
-            <div className="absolute inset-0 z-0">
+          <div className="max-w-3xl mb-12">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">
+              Jangkauan Operasional
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
+              Jaringan Site Operasional Nasional
+            </h2>
+            <p className="text-sm text-zinc-600 mt-2 font-normal">
+              Sebaran titik operasi kantor pusat, manufaktur fabrikasi terpadu di Cikarang, dan representatif penempatan tenaga kerja di seluruh site pertambangan dan industri Indonesia.
+            </p>
+          </div>
+
+          {/* High-Resolution Operational Map */}
+          <div className="relative w-full aspect-[4251/2391] rounded-2xl overflow-hidden border border-zinc-200/80 bg-zinc-50/50 shadow-xs flex items-center justify-center p-3 sm:p-6 lg:p-8">
+            <div className="relative w-full h-full">
               <Image
                 src="/images/branding/dpp-operational-map.png"
                 alt="Peta Jaringan Site Operasional Nasional PT Dian Pandu Pratama"
                 fill
-                className="object-contain object-bottom sm:object-center p-2 sm:p-4"
+                className="object-contain object-center"
                 priority
               />
             </div>
-
-            {/* Overlaid Dominant Centered Title (Overlaying on top of the image) */}
-            <div className="relative z-10 text-center max-w-3xl mx-auto pt-2 sm:pt-4">
-              <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-zinc-950 tracking-tight leading-tight">
-                Jaringan Site Operasional Nasional
-              </h2>
-              <p className="text-xs sm:text-sm lg:text-base text-zinc-600 mt-2 sm:mt-3 font-medium leading-relaxed max-w-2xl mx-auto">
-                Sebaran titik operasi kantor pusat, manufaktur fabrikasi terpadu di Cikarang, dan representatif penempatan tenaga kerja di seluruh site pertambangan dan industri Indonesia.
-              </p>
-            </div>
-
-            {/* Spacer to preserve map view below */}
-            <div className="relative z-10 h-16 sm:h-24 pointer-events-none" />
           </div>
         </div>
       </section>

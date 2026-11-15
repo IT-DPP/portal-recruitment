@@ -13,9 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Removed tab description badge from the bottom information overlay.
 - **Mitra & Klien Width Alignment (`app/page.tsx`):**
   - Aligned partner/client marquee container width with the Hero section content grid (`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`), keeping the layout cohesive and strictly within the content boundaries.
-- **Jaringan Operasi Nasional Overlaid Presentation (`app/page.tsx`):**
+- **Jaringan Operasi Nasional Layout Alignment (`app/page.tsx`):**
+  - Aligned section header position to match Budaya S.M.A.R.T and Fokus Utama Bisnis (`max-w-3xl mb-12` left-aligned on clean white canvas).
+  - Placed title and description completely above the map diagram to ensure 100% legibility and zero collision with map annotations.
   - Removed the 3 Hub cards (`HUB-01`, `HUB-02`, `HUB-03`) and removed the badge element "Distribusi Operasional & Jangkauan Penempatan".
-  - Overlaid dominant centered title and subtitle directly on top of the high-resolution operational map diagram (`dpp-operational-map.png`).
 - **Job & Labour Supply Photo Border Removal (`welder-specialist.jpg` & `app/page.tsx`):**
   - Cleanly cropped off outer offset frame edges from the source image.
   - Enhanced scale styling with `scale-110 group-hover:scale-115 object-center` to guarantee zero border visibility.

@@ -320,9 +320,9 @@ Fase 4.1 Polish selesai 100%. Landing page memenuhi seluruh kriteria visual bers
    - Menghapus badge label tab pada overlay teks bawah.
 2. **Penyelarasan Lebar Marquee Mitra & Klien:**
    - Mengembalikan container marquee ke lebar batas konten Hero (`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`), sehingga tersusun simetris dan serasi dengan kolom teks dan visual di atasnya.
-3. **Penyajian Judul Dominan Overlay Peta Operasional:**
+3. **Penyelarasan Tata Letak Judul Jaringan Operasi Nasional:**
    - Menghapus 3 kartu hub (`HUB-01`, `HUB-02`, `HUB-03`) dan badge "Distribusi Operasional & Jangkauan Penempatan".
-   - Menyajikan judul dominan dan deskripsi seksi di-overlay langsung pada bagian atas kontainer diagram peta operasional resolusi tinggi (`dpp-operational-map.png`, 4251 × 2391 px).
+   - Menyelaraskan posisi header judul seksi ke format standar yang identik dengan seksi Budaya S.M.A.R.T dan Fokus Bisnis (`max-w-3xl mb-12` rata kiri berlatar putih bersih), sehingga judul dan deskripsi 100% terbaca jelas tanpa bertabrakan dengan garis dan teks anotasi pada peta operasional resolusi tinggi (`dpp-operational-map.png`).
 4. **Pembersihan Border Foto Juru Las (*Job & Labour Supply*):**
    - Memangkas border offset asli gambar menggunakan Sharp.
    - Menerapkan styling `scale-110 group-hover:scale-115 object-center` pada container dengan `overflow-hidden` untuk memastikan nol border terlihat.
