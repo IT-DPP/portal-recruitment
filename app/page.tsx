@@ -118,51 +118,49 @@ export default async function Home() {
           </div>
         </div>
 
-        {/* Hero Bottom: MITRA & KLIEN STRATEGIS — Full 100vw Viewport Width */}
-        <div className="w-full w-screen max-w-full border-t border-zinc-200/80 bg-white/80 backdrop-blur-xs pt-1.5 pb-2 z-10">
-          <div className="w-full px-4 sm:px-8 mb-1 flex items-center justify-between">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-              Mitra &amp; Klien Strategis Penempatan Kerja
+        {/* Hero Bottom: MITRA & KLIEN STRATEGIS — Fit with Hero Section Width */}
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-2 pb-2.5 border-t border-zinc-200/80 z-10">
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
+            <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider shrink-0 whitespace-nowrap">
+              Mitra &amp; Klien Penempatan Kerja:
             </span>
-          </div>
-          <div className="w-full overflow-hidden">
-            <ClientLogosCarousel compact={true} />
+            <div className="flex-1 w-full min-w-0 overflow-hidden">
+              <ClientLogosCarousel compact={true} />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 2. JARINGAN OPERASI NASIONAL — Dominant Title followed by High-Res Operational Map */}
+      {/* 2. JARINGAN OPERASI NASIONAL — High-Res Operational Map with Overlaid Dominant Title */}
       <section
         id="jaringan-operasi"
-        className="py-16 sm:py-20 lg:py-24 bg-white border-b border-zinc-200 text-zinc-900 overflow-hidden"
+        className="py-12 sm:py-16 lg:py-20 bg-white border-b border-zinc-200 text-zinc-900 overflow-hidden"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Dominant Centered Title */}
-          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
-            <span className="inline-block text-xs font-bold text-[#C81E25] uppercase tracking-widest mb-2.5 px-3 py-1 bg-red-50 rounded-full border border-red-100">
-              Distribusi Operasional &amp; Jangkauan Penempatan
-            </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-zinc-950 tracking-tight leading-tight">
-              Jaringan Site Operasional Nasional
-            </h2>
-            <p className="text-sm sm:text-base text-zinc-600 mt-3 font-normal leading-relaxed max-w-2xl mx-auto">
-              Sebaran titik operasi kantor pusat, manufaktur fabrikasi terpadu di Cikarang, dan representatif penempatan tenaga kerja di seluruh site pertambangan dan industri Indonesia.
-            </p>
-          </div>
-
-          {/* High-Resolution Operational Map (Clear, 100% Native Aspect Ratio, Max Size) */}
-          <div className="w-full flex justify-center items-center">
-            <div className="relative w-full max-w-6xl aspect-[4251/2391] rounded-2xl overflow-hidden border border-zinc-200/80 bg-zinc-50/50 shadow-xs p-3 sm:p-6 lg:p-8 flex items-center justify-center">
-              <div className="relative w-full h-full">
-                <Image
-                  src="/images/branding/dpp-operational-map.png"
-                  alt="Peta Jaringan Site Operasional Nasional PT Dian Pandu Pratama"
-                  fill
-                  className="object-contain object-center"
-                  priority
-                />
-              </div>
+          <div className="relative w-full max-w-6xl mx-auto min-h-[440px] sm:min-h-[520px] lg:min-h-[600px] xl:min-h-[660px] rounded-2xl overflow-hidden border border-zinc-200/80 bg-zinc-50/50 shadow-xs flex flex-col justify-between p-4 sm:p-6 lg:p-8">
+            {/* The High-Resolution Map Image (Base / Background) */}
+            <div className="absolute inset-0 z-0">
+              <Image
+                src="/images/branding/dpp-operational-map.png"
+                alt="Peta Jaringan Site Operasional Nasional PT Dian Pandu Pratama"
+                fill
+                className="object-contain object-bottom sm:object-center p-2 sm:p-4"
+                priority
+              />
             </div>
+
+            {/* Overlaid Dominant Centered Title (Overlaying on top of the image) */}
+            <div className="relative z-10 text-center max-w-3xl mx-auto pt-2 sm:pt-4">
+              <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-zinc-950 tracking-tight leading-tight">
+                Jaringan Site Operasional Nasional
+              </h2>
+              <p className="text-xs sm:text-sm lg:text-base text-zinc-600 mt-2 sm:mt-3 font-medium leading-relaxed max-w-2xl mx-auto">
+                Sebaran titik operasi kantor pusat, manufaktur fabrikasi terpadu di Cikarang, dan representatif penempatan tenaga kerja di seluruh site pertambangan dan industri Indonesia.
+              </p>
+            </div>
+
+            {/* Spacer to preserve map view below */}
+            <div className="relative z-10 h-16 sm:h-24 pointer-events-none" />
           </div>
         </div>
       </section>

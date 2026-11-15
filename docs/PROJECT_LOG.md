@@ -305,24 +305,24 @@ Fase 4.1 Polish selesai 100%. Landing page memenuhi seluruh kriteria visual bers
 
 ---
 
-## 2026-11-15 — Fase 4.2: Penyempurnaan Formasi Barisan, Marquee 100vw, Visual Peta Tunggal & Eliminasi Border Gambar
+## 2026-11-15 — Fase 4.2: Penyempurnaan Formasi Barisan, Penyelarasan Lebar Mitra, Judul Peta Overlay & Eliminasi Border Gambar
 
 ### Konteks & Arahan IT Leader
 1. Pada `ManpowerFormationShowcase`: Menghapus tombol tab, menyesuaikan tinggi gambar agar penuh (*full height*) tanpa menabrak bilah mitra/klien, serta menghapus badge deskripsi tab pada overlay.
-2. Menjadikan lebar dari bagian mitra & klien menjadi `100vw` (*full screen width*).
-3. Pada seksi Jaringan Operasi Nasional: Menghapus 3 kartu rincian hub, menampilkan judul yang dominan diikuti langsung dengan peta operasional resolusi tinggi tanpa tumpang tindih.
-4. Menghilangkan border screenshot bawaan pada foto *Job & Labour Supply* (`welder-specialist.jpg`) dengan memperbesar skala gambar (*scale up*).
+2. Mengembalikan lebar seksi Mitra & Klien agar presisi dengan lebar konten Hero section (`max-w-7xl`, bukan 100vw).
+3. Pada seksi Jaringan Operasi Nasional: Menghapus 3 kartu rincian hub, menghapus badge "Distribusi Operasional & Jangkauan Penempatan", dan menampilkan judul dominan yang di-overlay langsung di atas peta operasional.
+4. Menghilangkan border screenshot bawaan pada foto *Job & Labour Supply* (`welder-specialist.jpg`) dengan pemangkasan tepi (*crop*) dan peningkatan skala gambar (`scale-110`).
 
 ### Apa yang dikerjakan
 1. **Penyederhanaan `ManpowerFormationShowcase`:**
    - Menghapus komponen tab dan state aktif; memfokuskan visual pada formasi barisan tenaga kerja site siap kerja (`manpower-formation.jpg`).
    - Mengatur rasio tinggi responsif (`h-[320px] sm:h-[370px] lg:h-[390px] xl:h-[420px]`) yang presisi di dalam grid 100vh hero section.
    - Menghapus badge label tab pada overlay teks bawah.
-2. **Ekspansi Marquee Mitra & Klien ke 100vw:**
-   - Mengubah container marquee menjadi `w-full w-screen max-w-full`, sehingga logo 5 mitra/klien strategis mengalir penuh dari ujung kiri ke ujung kanan layar monitor tanpa batasan `max-w-7xl`.
-3. **Penyajian Peta Operasional Langsung & Bersih:**
-   - Menghapus 3 kartu hub (`HUB-01`, `HUB-02`, `HUB-03`).
-   - Menyajikan judul dominan di tengah seksi, diikuti langsung oleh diagram peta operasional resolusi tinggi (`dpp-operational-map.png`, 4251 × 2391 px) yang bersih dan terbaca jelas.
+2. **Penyelarasan Lebar Marquee Mitra & Klien:**
+   - Mengembalikan container marquee ke lebar batas konten Hero (`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`), sehingga tersusun simetris dan serasi dengan kolom teks dan visual di atasnya.
+3. **Penyajian Judul Dominan Overlay Peta Operasional:**
+   - Menghapus 3 kartu hub (`HUB-01`, `HUB-02`, `HUB-03`) dan badge "Distribusi Operasional & Jangkauan Penempatan".
+   - Menyajikan judul dominan dan deskripsi seksi di-overlay langsung pada bagian atas kontainer diagram peta operasional resolusi tinggi (`dpp-operational-map.png`, 4251 × 2391 px).
 4. **Pembersihan Border Foto Juru Las (*Job & Labour Supply*):**
    - Memangkas border offset asli gambar menggunakan Sharp.
    - Menerapkan styling `scale-110 group-hover:scale-115 object-center` pada container dengan `overflow-hidden` untuk memastikan nol border terlihat.
@@ -330,6 +330,7 @@ Fase 4.1 Polish selesai 100%. Landing page memenuhi seluruh kriteria visual bers
    - Static Type Checking `npx tsc --noEmit` (**0 ERROR**).
    - Automated Unit Tests `npm test` (**17/17 PASS**).
    - End-to-End Suite `npm run check:e2e` (**21/21 PASS**).
+   - Next.js Turbopack Production Build `npm run build` (**26/26 static/dynamic routes compiled successfully**).
 
 ### Status
 Fase 4.2 Polish selesai 100%. Tampilan visual landing page bersih, leluasa, dan berstandar enterprise.

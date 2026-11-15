@@ -4,18 +4,18 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Phase 4.2 Polish] — Manpower Formation Full Height, 100vw Client Marquee, Prominent Map Section & Borderless Imagery — 2026-11-15
+## [Phase 4.2 Polish] — Manpower Formation Full Height, Hero Width Alignment, Overlaid Map Section & Borderless Imagery — 2026-11-15
 
 ### Changed
 - **Manpower Formation Showcase Refinement (`components/landing/ManpowerFormationShowcase.tsx`):**
   - Removed tab switcher buttons and active tab state; streamlined to showcase the unified standardized manpower lineup (`manpower-formation.jpg`).
   - Adjusted card height (`h-[320px] sm:h-[370px] lg:h-[390px] xl:h-[420px]`) to fill the hero column height seamlessly without overflowing into the 100vh bottom marquee.
   - Removed tab description badge from the bottom information overlay.
-- **Mitra & Klien 100vw Full-Bleed Marquee (`app/page.tsx`):**
-  - Expanded partner/client marquee container to `100vw` (`w-full w-screen max-w-full`), allowing client logos to scroll across the entire screen width from edge to edge.
-- **Jaringan Operasi Nasional Direct Map Presentation (`app/page.tsx`):**
-  - Removed the 3 Hub cards (`HUB-01`, `HUB-02`, `HUB-03`) to eliminate clutter and foreground occlusion.
-  - Placed dominant, centered typography directly followed by the crisp, high-resolution operational map diagram (`dpp-operational-map.png`) in its native 4251/2391 aspect ratio.
+- **Mitra & Klien Width Alignment (`app/page.tsx`):**
+  - Aligned partner/client marquee container width with the Hero section content grid (`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`), keeping the layout cohesive and strictly within the content boundaries.
+- **Jaringan Operasi Nasional Overlaid Presentation (`app/page.tsx`):**
+  - Removed the 3 Hub cards (`HUB-01`, `HUB-02`, `HUB-03`) and removed the badge element "Distribusi Operasional & Jangkauan Penempatan".
+  - Overlaid dominant centered title and subtitle directly on top of the high-resolution operational map diagram (`dpp-operational-map.png`).
 - **Job & Labour Supply Photo Border Removal (`welder-specialist.jpg` & `app/page.tsx`):**
   - Cleanly cropped off outer offset frame edges from the source image.
   - Enhanced scale styling with `scale-110 group-hover:scale-115 object-center` to guarantee zero border visibility.
