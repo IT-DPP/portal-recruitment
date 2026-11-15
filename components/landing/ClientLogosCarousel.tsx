@@ -49,7 +49,7 @@ const clientLogos: ClientLogoItem[] = [
   },
 ];
 
-export default function ClientLogosCarousel() {
+export default function ClientLogosCarousel({ compact = false }: { compact?: boolean }) {
   // Duplicated list (repeated 4x) to create a completely seamless infinite loop
   const duplicatedLogos = [
     ...clientLogos,
@@ -59,19 +59,19 @@ export default function ClientLogosCarousel() {
   ];
 
   return (
-    <div className="w-full overflow-hidden py-6 select-none bg-white">
+    <div className={`w-full overflow-hidden select-none ${compact ? "py-2 bg-transparent" : "py-4 bg-white"}`}>
       {/* Scrollable Container with horizontal touch support and continuous CSS marquee */}
       <div
-        className="w-full overflow-x-auto overscroll-x-contain pb-2 focus:outline-hidden scrollbar-none"
+        className="w-full overflow-x-auto overscroll-x-contain focus:outline-hidden scrollbar-none"
         tabIndex={0}
         role="region"
         aria-label="Carousel Logo Klien dan Mitra Strategis PT DPP"
       >
-        <div className="animate-marquee items-center gap-12 sm:gap-16 lg:gap-20 px-6">
+        <div className="animate-marquee items-center gap-8 sm:gap-12 lg:gap-14 px-4">
           {duplicatedLogos.map((client, index) => (
             <div
               key={`${client.id}-${index}`}
-              className="shrink-0 flex items-center justify-center p-3 h-20 transition-all duration-300 hover:scale-105"
+              className="shrink-0 flex items-center justify-center p-1.5 transition-all duration-200 hover:opacity-100 opacity-80"
               title={client.name}
             >
               <Image
@@ -79,7 +79,7 @@ export default function ClientLogosCarousel() {
                 alt={client.name}
                 width={client.width}
                 height={client.height}
-                className="max-h-12 sm:max-h-14 w-auto object-contain"
+                className={compact ? "max-h-6 sm:max-h-7 md:max-h-8 w-auto object-contain" : "max-h-10 sm:max-h-12 w-auto object-contain"}
               />
             </div>
           ))}

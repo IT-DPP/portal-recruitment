@@ -4,6 +4,32 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Phase 4.1 Polish] — Hero 100vh Consolidation, Manpower Formation Showcase, Map Background Integration & Enterprise Typography — 2026-11-15
+
+### Added
+- **Interactive Manpower Formation Showcase (`components/landing/ManpowerFormationShowcase.tsx`):**
+  - Component showcasing standardized team lineups with interactive tab toggling between **Site Technical Crew** (`public/images/branding/manpower-formation.jpg`) and **Engineering & Back Office** (`public/images/branding/manpower-backoffice.jpg`).
+  - Integrated fit-to-work, K3, and BNSP qualification tags.
+- **High-Resolution Operational Footprint Map Background:**
+  - Integrated official high-resolution `dpp-operational-map.png` as a non-stretched background watermark preserving 100% native aspect ratio.
+
+### Changed
+- **Navbar Button Refinement (`components/landing/LandingNavbar.tsx`):**
+  - Enhanced "Daftar Karir" (crisp zinc-900 border) and "Masuk Portal" (`#C81E25` high-contrast) buttons.
+  - Removed icons (`UserPlus`, `LogIn`) so the CTA navigation feels bold, firm, and authoritative.
+- **Hero Section 100vh Consolidation (`app/page.tsx`):**
+  - Consolidated Hero content and "Mitra & Klien Strategis" carousel into a unified 100vh desktop viewport.
+  - Integrated `ClientLogosCarousel compact={true}` directly at the bottom bar of the Hero container, eliminating unnecessary scroll friction.
+  - Removed Quick Metrics Ribbon and K3/BNSP floating overlay badge.
+- **Jaringan Operasi Nasional Overhaul (`app/page.tsx`):**
+  - Replaced generic cards with an architectural/technical 3-hub directory: **HUB-01 (ID-JB Cikarang HQ & Plant)**, **HUB-02 (ID-KI Kalimantan Timur Mining Sites)**, and **HUB-03 (ID-KS/KT Kalsel & Kalteng Hauling Corridor)**.
+  - Removed "Lihat Sebaran di Dashboard Geosource".
+- **Enterprise Typography & Anti-Slop Polish:**
+  - Removed arbitrary inline colored spans (`#D9232A`) in headings.
+  - Standardized on solid, authoritative `text-zinc-950` typography with restrained `#C81E25` corporate accents matching Astra / United Tractors enterprise standards.
+- **Fokus Utama Bisnis Photographic Cards:**
+  - Integrated real photographic cards (`welder-specialist.jpg`, `dpp-plant.jpg`, `manpower-backoffice.jpg`) on clean white canvas with zero black background.
+
 ## [Phase 4 Branding] — Corporate Visual Alignment & Industrial Identity (dpp.co.id) — 2026-11-13
 
 ### Added
@@ -23,7 +49,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Integrated official photographs uploaded by IT Leader into `public/images/branding/`:
     - `dpp-plant.jpg`: Industrial Eco-Greenplant PT DPP Cikarang (Jababeka XII) with PATRIA 02 utility vehicle.
     - `welder-specialist.jpg`: Skilled welding specialist in heavy equipment PPE & sparks, representing DPP's core *Job & Labour Supply* capability.
-    - `dpp-operational-map.jpg`: Official PT DPP Indonesia Operational Footprint Map (Head Office Cikarang, Sangatta KPC, Melak PATRIA/TRUST, Tabang IPR, Balikpapan Manggar, Batu Kajang, Tanjung Redep Berau, Tanjung Tabalong, Muara Teweh, Banjarmasin, Sungai Danau).
+    - `dpp-operational-map.png`: Official PT DPP Indonesia Operational Footprint Map (Head Office Cikarang, Sangatta KPC, Melak PATRIA/TRUST, Tabang IPR, Balikpapan Manggar, Batu Kajang, Tanjung Redep Berau, Tanjung Tabalong, Muara Teweh, Banjarmasin, Sungai Danau).
 - **DPP Corporate Design System Tokens (`app/globals.css`):**
   - Added primary brand colors matching `dpp.co.id` and the Astra/United Tractors ecosystem: `--color-dpp-red: #D9232A;`, `--color-dpp-red-hover: #B91C1C;`, `--color-dpp-navy: #0A2540;`, `--color-dpp-slate: #1E293B;`, `--color-dpp-amber: #D97706;`.
   - Added infinite horizontal CSS marquee animations (`@keyframes marquee`, `.animate-marquee`).

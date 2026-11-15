@@ -4,24 +4,20 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  LogIn,
   Briefcase,
-  MapPin,
   CheckCircle2,
-  Users,
-  ArrowRight,
   Phone,
   Mail,
   ExternalLink,
-  Building2,
-  ShieldCheck,
   Search,
-  HardHat,
-  Award,
+  Building2,
+  MapPin,
+  ShieldCheck,
 } from "lucide-react";
 import PublicJobsClient from "@/app/jobs/PublicJobsClient";
 import LandingNavbar from "@/components/landing/LandingNavbar";
 import ClientLogosCarousel from "@/components/landing/ClientLogosCarousel";
+import ManpowerFormationShowcase from "@/components/landing/ManpowerFormationShowcase";
 import { getPublicJobs } from "@/app/actions/job";
 import { getProvinces, getDepartments } from "@/app/actions/master-data";
 
@@ -41,7 +37,7 @@ export default async function Home() {
     {
       letter: "M",
       word: "Morale",
-      desc: "Menjunjung integritas moral tanpa kompromi, disiplin kerja pantang menyerah, dan etika profesional Astra.",
+      desc: "Menjunjung integritas moral tanpa kompromi, disiplin kerja pantang menyerah, dan etika profesional insan industri.",
     },
     {
       letter: "A",
@@ -61,56 +57,51 @@ export default async function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-white font-sans text-zinc-900 selection:bg-[#D9232A] selection:text-white">
-      {/* Transparent Fixed Navbar */}
+    <div className="min-h-screen bg-white font-sans text-zinc-900 selection:bg-[#C81E25] selection:text-white">
+      {/* 0. Transparent Fixed Navbar */}
       <LandingNavbar />
 
-      {/* 1. HERO SECTION — Job Portal Focus, 100vh Full Viewport (Bright Theme) */}
+      {/* 1. HERO SECTION — Consolidated 100vh Viewport (Hero Content + Integrated Client Carousel) */}
       <section
         id="hero"
-        className="min-h-screen h-screen relative flex flex-col justify-center bg-gradient-to-b from-white via-zinc-50 to-[#F8FAFC] text-zinc-950 overflow-hidden px-4 sm:px-6 lg:px-8 pt-20 pb-10"
+        className="min-h-screen lg:h-screen flex flex-col justify-between bg-gradient-to-b from-white via-zinc-50 to-[#F8FAFC] text-zinc-950 px-4 sm:px-6 lg:px-8 pt-24 pb-4 overflow-hidden relative"
       >
-        {/* Subtle Ambient Red Glow */}
-        <div className="absolute -top-32 right-0 w-[550px] h-[550px] bg-red-100/40 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 -left-40 w-[450px] h-[450px] bg-slate-100/60 rounded-full blur-3xl pointer-events-none" />
+        {/* Subtle Ambient Glow */}
+        <div className="absolute -top-32 right-0 w-[550px] h-[550px] bg-red-100/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 -left-40 w-[450px] h-[450px] bg-slate-100/50 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto w-full relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
-            {/* Left Content Column: Clearly communicating JOB PORTAL */}
-            <div className="lg:col-span-7 space-y-6">
-              {/* Pill Badge */}
-              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 bg-white border border-zinc-200 rounded-full shadow-xs text-xs font-bold text-zinc-900">
-                <span className="px-2.5 py-0.5 bg-[#D9232A] text-white rounded text-[10px] font-black uppercase tracking-wider">
-                  E-RECRUITMENT
-                </span>
-                <span className="text-zinc-400">•</span>
-                <span className="text-zinc-800 font-bold">
-                  Portal Karir &amp; Rekrutmen Resmi PT DPP
-                </span>
+        {/* Hero Top/Center Grid: Content & Manpower Formation Component */}
+        <div className="max-w-7xl mx-auto w-full my-auto py-2 z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Left Content Column */}
+            <div className="lg:col-span-7 space-y-5">
+              {/* Refined Badge without flashy AI slop */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white border border-zinc-200 rounded-full shadow-2xs text-xs font-semibold text-zinc-800">
+                <span className="w-2 h-2 rounded-full bg-[#C81E25]" />
+                Portal Karir &amp; Rekrutmen Resmi PT DPP
               </div>
 
-              {/* Main Headline */}
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-zinc-950 leading-[1.12]">
-                Temukan Karir Impianmu di{" "}
-                <span className="text-[#D9232A]">PT Dian Pandu Pratama</span>
+              {/* Authoritative Solid Headline (No multicolored inline text spans) */}
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-zinc-950 leading-[1.15]">
+                Portal Karir &amp; Rekrutmen Resmi PT Dian Pandu Pratama
               </h1>
 
-              {/* Subtitle: Job Portal focused */}
-              <p className="text-base sm:text-lg text-zinc-700 leading-relaxed max-w-2xl font-normal">
-                Gerbang resmi pencarian kerja dan rekrutmen profesional untuk posisi operasional pertambangan, mekanik alat berat, juru las fabrikasi, dan staf manajemen di seluruh site Indonesia.
+              {/* Subtitle */}
+              <p className="text-sm sm:text-base text-zinc-600 leading-relaxed max-w-2xl font-normal">
+                Gerbang resmi pencarian kerja dan penempatan tenaga kerja terampil di sektor pertambangan, fabrikasi komponen alat berat, dan operasional maritim di seluruh site Indonesia.
               </p>
 
               {/* Interactive Quick Search Box for Job Seekers */}
-              <div className="bg-white p-2.5 rounded-2xl border-2 border-zinc-200 shadow-lg flex flex-col sm:flex-row items-center gap-2 max-w-xl">
+              <div className="bg-white p-2 rounded-xl border border-zinc-300 shadow-md flex flex-col sm:flex-row items-center gap-2 max-w-xl">
                 <div className="flex items-center gap-2.5 px-3 flex-1 w-full">
-                  <Search className="w-5 h-5 text-zinc-400 shrink-0" />
+                  <Search className="w-4 h-4 text-zinc-400 shrink-0" />
                   <span className="text-xs sm:text-sm font-medium text-zinc-500 truncate">
                     Cari posisi: Welder, Mekanik, Surveyor, K3...
                   </span>
                 </div>
                 <a
                   href="#lowongan"
-                  className="w-full sm:w-auto px-6 py-3 bg-[#D9232A] hover:bg-[#B91C1C] text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md shrink-0"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[#C81E25] hover:bg-[#A8181E] text-white rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-xs shrink-0"
                 >
                   <Briefcase className="w-4 h-4" />
                   Cari Lowongan
@@ -118,258 +109,254 @@ export default async function Home() {
               </div>
 
               {/* Popular Job Keywords */}
-              <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
-                <span className="font-bold text-zinc-800">Posisi Populer:</span>
-                <a href="#lowongan" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg font-medium transition-colors">Welder 6G/4G</a>
-                <a href="#lowongan" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg font-medium transition-colors">Mekanik Alat Berat</a>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600 pt-1">
+                <span className="font-semibold text-zinc-800">Posisi Populer:</span>
+                <a href="#lowongan" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-md font-medium transition-colors">Welder 6G/4G</a>
+                <a href="#lowongan" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-md font-medium transition-colors">Mekanik Alat Berat</a>
                 <a href="#lowongan" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg font-medium transition-colors">Mine Surveyor</a>
                 <a href="#lowongan" className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg font-medium transition-colors">K3 / EHS Officer</a>
               </div>
-
-              {/* Quick Metrics Ribbon — Overlay Card */}
-              <div className="bg-white/95 backdrop-blur-md border border-zinc-200 shadow-md rounded-2xl p-5 grid grid-cols-3 gap-6 max-w-xl">
-                <div>
-                  <p className="text-2xl sm:text-3xl font-black text-zinc-950">10+</p>
-                  <p className="text-[11px] text-zinc-600 font-bold uppercase tracking-wider mt-0.5">
-                    Site Penempatan
-                  </p>
-                </div>
-                <div className="border-x border-zinc-200 px-3">
-                  <p className="text-2xl sm:text-3xl font-black text-zinc-950">50+</p>
-                  <p className="text-[11px] text-zinc-600 font-bold uppercase tracking-wider mt-0.5">
-                    Titik Operasi
-                  </p>
-                </div>
-                <div>
-                  <p className="text-2xl sm:text-3xl font-black text-[#D9232A]">100%</p>
-                  <p className="text-[11px] text-zinc-600 font-bold uppercase tracking-wider mt-0.5">
-                    Rekrutmen Resmi
-                  </p>
-                </div>
-              </div>
             </div>
 
-            {/* Right Visual Composition with OVERLAY ELEMENTS (Recruitment Portal Showcase) */}
-            <div className="lg:col-span-5 relative mt-6 lg:mt-0">
-              {/* Base Elevated Card: Welder Specialist in Action */}
-              <div className="relative rounded-3xl overflow-hidden border-4 border-white shadow-2xl group bg-zinc-100">
-                <div className="aspect-16/11 sm:aspect-4/3 w-full relative">
-                  <Image
-                    src="/images/branding/welder-specialist.jpg"
-                    alt="Peluang Karir Tenaga Kerja Terampil PT DPP"
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700"
-                    priority
-                  />
-                  {/* Subtle Gradient for Bottom Legibility */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                  <div className="absolute bottom-5 left-5 right-5 text-white">
-                    <span className="text-[10px] font-black px-2.5 py-1 bg-[#D9232A] text-white rounded uppercase tracking-wider mb-1.5 inline-block">
-                      Lowongan Terbuka
-                    </span>
-                    <h3 className="font-bold text-base sm:text-lg text-white leading-snug">
-                      Tenaga Kerja Terampil Berstandar K3 &amp; BNSP
-                    </h3>
-                    <p className="text-xs text-zinc-200 mt-0.5">
-                      Penempatan Site Sangatta, Melak, Tabang, Balikpapan &amp; Cikarang
-                    </p>
+            {/* Right Column: Manpower Formation Showcase Component */}
+            <div className="lg:col-span-5 relative mt-4 lg:mt-0">
+              <ManpowerFormationShowcase />
+            </div>
+          </div>
+        </div>
+
+        {/* Hero Bottom: MITRA & KLIEN STRATEGIS Consolidated inside 100vh Viewport */}
+        <div className="max-w-7xl mx-auto w-full pt-3 pb-2 border-t border-zinc-200/80 z-10">
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
+            <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider shrink-0 whitespace-nowrap">
+              Mitra &amp; Klien Penempatan Kerja:
+            </span>
+            <div className="flex-1 w-full overflow-hidden">
+              <ClientLogosCarousel compact={true} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. JARINGAN OPERASI NASIONAL — High-Res Map as Preserved-Ratio Background + Improved Operational Hubs */}
+      <section
+        id="jaringan-operasi"
+        className="relative py-20 lg:py-28 bg-white border-b border-zinc-200 text-zinc-900 overflow-hidden"
+      >
+        {/* High-Resolution Operational Map as Background (Preserving Aspect Ratio, Max Size) */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden opacity-15 sm:opacity-20">
+          <div className="relative w-full h-full max-w-7xl max-h-[850px] mx-auto">
+            <Image
+              src="/images/branding/dpp-operational-map.png"
+              alt="Peta Operasional Nasional PT Dian Pandu Pratama"
+              fill
+              className="object-contain object-center"
+              priority={false}
+            />
+          </div>
+        </div>
+
+        {/* Section Foreground Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="max-w-3xl mb-12 sm:mb-16">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">
+              Distribusi Operasional &amp; Jangkauan Penempatan
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
+              Jaringan Site Operasional Nasional
+            </h2>
+            <p className="text-sm text-zinc-600 mt-2 font-normal leading-relaxed">
+              Menghubungkan pusat manufaktur fabrikasi terpadu di Cikarang dengan site-site penempatan tenaga kerja strategis di koridor pertambangan dan energi Indonesia.
+            </p>
+          </div>
+
+          {/* Architectural / Technical Site Breakdown Hubs */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {/* HUB 01: Head Office & Manufacturing */}
+            <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-zinc-300 shadow-sm hover:shadow-xl hover:border-zinc-900 transition-all p-6 sm:p-7 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 pb-4 border-b border-zinc-200">
+                  <span className="font-mono text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-zinc-100 text-zinc-800 border border-zinc-200">
+                    HUB-01 • ID-JB
+                  </span>
+                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    Active HQ &amp; Plant
+                  </span>
+                </div>
+
+                <div className="pt-4 space-y-3">
+                  <h3 className="text-lg font-bold text-zinc-950 leading-snug">
+                    Head Office &amp; Eco Greenplant Cikarang
+                  </h3>
+                  <p className="text-xs text-zinc-600 leading-relaxed font-normal">
+                    Kawasan Industri Jababeka XII Blok W-38A, Kel. Harja Mekar, Cikarang Utara, Bekasi, Jawa Barat
+                  </p>
+
+                  <div className="pt-3 border-t border-zinc-100 space-y-2 text-xs text-zinc-700">
+                    <p className="font-semibold text-zinc-900">Fokus Operasional:</p>
+                    <ul className="space-y-1.5 pl-1">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span>Pusat Manajemen Rekrutmen &amp; Seleksi Nasional</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span>Fabrikasi Alat Berat &amp; Perakitan Komponen HD</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span>Fasilitas Pelatihan Teknis &amp; Standarisasi K3</span>
+                      </li>
+                    </ul>
                   </div>
                 </div>
               </div>
 
-              {/* OVERLAY ELEMENT 1: Floating Active Vacancy Pill */}
-              <div className="absolute -bottom-6 -left-4 sm:-left-8 bg-white p-3.5 rounded-2xl border border-zinc-200 shadow-2xl flex items-center gap-3.5 max-w-xs z-20">
-                <div className="w-10 h-10 rounded-xl bg-red-50 text-[#D9232A] flex items-center justify-center font-black shrink-0">
-                  <Briefcase className="w-5 h-5 text-[#D9232A]" />
-                </div>
-                <div className="text-xs">
-                  <span className="font-bold text-[#D9232A] uppercase text-[9px] tracking-wider block">
-                    Penempatan Site Tambang
+              <div className="pt-5 mt-5 border-t border-zinc-200 text-[11px] font-medium text-zinc-500">
+                Fasilitas Utama DPP • Kawasan Industri Cikarang
+              </div>
+            </div>
+
+            {/* HUB 02: Kalimantan Timur Mining Ecosystem */}
+            <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-zinc-300 shadow-sm hover:shadow-xl hover:border-zinc-900 transition-all p-6 sm:p-7 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 pb-4 border-b border-zinc-200">
+                  <span className="font-mono text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-zinc-100 text-zinc-800 border border-zinc-200">
+                    HUB-02 • ID-KI
                   </span>
-                  <p className="font-bold text-xs text-zinc-900 leading-tight mt-0.5">
-                    Mekanik, Welder, &amp; Surveyor
+                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                    Mining Sites Hub
+                  </span>
+                </div>
+
+                <div className="pt-4 space-y-3">
+                  <h3 className="text-lg font-bold text-zinc-950 leading-snug">
+                    Regional Operasi Kalimantan Timur
+                  </h3>
+                  <p className="text-xs text-zinc-600 leading-relaxed font-normal">
+                    Kluster penempatan terbesar untuk operasional tambang batubara dan workshop alat berat.
                   </p>
-                  <p className="text-zinc-500 text-[10px] mt-0.5">
-                    Kalimantan Timur &amp; Selatan
-                  </p>
+
+                  <div className="pt-3 border-t border-zinc-100 space-y-2 text-xs text-zinc-700">
+                    <p className="font-semibold text-zinc-900">Titik Penempatan &amp; Perwakilan:</p>
+                    <ul className="space-y-1.5 pl-1">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span><strong>Sangatta:</strong> Site KPC (HDRS Tango Delta)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span><strong>Melak:</strong> Site TRUST / PATRIA Support Point</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span><strong>Tabang:</strong> Site Indonesia Pratama Region (IPR)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span><strong>Balikpapan:</strong> Workshop &amp; Depot Manggar</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span><strong>Batu Kajang &amp; Tanjung Redep:</strong> Berau Coal</span>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
               </div>
 
-              {/* OVERLAY ELEMENT 2: Floating K3 & BNSP Badge */}
-              <div className="absolute -top-4 -right-4 sm:-right-6 bg-white border border-zinc-200 shadow-xl px-4 py-2.5 rounded-2xl flex items-center gap-3 z-20">
-                <div className="w-9 h-9 rounded-xl bg-red-50 text-[#D9232A] flex items-center justify-center font-black">
-                  <ShieldCheck className="w-5 h-5 text-[#D9232A]" />
+              <div className="pt-5 mt-5 border-t border-zinc-200 text-[11px] font-medium text-zinc-500">
+                Tenaga Kerja: Welder 6G, Mekanik, Assembler &amp; Surveyor
+              </div>
+            </div>
+
+            {/* HUB 03: Kalimantan Selatan & Tengah Hauling Corridor */}
+            <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-zinc-300 shadow-sm hover:shadow-xl hover:border-zinc-900 transition-all p-6 sm:p-7 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 pb-4 border-b border-zinc-200">
+                  <span className="font-mono text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-zinc-100 text-zinc-800 border border-zinc-200">
+                    HUB-03 • ID-KS / KT
+                  </span>
+                  <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                    Hauling &amp; Service
+                  </span>
                 </div>
-                <div>
-                  <p className="text-[11px] font-black text-zinc-950 leading-tight">
-                    Fit to Work &amp; K3
+
+                <div className="pt-4 space-y-3">
+                  <h3 className="text-lg font-bold text-zinc-950 leading-snug">
+                    Regional Kalsel &amp; Kalimantan Tengah
+                  </h3>
+                  <p className="text-xs text-zinc-600 leading-relaxed font-normal">
+                    Koridor logistik, hauling jalan tambang, dan pemeliharaan armada dump truck kelas berat.
                   </p>
-                  <p className="text-[10px] font-semibold text-zinc-500">
-                    Sertifikasi Resmi BNSP
-                  </p>
+
+                  <div className="pt-3 border-t border-zinc-100 space-y-2 text-xs text-zinc-700">
+                    <p className="font-semibold text-zinc-900">Titik Penempatan &amp; Perwakilan:</p>
+                    <ul className="space-y-1.5 pl-1">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span><strong>Tanjung (Tabalong):</strong> Hub Murung Pudak KM 7.5</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span><strong>Banjarmasin:</strong> Representative Tugu Ikan</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span><strong>Sungai Danau:</strong> Site Tanah Bumbu</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0 mt-0.5" />
+                        <span><strong>Muara Teweh:</strong> Representative Barito Utara</span>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
+              </div>
+
+              <div className="pt-5 mt-5 border-t border-zinc-200 text-[11px] font-medium text-zinc-500">
+                Tenaga Kerja: Mobile Service, Operator HD &amp; Logistik
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. MITRA & KLIEN STRATEGIS — Placed IMMEDIATELY AFTER HERO */}
-      <section id="klien-mitra" className="py-16 bg-white border-y border-zinc-200 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 text-center">
-          <span className="text-xs font-black text-[#D9232A] uppercase tracking-widest">
-            Mitra &amp; Klien Penempatan Kerja
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight mt-2">
-            Dipercaya Oleh Pemimpin Industri Nasional
-          </h2>
-          <p className="text-xs text-zinc-600 mt-1 font-medium">
-            Penempatan tenaga kerja dan operasional di berbagai proyek pertambangan, alat berat, dan maritim.
-          </p>
-        </div>
-
-        {/* Marquee Carousel: 5 OFFICIAL LOGOS ONLY */}
-        <div className="w-full">
-          <ClientLogosCarousel />
-        </div>
-      </section>
-
-      {/* 3. JARINGAN OPERASI NASIONAL — Operational Map & Site Footprint (Bright Theme with Overlays) */}
-      <section id="jaringan-operasi" className="py-20 bg-zinc-50 border-b border-zinc-200 text-zinc-900">
+      {/* 3. BUDAYA PERUSAHAAN S.M.A.R.T — Clean Cards Only, Refined Typography, Generous Margin */}
+      <section id="budaya-smart" className="py-20 bg-zinc-50 border-b border-zinc-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="text-xs font-black text-[#D9232A] uppercase tracking-widest">
-              Jangkauan Operasi Nasional
+          <div className="max-w-3xl mb-12">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">
+              Fondasi Karakter &amp; Integritas Kerja
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight mt-2">
-              Jaringan Site Operation &amp; Representative PT DPP
+            <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
+              Budaya S.M.A.R.T PT Dian Pandu Pratama
             </h2>
-            <p className="text-sm text-zinc-600 mt-2 font-medium">
-              Peta sebaran penempatan tenaga kerja dan fasilitas representatif di seluruh Indonesia.
+            <p className="text-sm text-zinc-600 mt-2 font-normal">
+              Nilai luhur yang menjadi pedoman perilaku setiap insan PT DPP dalam melayani klien dan menjalankan operasi di seluruh site.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* Map Card with OVERLAY BADGES */}
-            <div className="lg:col-span-7 bg-white rounded-3xl border border-zinc-200 p-4 shadow-xl relative overflow-visible">
-              <div className="relative aspect-16/9 w-full rounded-2xl overflow-hidden bg-zinc-100 border border-zinc-200">
-                <Image
-                  src="/images/branding/dpp-operational-map.jpg"
-                  alt="Peta Operasional PT Dian Pandu Pratama Indonesia"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-
-              {/* OVERLAY BADGE 1: Head Office Tag */}
-              <div className="absolute top-7 left-7 bg-white/95 backdrop-blur-md p-3 rounded-2xl border-2 border-zinc-900 shadow-xl hidden sm:flex items-center gap-3 z-10">
-                <div className="w-9 h-9 rounded-xl bg-zinc-900 text-white flex items-center justify-center font-black">
-                  <Building2 className="w-5 h-5 text-[#D9232A]" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-[#D9232A]">
-                    Kantor Pusat &amp; Pabrik
-                  </p>
-                  <p className="text-xs font-bold text-zinc-900">
-                    Jababeka XII Cikarang
-                  </p>
-                </div>
-              </div>
-
-              {/* OVERLAY BADGE 2: Site Count Tag */}
-              <div className="absolute bottom-7 right-7 bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-zinc-300 shadow-xl hidden sm:flex items-center gap-3 z-10">
-                <div className="w-9 h-9 rounded-xl bg-red-50 text-[#D9232A] flex items-center justify-center font-black">
-                  <MapPin className="w-5 h-5 text-[#D9232A]" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
-                    Jangkauan Operasi
-                  </p>
-                  <p className="text-xs font-bold text-zinc-900">
-                    10+ Site Kalimantan &amp; Jawa
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Site Breakdown Cards */}
-            <div className="lg:col-span-5 space-y-4">
-              <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-xs">
-                <span className="text-[10px] font-black text-[#D9232A] uppercase tracking-wider block">
-                  Head Office &amp; Greenplant
-                </span>
-                <p className="font-black text-base text-zinc-950 mt-0.5">
-                  Jababeka Cikarang (Bekasi, Jawa Barat)
-                </p>
-                <p className="text-xs text-zinc-600 mt-1">
-                  Kawasan Industri Jababeka XII Blok W-38A, Cikarang Utara
-                </p>
-              </div>
-
-              <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-xs">
-                <span className="text-[10px] font-black text-[#D9232A] uppercase tracking-wider block">
-                  Kalimantan Timur
-                </span>
-                <p className="font-bold text-xs text-zinc-900 leading-relaxed mt-0.5">
-                  Sangatta (KPC HDRS Tango Delta), Melak (PATRIA/TRUST), Tabang (IPR), Balikpapan (Manggar), Batu Kajang, Tanjung Redep (Berau)
-                </p>
-              </div>
-
-              <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-xs">
-                <span className="text-[10px] font-black text-[#D9232A] uppercase tracking-wider block">
-                  Kalimantan Selatan &amp; Tengah
-                </span>
-                <p className="font-bold text-xs text-zinc-900 leading-relaxed mt-0.5">
-                  Tanjung (Tabalong), Banjarmasin, Sungai Danau (Tanah Bumbu), Muara Teweh (Barito Utara)
-                </p>
-              </div>
-
-              <div className="pt-2">
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-2 text-xs font-bold text-white bg-[#D9232A] hover:bg-[#B91C1C] px-5 py-3 rounded-xl transition-all shadow-md shadow-red-500/20"
-                >
-                  <MapPin className="w-4 h-4" />
-                  Lihat Sebaran di Dashboard Geosource
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. BUDAYA PERUSAHAAN S.M.A.R.T — ONLY CARDS (NO BANNER IMAGE, GENEROUS MARGIN FOR RESPONSIBILITY) */}
-      <section id="budaya-smart" className="py-20 bg-white border-b border-zinc-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <span className="text-xs font-black text-[#D9232A] uppercase tracking-widest block">
-              Nilai Budaya Perusahaan
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight mt-2">
-              Budaya S.M.A.R.T PT Dian Pandu Pratama
-            </h2>
-          </div>
-
-          {/* 5 Distinct Value Cards with Tile on Top to prevent cramming */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+          {/* 5 Distinct Value Cards with Generous Spacing for Responsibility */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
             {smartValues.map((v, idx) => (
               <div
                 key={idx}
                 className="bg-white p-6 sm:p-7 rounded-2xl border border-zinc-200 hover:border-zinc-900 transition-all flex flex-col justify-between shadow-xs hover:shadow-md group"
               >
                 <div>
-                  {/* Square Tile on Top */}
-                  <div className="w-12 h-12 bg-white text-zinc-950 font-black text-2xl border-2 border-zinc-300 shadow-[3px_3px_0px_#D9232A] flex items-center justify-center rounded-md mb-4 group-hover:border-zinc-950 transition-colors">
+                  {/* Square 3D Bevel Tile */}
+                  <div className="w-11 h-11 bg-white text-zinc-950 font-black text-xl border-2 border-zinc-300 shadow-[3px_3px_0px_#C81E25] flex items-center justify-center rounded-lg mb-4 group-hover:border-zinc-950 transition-colors">
                     {v.letter}
                   </div>
 
-                  {/* Word Heading with ample horizontal room */}
-                  <h3 className="text-[#D9232A] font-black text-base uppercase tracking-wide">
+                  {/* Clean title without overflowing */}
+                  <h3 className="text-zinc-950 font-bold text-base tracking-tight mb-2">
                     {v.word}
                   </h3>
 
                   {/* Description */}
-                  <p className="text-xs text-zinc-700 leading-relaxed font-normal mt-2.5">
+                  <p className="text-xs text-zinc-600 leading-relaxed font-normal">
                     {v.desc}
                   </p>
                 </div>
@@ -379,155 +366,156 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 5. FOKUS UTAMA BISNIS PT DIAN PANDU PRATAMA — REAL PHOTOGRAPHIC IMAGES (BRIGHT THEME, NO BLACK BG) */}
-      <section id="layanan" className="py-20 bg-zinc-50 border-b border-zinc-200">
+      {/* 4. FOKUS UTAMA BISNIS PT DIAN PANDU PRATAMA — Real Photographic Images (Bright Theme, No Black Background) */}
+      <section id="layanan" className="py-20 bg-white border-b border-zinc-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <span className="text-xs font-black text-[#D9232A] uppercase tracking-widest">
-              Layanan &amp; Solusi Bisnis
+          <div className="max-w-3xl mb-12">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">
+              Solusi Industri Terpadu
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight mt-2">
+            <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
               Fokus Utama Bisnis PT Dian Pandu Pratama
             </h2>
-            <p className="text-sm text-zinc-600 mt-2 font-medium">
-              Penyedia tenaga kerja terampil dan manufaktur komponen alat berat berkualitas sejak 2012.
+            <p className="text-sm text-zinc-600 mt-2 font-normal">
+              Penyedia tenaga kerja terampil dan manufaktur komponen alat berat berkualitas tinggi dengan rekam jejak teruji sejak 2012.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Pillar 1: Job & Labour Supply with Welder Photo */}
-            <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-xs hover:shadow-xl transition-all flex flex-col justify-between group">
+            {/* Pillar 1: Job & Labour Supply with Welder Specialist Photo */}
+            <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-xs hover:shadow-lg transition-all flex flex-col justify-between group">
               <div>
                 <div className="relative aspect-16/10 w-full overflow-hidden bg-zinc-100">
                   <Image
                     src="/images/branding/welder-specialist.jpg"
                     alt="Job & Labour Supply PT DPP"
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="object-cover group-hover:scale-103 transition-transform duration-500"
                   />
-                  <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black text-[#D9232A] uppercase tracking-wider shadow-xs">
+                  <div className="absolute top-3.5 left-3.5 bg-white/95 backdrop-blur-md px-3 py-1 rounded-md text-[10px] font-bold text-zinc-900 uppercase tracking-wider shadow-xs border border-zinc-200">
                     Core Business
                   </div>
                 </div>
 
-                <div className="p-7 space-y-4">
-                  <h3 className="text-xl font-black text-zinc-950">Job &amp; Labour Supply</h3>
+                <div className="p-6 sm:p-7 space-y-3.5">
+                  <h3 className="text-lg font-bold text-zinc-950">Job &amp; Labour Supply</h3>
                   <p className="text-xs text-zinc-600 leading-relaxed font-normal">
-                    Penyediaan tenaga kerja terlatih dan bersertifikasi untuk sektor pertambangan dan alat berat:
+                    Penyediaan tenaga kerja terlatih dan bersertifikasi untuk sektor pertambangan dan industri alat berat:
                   </p>
-                  <ul className="space-y-2.5 text-xs text-zinc-900 font-medium">
+                  <ul className="space-y-2 text-xs text-zinc-800 font-medium pt-1">
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Juru Las / Welder (SMAW, FCAW, GMAW 3G/4G/6G)
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Juru Las / Welder (SMAW, FCAW, GMAW 3G/4G/6G)</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Mekanik Alat Berat (Heavy Equipment Mechanic)
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Mekanik Alat Berat (Heavy Equipment Mechanic)</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Fabrication &amp; Component Assembler
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Fabrication &amp; Component Assembler</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Surveyor Tambang, Pengawas K3, &amp; Logistik
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Surveyor Tambang, Pengawas K3 &amp; Logistik</span>
                     </li>
                   </ul>
                 </div>
               </div>
 
-              <div className="px-7 py-4 bg-zinc-50 border-t border-zinc-100 text-xs font-bold text-[#D9232A]">
+              <div className="px-6 sm:px-7 py-3.5 bg-zinc-50 border-t border-zinc-100 text-xs font-semibold text-zinc-700">
                 Standar Kompetensi &amp; MCU Fit to Work
               </div>
             </div>
 
             {/* Pillar 2: Product Support & Fabrication with Plant Photo */}
-            <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-xs hover:shadow-xl transition-all flex flex-col justify-between group">
+            <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-xs hover:shadow-lg transition-all flex flex-col justify-between group">
               <div>
                 <div className="relative aspect-16/10 w-full overflow-hidden bg-zinc-100">
                   <Image
                     src="/images/branding/dpp-plant.jpg"
                     alt="Eco Greenplant Fabrikasi PT DPP"
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="object-cover group-hover:scale-103 transition-transform duration-500"
                   />
-                  <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black text-[#D9232A] uppercase tracking-wider shadow-xs">
-                    Manufacturing Plant
+                  <div className="absolute top-3.5 left-3.5 bg-white/95 backdrop-blur-md px-3 py-1 rounded-md text-[10px] font-bold text-zinc-900 uppercase tracking-wider shadow-xs border border-zinc-200">
+                    Manufacturing Facility
                   </div>
                 </div>
 
-                <div className="p-7 space-y-4">
-                  <h3 className="text-xl font-black text-zinc-950">Product Support &amp; Fabrication</h3>
+                <div className="p-6 sm:p-7 space-y-3.5">
+                  <h3 className="text-lg font-bold text-zinc-950">Product Support &amp; Fabrication</h3>
                   <p className="text-xs text-zinc-600 leading-relaxed font-normal">
-                    Dukungan manufaktur, perakitan, dan perbaikan komponen alat berat di pabrik modern Cikarang:
+                    Dukungan manufaktur, perakitan, dan perbaikan komponen alat berat di fasilitas pabrik modern:
                   </p>
-                  <ul className="space-y-2.5 text-xs text-zinc-900 font-medium">
+                  <ul className="space-y-2 text-xs text-zinc-800 font-medium pt-1">
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Perakitan Vessel Dump Body &amp; Trailer
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Perakitan Vessel Dump Body &amp; Trailer</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Fabrikasi Fuel/Water Tank &amp; Attachments
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Fabrikasi Fuel/Water Tank &amp; Attachments</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Industrial Painting &amp; Protective Coating
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Industrial Painting &amp; Protective Coating</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Perakitan Komponen Truk HD 785
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Perakitan Komponen Truk HD 785</span>
                     </li>
                   </ul>
                 </div>
               </div>
 
-              <div className="px-7 py-4 bg-zinc-50 border-t border-zinc-100 text-xs font-bold text-[#D9232A]">
-                Fasilitas Eco Greenplant Jababeka XII
+              <div className="px-6 sm:px-7 py-3.5 bg-zinc-50 border-t border-zinc-100 text-xs font-semibold text-zinc-700">
+                Fasilitas Eco Greenplant Jababeka XII Cikarang
               </div>
             </div>
 
-            {/* Pillar 3: Standar K3 & Sertifikasi BNSP */}
-            <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-xs hover:shadow-xl transition-all flex flex-col justify-between group">
+            {/* Pillar 3: Standar K3 & Sertifikasi BNSP with Backoffice/Engineering Team Photo */}
+            <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-xs hover:shadow-lg transition-all flex flex-col justify-between group">
               <div>
-                <div className="relative aspect-16/10 w-full overflow-hidden bg-gradient-to-br from-red-50 to-zinc-100 flex items-center justify-center p-8">
-                  <div className="text-center space-y-2">
-                    <div className="w-16 h-16 rounded-2xl bg-white border border-red-200 shadow-md flex items-center justify-center mx-auto text-[#D9232A]">
-                      <Award className="w-8 h-8" />
-                    </div>
-                    <p className="text-xs font-black uppercase tracking-wider text-[#D9232A]">
-                      Standar Kompetensi Kerja
-                    </p>
+                <div className="relative aspect-16/10 w-full overflow-hidden bg-zinc-100">
+                  <Image
+                    src="/images/branding/manpower-backoffice.jpg"
+                    alt="Standar Kompetensi dan Sertifikasi BNSP PT DPP"
+                    fill
+                    className="object-cover group-hover:scale-103 transition-transform duration-500"
+                  />
+                  <div className="absolute top-3.5 left-3.5 bg-white/95 backdrop-blur-md px-3 py-1 rounded-md text-[10px] font-bold text-zinc-900 uppercase tracking-wider shadow-xs border border-zinc-200">
+                    Quality &amp; Safety
                   </div>
                 </div>
 
-                <div className="p-7 space-y-4">
-                  <h3 className="text-xl font-black text-zinc-950">Standar K3 &amp; Sertifikasi BNSP</h3>
+                <div className="p-6 sm:p-7 space-y-3.5">
+                  <h3 className="text-lg font-bold text-zinc-950">Standar K3 &amp; Sertifikasi BNSP</h3>
                   <p className="text-xs text-zinc-600 leading-relaxed font-normal">
                     Jaminan mutu SDM melalui pelatihan vokasi terpadu dan sertifikasi kompetensi nasional:
                   </p>
-                  <ul className="space-y-2.5 text-xs text-zinc-900 font-medium">
+                  <ul className="space-y-2 text-xs text-zinc-800 font-medium pt-1">
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Kemitraan Balai Latihan Kerja (BLK / LPK)
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Kemitraan Balai Latihan Kerja (BLK / LPK)</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Validasi Sertifikasi BNSP Resmi
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Validasi Sertifikasi BNSP Resmi Nasional</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Budaya K3 Tambang &amp; Disiplin Kerja
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Budaya K3 Tambang &amp; Disiplin Kerja</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-[#D9232A] shrink-0" />
-                      Program Onboarding &amp; Induksi Site Terpadu
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C81E25] shrink-0" />
+                      <span>Program Onboarding &amp; Induksi Site Terpadu</span>
                     </li>
                   </ul>
                 </div>
               </div>
 
-              <div className="px-7 py-4 bg-zinc-50 border-t border-zinc-100 text-xs font-bold text-[#D9232A]">
+              <div className="px-6 sm:px-7 py-3.5 bg-zinc-50 border-t border-zinc-100 text-xs font-semibold text-zinc-700">
                 Sertifikasi Kompetensi Resmi Nasional
               </div>
             </div>
@@ -535,17 +523,17 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 6. OPEN VACANCIES SECTION — Interactive Job Search & Listings */}
+      {/* 5. OPEN VACANCIES SECTION — Interactive Job Search & Listings */}
       <section id="lowongan" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-zinc-200 bg-white">
-        <div className="text-center max-w-3xl mx-auto mb-12">
-          <span className="text-xs font-black text-[#D9232A] uppercase tracking-widest">
+        <div className="max-w-3xl mb-12">
+          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">
             Peluang Karir Terbuka
           </span>
-          <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight mt-2">
+          <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
             Lowongan Kerja Aktif PT DPP
           </h2>
-          <p className="text-sm text-zinc-600 mt-2 font-medium">
-            Pilih posisi pekerjaan yang sesuai dengan keahlian dan domisili penempatan Anda di Head Office maupun Site Tambang.
+          <p className="text-sm text-zinc-600 mt-2 font-normal">
+            Pilih posisi pekerjaan yang sesuai dengan keahlian dan domisili penempatan Anda di Head Office maupun Site Operasi.
           </p>
         </div>
 
@@ -558,7 +546,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 7. CORPORATE FOOTER — Bright Theme & Latest Logo */}
+      {/* 6. CORPORATE FOOTER — Bright Theme & Latest Logo */}
       <footer className="bg-zinc-100 text-zinc-800 text-xs pt-16 pb-12 border-t border-zinc-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12 pb-12 border-b border-zinc-300">
@@ -585,7 +573,7 @@ export default async function Home() {
 
             {/* Col 2: Kantor Pusat */}
             <div className="space-y-3">
-              <h5 className="font-black text-zinc-950 text-xs uppercase tracking-widest text-[#D9232A]">
+              <h5 className="font-bold text-zinc-950 text-xs uppercase tracking-wider">
                 Kantor Pusat &amp; Pabrik
               </h5>
               <p className="text-xs text-zinc-600 leading-relaxed">
@@ -593,17 +581,17 @@ export default async function Home() {
               </p>
               <div className="pt-1 space-y-1.5 text-xs text-zinc-700">
                 <p className="flex items-center gap-2">
-                  <Phone className="w-3.5 h-3.5 text-[#D9232A]" /> (021) 893-7800
+                  <Phone className="w-3.5 h-3.5 text-zinc-500" /> (021) 893-7800
                 </p>
                 <p className="flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-[#D9232A]" /> recruitment@dpp.co.id
+                  <Mail className="w-3.5 h-3.5 text-zinc-500" /> recruitment@dpp.co.id
                 </p>
               </div>
             </div>
 
             {/* Col 3: Navigasi Pintas */}
             <div className="space-y-3">
-              <h5 className="font-black text-zinc-950 text-xs uppercase tracking-widest text-[#D9232A]">
+              <h5 className="font-bold text-zinc-950 text-xs uppercase tracking-wider">
                 Tautan Pintas
               </h5>
               <ul className="space-y-2 text-xs text-zinc-700 font-medium">
@@ -612,28 +600,33 @@ export default async function Home() {
                     href="https://dpp.co.id"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-[#D9232A] flex items-center gap-1 transition-colors"
+                    className="hover:text-zinc-950 flex items-center gap-1 transition-colors"
                   >
                     Website Resmi (dpp.co.id) <ExternalLink className="w-3 h-3 text-zinc-400" />
                   </a>
                 </li>
                 <li>
-                  <a href="#lowongan" className="hover:text-[#D9232A] transition-colors">
+                  <a href="#lowongan" className="hover:text-zinc-950 transition-colors">
                     Daftar Lowongan Kerja
                   </a>
                 </li>
                 <li>
-                  <a href="#budaya-smart" className="hover:text-[#D9232A] transition-colors">
-                    Budaya S.M.A.R.T
+                  <a href="#jaringan-operasi" className="hover:text-zinc-950 transition-colors">
+                    Jaringan Operasi Nasional
                   </a>
                 </li>
                 <li>
-                  <Link href="/candidate/register" className="hover:text-[#D9232A] transition-colors">
+                  <a href="#budaya-smart" className="hover:text-zinc-950 transition-colors">
+                    Budaya Perusahaan
+                  </a>
+                </li>
+                <li>
+                  <Link href="/candidate/register" className="hover:text-zinc-950 transition-colors">
                     Registrasi Profil Pelamar
                   </Link>
                 </li>
                 <li>
-                  <Link href="/login" className="hover:text-[#D9232A] transition-colors">
+                  <Link href="/login" className="hover:text-zinc-950 transition-colors">
                     Portal Staf Recruiter
                   </Link>
                 </li>
@@ -642,7 +635,7 @@ export default async function Home() {
 
             {/* Col 4: Kepatuhan Hukum & UU PDP */}
             <div className="space-y-3">
-              <h5 className="font-black text-zinc-950 text-xs uppercase tracking-widest text-[#D9232A]">
+              <h5 className="font-bold text-zinc-950 text-xs uppercase tracking-wider">
                 Kepatuhan UU PDP
               </h5>
               <p className="text-xs text-zinc-600 leading-relaxed">
@@ -653,7 +646,7 @@ export default async function Home() {
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500 font-medium">
             <p>© {new Date().getFullYear()} PT Dian Pandu Pratama (DPP). All Rights Reserved.</p>
-            <p className="text-zinc-900 font-bold">Labor &amp; Job Supply Platform</p>
+            <p className="text-zinc-800 font-bold">Labor &amp; Job Supply Platform</p>
           </div>
         </div>
       </footer>

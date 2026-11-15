@@ -240,7 +240,7 @@ IT Leader DPP menginstruksikan penyelarasan tema dan branding platform e-recruit
    - Menyimpan dan mengoptimasi foto autentik kiriman IT Leader ke dalam `public/images/branding/`:
      - `dpp-plant.jpg`: Fasilitas industri Eco-Greenplant PT DPP di Cikarang (Kawasan Industri Jababeka XII) dengan kendaraan operasional PATRIA 02.
      - `welder-specialist.jpg`: Juru las bersertifikasi dengan APD lengkap fabrikasi alat berat dan percikan api las, merepresentasikan kompetensi inti penyediaan tenaga kerja teknis.
-     - `dpp-operational-map.jpg`: Peta Sebaran Operasional PT DPP di seluruh Indonesia (Head Office Cikarang, Sangatta KPC, Melak TRUST/PATRIA, Tabang IPR, Balikpapan Manggar, Batu Kajang, Tanjung Redep Berau, Tanjung Tabalong, Muara Teweh, Banjarmasin, Sungai Danau).
+     - `dpp-operational-map.png`: Peta Sebaran Operasional PT DPP di seluruh Indonesia (Head Office Cikarang, Sangatta KPC, Melak TRUST/PATRIA, Tabang IPR, Balikpapan Manggar, Batu Kajang, Tanjung Redep Berau, Tanjung Tabalong, Muara Teweh, Banjarmasin, Sungai Danau).
 2. **Standardisasi Design System Token DPP (`app/globals.css`):**
    - Menambahkan warna resmi korporat DPP: Deep Navy `#0A2540`, DPP Accent Red `#D9232A` (warna standar Astra / UT), Slate `#1E293B`, dan Industrial Amber `#D97706`.
 3. **Penyusunan Ulang Halaman Utama Publik (`app/page.tsx`):**
@@ -269,14 +269,40 @@ IT Leader DPP menginstruksikan penyelarasan tema dan branding platform e-recruit
    - End-to-End Suite `npm run check:e2e` (**21/21 PASS**).
    - Next.js Turbopack Production Build `npm run build` (**54 routes compiled successfully**).
 
+---
+
+## 2026-11-15 — Fase 4.1: Penyempurnaan Hero 100vh, Formasi Barisan Manpower, Peta Latar Presisi & Tipografi Korporat
+
+### Konteks & Arahan IT Leader
+IT Leader DPP menginstruksikan penyempurnaan lanjutan pada landing page:
+1. Menegaskan tombol "Daftar Karir" dan "Masuk Portal" di navbar tanpa ikon agar lebih dominan.
+2. Mengintegrasikan Mitra & Klien Strategis ke dalam Hero section (dalam viewport 100vh desktop), menghapus Quick Metrics Ribbon dan overlay badge, serta mengganti foto manpower tunggal dengan komponen formasi barisan tenaga kerja (*line-up formation*).
+3. Menggunakan peta operasional resolusi tinggi (`dpp-operational-map.png`) sebagai background section tanpa peregangan (rasio terjaga), merombak kartu rincian site menjadi direktori hub arsitektural/teknikal, dan menghapus tombol "Lihat Sebaran di Dashboard Geosource".
+4. Menghapus warna teks merah cerah (`#D9232A`) yang terkesan "AI Slop", menggantinya dengan tipografi korporat gelap solid (`text-zinc-950`) dan aksen crimson `#C81E25` yang elegan dan profesional.
+
+### Apa yang dikerjakan
+1. **Penyempurnaan Tombol Navigasi (`components/landing/LandingNavbar.tsx`):**
+   - Menghapus ikon `UserPlus` dan `LogIn`.
+   - Mengubah tombol "Daftar Karir" menjadi border zinc-900 kontras tinggi dan "Masuk Portal" dengan latar merah korporat `#C81E25` tebal.
+2. **Konsolidasi Hero 100vh & Komponen Formasi Manpower:**
+   - Membangun `components/landing/ManpowerFormationShowcase.tsx`: komponen tab interaktif antara **Site Technical Crew** (`manpower-formation.jpg`) dan **Engineering & Back Office** (`manpower-backoffice.jpg`) lengkap dengan lencana kualifikasi K3 & fit-to-work.
+   - Menggabungkan carousel logo klien (`ClientLogosCarousel compact={true}`) ke dalam bilah bawah container Hero sehingga masuk ke dalam viewport 100vh desktop tanpa perlu scroll tambahan.
+   - Menghapus Quick Metrics Ribbon dan badge overlay floating dari Hero visual.
+3. **Penyempurnaan Jaringan Operasi Nasional (`app/page.tsx`):**
+   - Menggunakan aset `public/images/branding/dpp-operational-map.png` (4251 x 2391 px) sebagai watermark latar belakang dengan kelas `object-contain object-center` (bebas distorsi).
+   - Mengganti kartu generik dengan direktori operasional arsitektural 3 hub: **HUB-01 (ID-JB Cikarang HQ & Plant)**, **HUB-02 (ID-KI Kalimantan Timur Mining Sites)**, dan **HUB-03 (ID-KS/KT Kalsel & Kalteng Hauling Corridor)**.
+   - Menghapus tombol "Lihat Sebaran di Dashboard Geosource".
+4. **Pembersihan Tipografi & Anti-Slop:**
+   - Menghapus seluruh tag span berwarna merah cerah di tengah judul. Judul kini menggunakan font tebal hitam solid (`text-zinc-950`) standar Astra / United Tractors.
+5. **Verifikasi Mutu & Integritas:**
+   - Static Type Checking `npx tsc --noEmit` (**0 ERROR**).
+   - Automated Unit Tests `npm test` (**17/17 PASS**).
+   - End-to-End Suite `npm run check:e2e` (**21/21 PASS**).
+   - Next.js Turbopack Production Build `npm run build` (**26/26 static/dynamic routes compiled successfully**).
+
 ### Status
-Fase 4 (Corporate Branding Overhaul & Job Portal Alignment) selesai 100%. Platform e-recruitment kini memiliki identitas visual yang sepenuhnya selaras dengan arahan IT Leader:
-- **Identitas Job Portal Kental**: Hero section secara eksplisit mengomunikasikan portal karir dan rekrutmen resmi PT DPP dengan bilah pencarian interaktif dan kata kunci posisi populer.
-- **Tata Letak Berurutan Sempurna**: Hero $\rightarrow$ Mitra & Klien $\rightarrow$ Jaringan Operasi Nasional $\rightarrow$ Budaya S.M.A.R.T $\rightarrow$ Fokus Utama Bisnis $\rightarrow$ Lowongan Kerja $\rightarrow$ Footer.
-- **Ubin Budaya S.M.A.R.T**: Gambar banner dihapus; ubin 3D ditata di bagian atas tiap kartu sehingga kata panjang `Responsibility` memiliki ruang bernapas lega dan tidak mepet tepi kartu.
-- **Fokus Bisnis dengan Foto Riil**: Ikon diganti dengan foto industri autentik (welder & greenplant Cikarang) dengan latar cerah tanpa background hitam.
-- **Pembersihan Total Elemen YKBUT**: Seluruh logo, label, dan kalimat YKBUT / Yayasan Karya Bakti United Tractors di seluruh platform dihapus tanpa sisa.
-- **Logo Kartu Login**: Logo resmi PT DPP terpasang jelas di bagian atas kartu login pelamar & staf.
+Fase 4.1 Polish selesai 100%. Landing page memenuhi seluruh kriteria visual berstandar industri kelas enterprise.
+
 
 
 
