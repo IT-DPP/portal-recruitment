@@ -10,7 +10,7 @@ export default function ManpowerFormationShowcase() {
       {/* Main Photographic Formation Card with Full Responsive Height */}
       <div className="relative w-full h-[320px] sm:h-[370px] lg:h-[390px] xl:h-[420px] rounded-2xl overflow-hidden border-2 border-zinc-200 shadow-xl bg-zinc-100 group">
         <Image
-          src="/images/branding/manpower-formation.jpg"
+          src="/images/branding/manpower.png"
           alt="Formasi Tenaga Kerja Site Lapangan PT DPP"
           fill
           className="object-cover object-center transition-transform duration-700 group-hover:scale-102"
@@ -33,7 +33,7 @@ export default function ManpowerFormationShowcase() {
 
           <div className="shrink-0 hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-white/20 text-[11px] font-medium text-zinc-200">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            100% Fit to Work &amp; K3
+            Fit to Work &amp; K3
           </div>
         </div>
       </div>

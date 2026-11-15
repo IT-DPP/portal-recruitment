@@ -77,7 +77,10 @@ export default async function Home() {
             <div className="lg:col-span-7 space-y-5">
               {/* Authoritative Solid Headline (No multicolored inline text spans) */}
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-zinc-950 leading-[1.15]">
-                Portal Karir &amp; Rekrutmen Resmi PT Dian Pandu Pratama
+                Portal Karir &amp; Rekrutmen Resmi
+              </h1>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-zinc-950 leading-[1.15]">
+                PT Dian Pandu Pratama
               </h1>
 
               {/* Subtitle */}
@@ -172,7 +175,7 @@ export default async function Home() {
               Budaya S.M.A.R.T PT Dian Pandu Pratama
             </h2>
             <p className="text-sm text-zinc-600 mt-2 font-normal">
-              Nilai luhur yang menjadi pedoman perilaku setiap insan PT DPP dalam melayani klien dan menjalankan operasi di seluruh site.
+              Nilai yang menjadi pedoman perilaku setiap insan PT DPP dalam melayani klien dan menjalankan operasi di seluruh site.
             </p>
           </div>
 
@@ -215,9 +218,6 @@ export default async function Home() {
             <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
               Fokus Utama Bisnis PT Dian Pandu Pratama
             </h2>
-            <p className="text-sm text-zinc-600 mt-2 font-normal">
-              Penyedia tenaga kerja terampil dan manufaktur komponen alat berat berkualitas tinggi dengan rekam jejak teruji sejak 2012.
-            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

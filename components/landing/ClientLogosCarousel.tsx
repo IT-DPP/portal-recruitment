@@ -27,13 +27,6 @@ const clientLogos: ClientLogoItem[] = [
     height: 41,
   },
   {
-    id: "united-tractors",
-    name: "UNITED TRACTORS member of ASTRA",
-    src: "/images/branding/clients/united-tractors.png",
-    width: 320,
-    height: 72,
-  },
-  {
     id: "patria-maritim",
     name: "PATRIA Maritim Perkasa",
     src: "/images/branding/clients/patria-maritim-perkasa.png",
