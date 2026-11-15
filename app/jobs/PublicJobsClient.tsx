@@ -11,14 +11,16 @@ export default function PublicJobsClient({
   departments,
   initialSearch = "",
   initialProvince = "",
-  initialDepartment = ""
+  initialDepartment = "",
+  isSticky = false,
 }: { 
   initialJobs: any[], 
   provinces: any[], 
   departments: any[],
   initialSearch?: string,
   initialProvince?: string,
-  initialDepartment?: string
+  initialDepartment?: string,
+  isSticky?: boolean,
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -50,43 +52,45 @@ export default function PublicJobsClient({
 
   return (
     <div className="space-y-8">
-      {/* Search & Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-table-border grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="relative">
-          <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" />
-          <input
-            type="text"
-            placeholder="Cari posisi pekerjaan..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-black"
-          />
-        </div>
-        
-        <div>
-          <select
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-            className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-black"
-          >
-            <option value="">Semua Departemen</option>
-            {departments.map((d: any) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-        </div>
+      {/* Search & Filter Bar (Sticky when reaching top of page) */}
+      <div className={isSticky ? "sticky top-20 z-30 py-3 -my-3 bg-[#F8FAFC]/95 backdrop-blur-md transition-all" : ""}>
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+            <input
+              type="text"
+              placeholder="Cari posisi pekerjaan..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-black"
+            />
+          </div>
+          
+          <div>
+            <select
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-black"
+            >
+              <option value="">Semua Departemen</option>
+              {departments.map((d: any) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
 
-        <div>
-          <select
-            value={province}
-            onChange={(e) => setProvince(e.target.value)}
-            className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-black"
-          >
-            <option value="">Semua Lokasi (Provinsi)</option>
-            {provinces.map((p: any) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+          <div>
+            <select
+              value={province}
+              onChange={(e) => setProvince(e.target.value)}
+              className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-black"
+            >
+              <option value="">Semua Lokasi (Provinsi)</option>
+              {provinces.map((p: any) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

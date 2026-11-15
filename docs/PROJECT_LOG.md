@@ -435,6 +435,38 @@ IT Leader DPP menginstruksikan 2 pembaruan visual pada halaman daftar lowongan p
 ### Status
 Fase 4.5 selesai 100%. Tampilan `/jobs` kini sepenuhnya selaras dengan sistem desain DPP dan menampilkan formasi tenaga kerja nyata sebagai latar belakang utama.
 
+---
+
+## 2026-11-15 — Fase 4.6: Standardisasi Footer Korporat Seragam & Filter Lowongan Sticky
+
+### Konteks & Arahan IT Leader
+IT Leader DPP menginstruksikan 2 pembaruan pengalaman pengguna (UX) dan keseragaman visual:
+1. Menyamakan footer pada halaman daftar lowongan (`/jobs`) dan detail lowongan (`/jobs/[slug]`) dengan footer berlatar cerah (*bright theme*) yang ada pada landing page utama (`/`).
+2. Menjadikan bagian filter dan pencarian lowongan (*Search & Filter Bar*) pada halaman daftar lowongan (`/jobs`) bersifat *sticky* saat pengguna melakukan scroll dan mencapai bagian atas halaman (di bawah navbar).
+
+### Apa yang dikerjakan
+1. **Komponen Footer Bersama (`components/landing/LandingFooter.tsx`):**
+   - Membuat komponen modular `LandingFooter` dengan tema terang korporat (`bg-zinc-100`, border `zinc-200`) dengan 4 kolom terstruktur:
+     - Identitas & Logo resmi PT Dian Pandu Pratama dengan badge spesialis *Job & Labour Supply*.
+     - Alamat resmi Kantor Pusat & Pabrik di Kawasan Industri Jababeka XII Cikarang Utara serta kontak telepon dan email rekrutmen.
+     - Tautan navigasi pintas ke website resmi `dpp.co.id`, daftar lowongan kerja `/jobs`, jaringan operasi nasional, budaya perusahaan S.M.A.R.T, registrasi kandidat, dan portal staf.
+     - Penjelasan kepatuhan hukum terhadap regulasi UU Pelindungan Data Pribadi (UU PDP No. 27 Tahun 2022) dengan enkripsi AES-256-GCM.
+   - Mengimplementasikan `LandingFooter` pada:
+     - `app/page.tsx` (Beranda Landing)
+     - `app/jobs/page.tsx` (Daftar Lowongan Kerja)
+     - `app/jobs/[slug]/page.tsx` (Detail Lowongan Kerja)
+2. **Filter & Pencarian Lowongan Bersifat Sticky (`app/jobs/PublicJobsClient.tsx`):**
+   - Menambahkan prop `isSticky?: boolean` pada `PublicJobsClient` dan mengaktifkannya pada `/jobs`.
+   - Menggunakan positioning `sticky top-20 z-30 py-3 -my-3 bg-[#F8FAFC]/95 backdrop-blur-md` sehingga bar filter menempel rapi tepat di bawah navbar (tinggi `h-20` = 80px) tanpa tertutup oleh header dan tanpa glitch saat kartu lowongan lewat di bawahnya.
+3. **Verifikasi Mutu & Testing:**
+   - Static Type Checking `npx tsc --noEmit` (**0 ERROR**).
+   - Unit Tests Suite `npm test` (**20/20 PASS**).
+   - End-to-End Suite `npm run check:e2e` (**21/21 PASS**).
+   - Pengujian HTTP Response: `/` (200 OK), `/jobs` (200 OK), `/jobs/[slug]` (200 OK).
+
+### Status
+Fase 4.6 selesai 100%. Seluruh halaman publik portal rekrutmen DPP kini memiliki footer seragam yang elegan dan fungsionalitas filter sticky yang mempermudah navigasi pencari kerja.
+
 
 
 

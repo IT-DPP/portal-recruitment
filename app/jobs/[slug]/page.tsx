@@ -18,6 +18,7 @@ import {
   HardHat,
 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
+import LandingFooter from "@/components/landing/LandingFooter";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -183,13 +184,10 @@ export default async function PublicJobDetailPage({ params }: { params: Promise<
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-[#07192B] text-slate-400 text-xs py-8 border-t border-slate-800 mt-12">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© {new Date().getFullYear()} PT Dian Pandu Pratama (DPP). All Rights Reserved.</p>
-          <p>Kawasan Industri Jababeka XII Cikarang Utara, Bekasi, Jawa Barat</p>
-        </div>
-      </footer>
+      {/* Footer — Corporate Bright Theme */}
+      <div className="mt-16">
+        <LandingFooter />
+      </div>
     </div>
   );
 }

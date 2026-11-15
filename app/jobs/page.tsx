@@ -7,6 +7,7 @@ import { LogIn, UserPlus, ArrowLeft, Building2, ShieldCheck, HardHat, Wrench, Ch
 import { getPublicJobs } from "@/app/actions/job";
 import { getProvinces, getDepartments } from "@/app/actions/master-data";
 import PublicJobsClient from "./PublicJobsClient";
+import LandingFooter from "@/components/landing/LandingFooter";
 
 export const metadata = {
   title: "Lowongan Pekerjaan | PT Dian Pandu Pratama (DPP)",
@@ -130,16 +131,12 @@ export default async function PublicJobsPage({
           initialSearch={q}
           initialProvince={province}
           initialDepartment={department}
+          isSticky={true}
         />
       </main>
 
-      {/* Footer */}
-      <footer className="bg-[#07192B] text-slate-400 text-xs py-8 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© {new Date().getFullYear()} PT Dian Pandu Pratama (DPP). All Rights Reserved.</p>
-          <p>Kawasan Industri Jababeka XII Cikarang Utara, Bekasi, Jawa Barat</p>
-        </div>
-      </footer>
+      {/* Footer — Corporate Bright Theme */}
+      <LandingFooter />
     </div>
   );
 }

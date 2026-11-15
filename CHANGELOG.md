@@ -4,6 +4,20 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Phase 4.6 Shared Landing Footer & Sticky Jobs Filter] — Unified Corporate Bright Footer and Sticky Job Search Bar — 2026-11-15
+
+### Added
+- **Reusable Corporate Landing Footer (`components/landing/LandingFooter.tsx`):**
+  - Modularized the high-contrast bright theme footer (`bg-zinc-100`, 4-column layout) featuring DPP corporate branding, Jababeka plant address, hotline/email contacts, quick links (dpp.co.id, /jobs, /#jaringan-operasi, /#budaya-smart), and UU PDP compliance notice.
+  - Deployed consistently across `/`, `/jobs` (job listings), and `/jobs/[slug]` (job details), replacing legacy dark footers.
+
+### Changed
+- **Sticky Job Filter & Search Bar (`app/jobs/PublicJobsClient.tsx`):**
+  - Added sticky positioning behavior (`sticky top-20 z-30 py-3 -my-3 bg-[#F8FAFC]/95 backdrop-blur-md`) when reaching the top of the viewport underneath the navbar on `/jobs`.
+  - Enables seamless real-time search, department filtering, and province filtering while scrolling through job listing cards.
+- **Unified Footer Implementation (`app/page.tsx`, `app/jobs/page.tsx`, `app/jobs/[slug]/page.tsx`):**
+  - Adopted `<LandingFooter />` across all public-facing pages for brand consistency.
+
 ## [Phase 4.5 Public Jobs Page Polish] — Logo-Only Navbar, Corporate Red Login Button, and Full Manpower Background Banner — 2026-11-15
 
 ### Changed
