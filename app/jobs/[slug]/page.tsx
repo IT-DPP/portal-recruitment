@@ -52,28 +52,19 @@ export default async function PublicJobDetailPage({ params }: { params: Promise<
       {/* Navbar */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-white rounded-xl p-1 border border-slate-200 flex items-center justify-center shadow-2xs shrink-0 overflow-hidden">
-              <Image
-                src="/icon.png"
-                alt="DPP Logo"
-                width={40}
-                height={40}
-                className="object-contain"
-                priority
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-extrabold text-[#0A2540] tracking-tight group-hover:text-primary transition-colors">
-                  DIAN PANDU PRATAMA
-                </span>
-                <span className="text-[9px] font-bold px-1.5 py-0.2 bg-[#D9232A] text-white rounded-full uppercase">
-                  DPP
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-500 font-medium">Job &amp; Labour Supply</p>
-            </div>
+          <Link
+            href="/"
+            className="inline-flex items-center shrink-0"
+            aria-label="Beranda PT Dian Pandu Pratama"
+          >
+            <Image
+              src="/images/branding/dpp-logo-new.png"
+              alt="Logo PT Dian Pandu Pratama"
+              width={200}
+              height={86}
+              className="h-10 sm:h-11 w-auto object-contain"
+              priority
+            />
           </Link>
 
           <Link
@@ -94,7 +85,7 @@ export default async function PublicJobDetailPage({ params }: { params: Promise<
               <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider rounded-full">
                 {job.department?.name || job.departmentName || "Operasional"}
               </span>
-              <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold uppercase tracking-wider rounded-full">
+              <span className="inline-block px-3 py-1 bg-zinc-100 text-zinc-800 border border-zinc-200 text-xs font-bold uppercase tracking-wider rounded-full">
                 {job.statusPermintaan || "Labor Supply"}
               </span>
             </div>
@@ -121,10 +112,21 @@ export default async function PublicJobDetailPage({ params }: { params: Promise<
 
           {/* Content */}
           <div className="p-8 sm:p-10 space-y-8">
+            {job.deskripsi && (
+              <section className="space-y-3">
+                <h2 className="text-base font-bold text-[#0A2540] flex items-center gap-2 border-b border-slate-100 pb-2">
+                  <Briefcase className="w-5 h-5 text-[#C81E25]" /> Deskripsi Pekerjaan
+                </h2>
+                <div className="text-xs sm:text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  {job.deskripsi}
+                </div>
+              </section>
+            )}
+
             {job.kualifikasi && (
               <section className="space-y-3">
                 <h2 className="text-base font-bold text-[#0A2540] flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" /> Kualifikasi & Persyaratan
+                  <CheckCircle2 className="w-5 h-5 text-[#C81E25]" /> Kualifikasi & Persyaratan
                 </h2>
                 <div className="text-xs sm:text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
                   {job.kualifikasi}
@@ -146,7 +148,7 @@ export default async function PublicJobDetailPage({ params }: { params: Promise<
             {/* Standard DPP Compliance Notice */}
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs text-slate-600">
               <p className="font-bold text-slate-800 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" /> Kebijakan Rekrutmen PT Dian Pandu Pratama:
+                <ShieldCheck className="w-4 h-4 text-[#C81E25]" /> Kebijakan Rekrutmen PT Dian Pandu Pratama:
               </p>
               <ul className="list-disc pl-5 space-y-1 text-[11px] text-slate-600">
                 <li>Proses rekrutmen PT DPP tidak dipungut biaya apapun (Gratis).</li>
@@ -165,14 +167,14 @@ export default async function PublicJobDetailPage({ params }: { params: Promise<
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Link
                 href="/login"
-                className="px-6 py-2.5 bg-[#0A2540] hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors shadow-2xs flex items-center gap-2"
+                className="px-6 py-2.5 bg-[#C81E25] hover:bg-[#A8181E] text-white font-bold rounded-xl text-xs transition-all shadow-xs flex items-center gap-2"
               >
-                <LogIn className="w-4 h-4 text-emerald-400" />
-                Masuk & Lamar Sekarang
+                <LogIn className="w-4 h-4 text-white" />
+                Masuk &amp; Lamar Sekarang
               </Link>
               <Link
                 href="/candidate/register"
-                className="px-6 py-2.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-xs transition-colors"
+                className="px-6 py-2.5 bg-white border border-zinc-900 hover:bg-zinc-900 hover:text-white text-zinc-900 font-bold rounded-xl text-xs transition-all shadow-2xs"
               >
                 Daftar Akun Baru
               </Link>

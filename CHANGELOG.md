@@ -4,6 +4,29 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Phase 4.4 Job Detail Polish] — Clean Logo Navbar, Brand-Aligned CTA, and Job Description Field with Backfill — 2026-11-15
+
+### Added
+- **Job Description Schema & Field (`deskripsi` in `prisma/schema.prisma`):**
+  - Added nullable `deskripsi String?` column to `JobOpening` model in PostgreSQL.
+  - Added validation rule `deskripsi: z.string().optional()` to `lib/validations/job.ts`.
+  - Added "Deskripsi Pekerjaan (Job Description)" textarea field in both admin job creation (`app/dashboard/job-openings/create/JobCreateClient.tsx`) and edit forms (`app/dashboard/job-openings/[id]/edit/JobEditClient.tsx`).
+- **Automated Job Description Backfill Script (`scripts/backfill-job-descriptions.ts`):**
+  - Populated comprehensive, enterprise-grade job descriptions for all 13 active job openings in PostgreSQL covering roles across heavy equipment operations, engineering, HSE, mechanics, geology, and technical staff.
+  - Registered `npm run backfill:descriptions` npm script in `package.json`.
+- **Public Job Detail Display (`app/jobs/[slug]/page.tsx`):**
+  - Rendered "Deskripsi Pekerjaan" section with `<Briefcase />` icon right above "Kualifikasi & Persyaratan".
+
+### Changed
+- **Header Navbar Cleanliness (`app/jobs/[slug]/page.tsx`):**
+  - Replaced legacy compound badge/icon with the official clean DPP corporate logo (`/images/branding/dpp-logo-new.png`), matching the minimalist aesthetic of the login page header.
+- **Color Identity & CTA Polish (`app/jobs/[slug]/page.tsx`):**
+  - Eliminated conflicting dark blue and green font color combinations.
+  - Changed primary CTA button "Masuk & Lamar Sekarang" to solid DPP corporate red (`#C81E25`, `hover:bg-[#A8181E]`) with white typography and white `<LogIn />` icon.
+  - Updated secondary button to crisp neutral slate outline.
+  - Updated request status badge to neutral `bg-zinc-100 text-zinc-800 border-zinc-200`.
+  - Standardized section heading icons (`CheckCircle2`, `ShieldCheck`) to DPP primary red accent (`#C81E25`).
+
 ## [Phase 4.3 SEO URLs] — Human-Readable Job Slugs & Seamless Backward Compatibility — 2026-11-15
 
 ### Added

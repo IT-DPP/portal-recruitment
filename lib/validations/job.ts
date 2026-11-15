@@ -18,6 +18,7 @@ export const JobOpeningSchema = z.object({
   tanggalMasuk: z.date(),
   noFormB1: z.string().optional(),
   district: z.string().optional(),
+  deskripsi: z.string().optional(),
   kualifikasi: z.string().optional(),
   benefit: z.string().optional(),
   requiresSkillTest: z.boolean().default(false),

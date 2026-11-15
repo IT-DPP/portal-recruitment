@@ -10,6 +10,7 @@
     "test": "ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} scripts/run-all-tests.ts",
     "check:e2e": "ts-node -r ./prisma/load-env.ts -r tsconfig-paths/register --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} scripts/e2e-page-check.ts",
     "backfill:slugs": "ts-node -r ./prisma/load-env.ts -r tsconfig-paths/register --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} scripts/backfill-job-slugs.ts",
+    "backfill:descriptions": "ts-node -r ./prisma/load-env.ts -r tsconfig-paths/register --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} scripts/backfill-job-descriptions.ts",
     "db:ensure": "ts-node -r ./prisma/load-env.ts --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} prisma/ensure-db.ts",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",

@@ -268,6 +268,7 @@ model JobOpening {
   positionName       String?
   benefit            String?
   district           String?
+  deskripsi          String?
   kualifikasi        String?
   noFormB1           String?
   requiresBnsp       Boolean           @default(false)

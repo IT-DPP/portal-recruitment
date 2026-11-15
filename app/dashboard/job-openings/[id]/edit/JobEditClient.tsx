@@ -53,6 +53,7 @@ export default function JobEditClient({
     noFormB1: job.noFormB1 || "",
     cityId: job.cityId || "",
     district: job.district || "",
+    deskripsi: (job as any).deskripsi || "",
     kualifikasi: job.kualifikasi || "",
     benefit: job.benefit || "",
     requiresSkillTest: job.requiresSkillTest || false,
@@ -552,37 +553,53 @@ export default function JobEditClient({
             </div>
           </div>
 
-          {/* Section 3: Deskripsi */}
+          {/* Section 3: Deskripsi, Persyaratan & Benefit */}
           <div>
             <h3 className="text-base font-bold text-on-surface border-b border-table-border pb-2 mb-4">
-              Persyaratan & Benefit
+              Deskripsi, Persyaratan &amp; Benefit
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
               <div>
                 <label className="block text-xs font-semibold text-on-surface mb-1">
-                  Kualifikasi (Requirements)
+                  Deskripsi Pekerjaan (Job Description)
                 </label>
                 <textarea
-                  rows={5}
-                  value={formData.kualifikasi}
-                  onChange={(e) => setFormData({ ...formData, kualifikasi: e.target.value })}
+                  rows={4}
+                  value={formData.deskripsi}
+                  onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
                   disabled={isPending}
                   className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-black leading-relaxed disabled:bg-gray-100"
-                  placeholder="Jelaskan kualifikasi yang dibutuhkan..."
+                  placeholder="Jelaskan ringkasan tugas utama dan ruang lingkup pekerjaan..."
                 />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-on-surface mb-1">
-                  Benefit
-                </label>
-                <textarea
-                  rows={5}
-                  value={formData.benefit}
-                  onChange={(e) => setFormData({ ...formData, benefit: e.target.value })}
-                  disabled={isPending}
-                  className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-black leading-relaxed disabled:bg-gray-100"
-                  placeholder="Jelaskan benefit yang didapatkan..."
-                />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1">
+                    Kualifikasi (Requirements)
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={formData.kualifikasi}
+                    onChange={(e) => setFormData({ ...formData, kualifikasi: e.target.value })}
+                    disabled={isPending}
+                    className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-black leading-relaxed disabled:bg-gray-100"
+                    placeholder="Jelaskan kualifikasi yang dibutuhkan..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1">
+                    Benefit
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={formData.benefit}
+                    onChange={(e) => setFormData({ ...formData, benefit: e.target.value })}
+                    disabled={isPending}
+                    className="w-full px-3 py-2 border border-outline-variant rounded text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-black leading-relaxed disabled:bg-gray-100"
+                    placeholder="Jelaskan benefit yang didapatkan..."
+                  />
+                </div>
               </div>
             </div>
           </div>

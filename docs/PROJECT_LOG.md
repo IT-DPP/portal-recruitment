@@ -371,6 +371,43 @@ IT Leader DPP menginstruksikan perubahan format URL halaman detail lowongan dari
 ### Status
 Fase 4.3 SEO URLs selesai 100%. Platform e-recruitment kini memiliki URL publik berstandar industri dengan pengindeksan mesin pencari yang optimal.
 
+---
+
+## 2026-11-15 — Fase 4.4: Polishing Halaman Detail Lowongan (Navbar Logo-Only, Clean Enterprise CTA, & Field Deskripsi Pekerjaan)
+
+### Konteks & Arahan IT Leader
+IT Leader DPP menginstruksikan 3 penyempurnaan utama pada tampilan detail lowongan dan pengelolaan data karir:
+1. Navbar pada halaman detail job (`/jobs/[slug]`) disamakan dengan navbar login, hanya menampilkan logo resmi DPP tanpa elemen teks/badge redundant.
+2. Menghilangkan perpaduan warna font/aksen hijau yang tidak selaras (khususnya tombol "Masuk & Lamar Sekarang" yang sebelumnya berlatar gelap dan berikon hijau), diganti dengan identitas solid merah korporat DPP (`#C81E25`) dengan teks dan ikon putih bersih.
+3. Menambahkan field `deskripsi` (Deskripsi Pekerjaan) pada form pembuatan dan pengeditan lowongan oleh admin, melakukan backfill otomatis deskripsi profesional untuk seluruh lowongan aktif di database, dan menampilkannya pada halaman detail lowongan tepat di atas "Kualifikasi & Persyaratan".
+
+### Apa yang dikerjakan
+1. **Schema & Validasi Database:**
+   - Menambahkan kolom `deskripsi String?` pada model `JobOpening` di `prisma/schema.prisma`.
+   - Mengaplikasikan perubahan skema ke PostgreSQL lokal via `npx prisma db push` dan meregenerasi Prisma Client.
+   - Menambahkan aturan validasi `deskripsi: z.string().optional()` pada `lib/validations/job.ts`.
+2. **Form Admin Lowongan:**
+   - Menambahkan input textarea "Deskripsi Pekerjaan (Job Description)" pada form pembuatan lowongan baru (`app/dashboard/job-openings/create/JobCreateClient.tsx`).
+   - Menambahkan input textarea "Deskripsi Pekerjaan (Job Description)" pada form pengeditan lowongan (`app/dashboard/job-openings/[id]/edit/JobEditClient.tsx`).
+3. **Backfill Script Data Lowongan (`scripts/backfill-job-descriptions.ts`):**
+   - Menulis dan mengeksekusi script otomatis untuk mem-backfill deskripsi pekerjaan lengkap dan profesional berbahasa Indonesia untuk 13 posisi aktif di database (Operator Excavator PC2000, Mine Surveyor, HSE Mining Inspector, Heavy Equipment Mechanic, Geologist, Drill & Blast Engineer, dsb.).
+4. **Pembaruan Visual Detail Lowongan (`app/jobs/[slug]/page.tsx`):**
+   - **Navbar Logo-Only:** Mengganti badge lama dengan logo tunggal resmi DPP (`/images/branding/dpp-logo-new.png`).
+   - **Seksi Deskripsi Pekerjaan:** Merender seksi "Deskripsi Pekerjaan" dengan ikon `<Briefcase className="text-[#C81E25]" />` tepat di atas seksi "Kualifikasi & Persyaratan".
+   - **Pembersihan Aksen Hijau:**
+     - Mengubah badge status permintaan dari hijau menjadi netral `bg-zinc-100 text-zinc-800 border-zinc-200`.
+     - Mengubah ikon pada subjudul kualifikasi dan kepatuhan dari hijau menjadi merah korporat `#C81E25`.
+     - Mengubah tombol "Masuk & Lamar Sekarang" menjadi solid merah korporat DPP `bg-[#C81E25] hover:bg-[#A8181E] text-white` dengan ikon `<LogIn className="text-white" />`.
+     - Mengubah tombol sekunder "Daftar Akun Baru" menjadi outline tegas netral `border-zinc-900 text-zinc-900`.
+5. **Verifikasi & Build:**
+   - Unit tests: 20/20 lulus (`npm test`).
+   - E2E checks: 21/21 lulus (`npm run check:e2e`).
+   - TypeScript: 0 error (`npx tsc --noEmit`).
+   - Production Build: 26/26 rute berhasil dikompilasi (`npm run build`).
+
+### Status
+Fase 4.4 selesai 100%. Detail lowongan kini memiliki tampilan enterprise modern dengan identitas brand DPP yang kuat dan konten deskripsi pekerjaan yang komprehensif.
+
 
 
 
