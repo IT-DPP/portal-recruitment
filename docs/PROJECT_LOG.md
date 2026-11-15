@@ -408,6 +408,33 @@ IT Leader DPP menginstruksikan 3 penyempurnaan utama pada tampilan detail lowong
 ### Status
 Fase 4.4 selesai 100%. Detail lowongan kini memiliki tampilan enterprise modern dengan identitas brand DPP yang kuat dan konten deskripsi pekerjaan yang komprehensif.
 
+---
+
+## 2026-11-15 — Fase 4.5: Penyelarasan Halaman Daftar Lowongan Publik (`/jobs`)
+
+### Konteks & Arahan IT Leader
+IT Leader DPP menginstruksikan 2 pembaruan visual pada halaman daftar lowongan publik (`/jobs`):
+1. Menyamakan navbar `/jobs` dengan halaman detail lowongan (`/jobs/[slug]`) yang bersih hanya menampilkan logo resmi DPP tanpa kotak icon dan label teks bertumpuk, serta memperbarui warna tombol "Masuk".
+2. Menjadikan gambar formasi tenaga kerja asli `manpower.png` sebagai latar belakang penuh (*full background image*) pada bagian hero banner lowongan.
+
+### Apa yang dikerjakan
+1. **Navbar Logo-Only & Perbaikan Warna Tombol Masuk (`app/jobs/page.tsx`):**
+   - Mengganti elemen logo lama (icon box + teks nama perusahaan + tag DPP) dengan logo tunggal resmi DPP (`/images/branding/dpp-logo-new.png`) dengan rasio asli dan rendering tajam.
+   - Mengubah tombol "Masuk" yang sebelumnya menggunakan latar biru tua dan ikon hijau (`bg-[#0A2540]`, `text-emerald-400`) menjadi merah solid korporat DPP (`bg-[#C81E25] hover:bg-[#A8181E] text-white`) dengan ikon `<LogIn className="text-white" />`.
+   - Merapikan tombol "Daftar Karir" dengan outline tegas netral (`border-zinc-900 text-zinc-900 hover:bg-zinc-900 hover:text-white`).
+2. **Hero Banner dengan Background Image Full (`manpower.png`):**
+   - Mengganti flat CSS gradient dengan komponen Next.js Image `src="/images/branding/manpower.png"` (`fill`, `priority`, `sizes="100vw"`).
+   - Menambahkan dual-layer dark gradient overlay (horizontal dan vertikal) yang mempertahankan kejelasan foto formasi seragam teknisi lapangan sekaligus memastikan seluruh tipografi putih tetap terbaca tajam (*high-contrast readability*).
+   - Menghilangkan warna hijau pada badge kompetensi teknis (`CheckCircle2` menjadi warna putih).
+3. **Verifikasi Kualitas:**
+   - Unit tests: 20/20 lulus (`npm test`).
+   - E2E checks: 21/21 lulus (`npm run check:e2e`).
+   - TypeScript: 0 error (`npx tsc --noEmit`).
+   - HTTP Status `/jobs`: 200 OK (waktu respon ~165ms).
+
+### Status
+Fase 4.5 selesai 100%. Tampilan `/jobs` kini sepenuhnya selaras dengan sistem desain DPP dan menampilkan formasi tenaga kerja nyata sebagai latar belakang utama.
+
 
 
 

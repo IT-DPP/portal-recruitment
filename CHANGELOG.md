@@ -4,6 +4,18 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Phase 4.5 Public Jobs Page Polish] — Logo-Only Navbar, Corporate Red Login Button, and Full Manpower Background Banner — 2026-11-15
+
+### Changed
+- **Header Navbar Cleanliness (`app/jobs/page.tsx`):**
+  - Standardized navbar to match `/jobs/[slug]` and `/login`, replacing the old composite box/badge with the clean official DPP logo mark (`/images/branding/dpp-logo-new.png`).
+- **Brand-Aligned CTA Colors (`app/jobs/page.tsx`):**
+  - Changed the "Masuk" button styling from dark navy background with emerald icon (`bg-[#0A2540]`, `text-emerald-400`) to solid DPP corporate red (`bg-[#C81E25] hover:bg-[#A8181E] text-white`) with white icon `<LogIn className="text-white" />`.
+  - Refined "Daftar Karir" button to clean neutral outline (`border-zinc-900 text-zinc-900 hover:bg-zinc-900 hover:text-white`).
+- **Full Manpower Background Hero Banner (`app/jobs/page.tsx`):**
+  - Replaced the generic flat CSS linear gradient with high-resolution photographic background `manpower.png` (`/images/branding/manpower.png`) with full-width responsive bleed (`sizes="100vw"`).
+  - Applied subtle dual-layer dark gradient overlay ensuring high contrast, enterprise polish, and optimal text legibility for heading, summary, and competence badges.
+
 ## [Phase 4.4 Job Detail Polish] — Clean Logo Navbar, Brand-Aligned CTA, and Job Description Field with Backfill — 2026-11-15
 
 ### Added
