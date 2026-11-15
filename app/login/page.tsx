@@ -118,6 +118,7 @@ function LoginFormContent() {
                 width={190}
                 height={82}
                 className="h-11 w-auto object-contain"
+                unoptimized
                 priority
               />
             </div>
