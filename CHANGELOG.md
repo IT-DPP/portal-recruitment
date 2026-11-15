@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Phase 4.2 Polish] — Manpower Formation Full Height, Hero Width Alignment, Overlaid Map Section & Borderless Imagery — 2026-11-15
 
 ### Changed
+- **Dropdown Navigasi "Tentang Kami" Fix (`components/landing/LandingNavbar.tsx`):**
+  - Resolved hover-gap issue by implementing a continuous top-full padding bridge (`top-full pt-1.5`) and click-outside handler (`useRef` + `mousedown` listener), making dropdown options effortless and reliable to select.
+- **Hero Ambient Glow Cleanup (`app/page.tsx`):**
+  - Removed top-right red gradient blur orb to maintain a clean, open, and confident corporate canvas.
 - **Manpower Formation Showcase Refinement (`components/landing/ManpowerFormationShowcase.tsx`):**
   - Removed tab switcher buttons and active tab state; streamlined to showcase the unified standardized manpower lineup (`manpower-formation.jpg`).
   - Adjusted card height (`h-[320px] sm:h-[370px] lg:h-[390px] xl:h-[420px]`) to fill the hero column height seamlessly without overflowing into the 100vh bottom marquee.

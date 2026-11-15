@@ -67,7 +67,6 @@ export default async function Home() {
         className="min-h-screen lg:h-screen flex flex-col justify-between bg-gradient-to-b from-white via-zinc-50 to-[#F8FAFC] text-zinc-950 pt-20 sm:pt-24 pb-0 overflow-hidden relative"
       >
         {/* Subtle Ambient Glow */}
-        <div className="absolute -top-32 right-0 w-[550px] h-[550px] bg-red-100/30 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute top-1/2 -left-40 w-[450px] h-[450px] bg-slate-100/50 rounded-full blur-3xl pointer-events-none" />
 
         {/* Hero Top/Center Grid: Content & Manpower Formation Component */}

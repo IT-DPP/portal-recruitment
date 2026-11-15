@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronDown, Menu, X } from "lucide-react";
@@ -9,6 +9,7 @@ export default function LandingNavbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,6 +22,16 @@ export default function LandingNavbar() {
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsAboutOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
@@ -65,15 +76,17 @@ export default function LandingNavbar() {
             Lowongan Kerja
           </a>
 
-          {/* About Dropdown */}
+          {/* About Dropdown with Seamless Bridge & Click Outside Guard */}
           <div
+            ref={dropdownRef}
             className="relative"
             onMouseEnter={() => setIsAboutOpen(true)}
             onMouseLeave={() => setIsAboutOpen(false)}
           >
             <button
+              type="button"
               onClick={() => setIsAboutOpen(!isAboutOpen)}
-              className="flex items-center gap-1.5 hover:text-zinc-950 transition-colors focus:outline-hidden cursor-pointer"
+              className="flex items-center gap-1.5 py-1 hover:text-zinc-950 transition-colors focus:outline-hidden cursor-pointer"
               aria-expanded={isAboutOpen}
             >
               Tentang Kami
@@ -85,28 +98,30 @@ export default function LandingNavbar() {
             </button>
 
             {isAboutOpen && (
-              <div className="absolute left-0 mt-2 w-64 bg-white border border-zinc-200 rounded-xl shadow-xl py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                <a
-                  href="#jaringan-operasi"
-                  onClick={() => setIsAboutOpen(false)}
-                  className="block px-4 py-2.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 hover:text-zinc-950 transition-colors"
-                >
-                  Jaringan Operasi Nasional
-                </a>
-                <a
-                  href="#budaya-smart"
-                  onClick={() => setIsAboutOpen(false)}
-                  className="block px-4 py-2.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 hover:text-zinc-950 transition-colors"
-                >
-                  Budaya Perusahaan
-                </a>
-                <a
-                  href="#layanan"
-                  onClick={() => setIsAboutOpen(false)}
-                  className="block px-4 py-2.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 hover:text-zinc-950 transition-colors border-t border-zinc-100 mt-1"
-                >
-                  Fokus Layanan &amp; Bisnis
-                </a>
+              <div className="absolute left-0 top-full pt-1.5 w-64 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="bg-white border border-zinc-200 rounded-xl shadow-xl py-2 overflow-hidden">
+                  <a
+                    href="#jaringan-operasi"
+                    onClick={() => setIsAboutOpen(false)}
+                    className="block px-4 py-2.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 hover:text-zinc-950 transition-colors"
+                  >
+                    Jaringan Operasi Nasional
+                  </a>
+                  <a
+                    href="#budaya-smart"
+                    onClick={() => setIsAboutOpen(false)}
+                    className="block px-4 py-2.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 hover:text-zinc-950 transition-colors"
+                  >
+                    Budaya Perusahaan
+                  </a>
+                  <a
+                    href="#layanan"
+                    onClick={() => setIsAboutOpen(false)}
+                    className="block px-4 py-2.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 hover:text-zinc-950 transition-colors border-t border-zinc-100 mt-1"
+                  >
+                    Fokus Layanan &amp; Bisnis
+                  </a>
+                </div>
               </div>
             )}
           </div>
