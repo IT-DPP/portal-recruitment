@@ -31,6 +31,7 @@ interface PipelineClientProps {
   initialApplications: any[];
   customers: any[];
   stages: any[];
+  errorMessage?: string;
 }
 
 export default function PipelineClient({
@@ -38,12 +39,14 @@ export default function PipelineClient({
   initialApplications,
   customers,
   stages,
+  errorMessage,
 }: PipelineClientProps) {
   const modal = useModal();
 
   const [jobs, setJobs] = useState<any[]>(initialJobs || []);
   const [applications, setApplications] = useState<any[]>(initialApplications || []);
   const [candidateProfiles, setCandidateProfiles] = useState<Record<string, any>>({});
+  const [serverError, setServerError] = useState<string | null>(errorMessage || null);
 
   // Search & Filters
   const [searchInput, setSearchInput] = useState("");
@@ -411,6 +414,19 @@ export default function PipelineClient({
           </button>
         </div>
       </div>
+
+      {/* Server Error Banner */}
+      {serverError && (
+        <div className="p-3.5 rounded-xl border bg-red-50 text-red-800 border-red-200 text-xs font-semibold flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{serverError}</span>
+          </div>
+          <button onClick={() => setServerError(null)} className="text-slate-400 hover:text-slate-600">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Bulk Feedback Banner */}
       {bulkFeedback && (
