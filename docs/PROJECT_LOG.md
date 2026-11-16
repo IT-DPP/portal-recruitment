@@ -499,6 +499,34 @@ IT Leader DPP menginstruksikan 3 penyempurnaan alur dan visual:
 ### Status
 Fase 4.7 selesai 100%. Alur penjelajahan lowongan kini terpusat di `/jobs`, dan antarmuka otentikasi (login & registrasi) tampil lebih bersih, proporsional, dan berstandar korporat modern.
 
+---
+
+## 2026-11-16 — Fase 4.8: Logo Resmi Sidebar & Breadcrumbs Dinamis Navbar Dashboard
+
+### Konteks & Arahan IT Leader
+IT Leader DPP menginstruksikan penyempurnaan pada *wrapper* konten utama dashboard internal (setelah login):
+1. **Sidebar:** Memperbaiki logo pada sidebar yang sebelumnya tidak muncul secara optimal, dan menghapus kalimat `"DIAN PANDU PRATAMA"` (beserta subteksnya) agar area header sidebar tampil bersih dan berfokus pada logo korporat resmi.
+2. **Navbar (Header):** Mengganti kalimat statis `"PT Dian Pandu Pratama • E-Recruitment Portal • Labor & Job Supply"` dengan sistem *breadcrumbs* dinamis yang menampilkan hierarki menu/halaman yang sedang diakses pengguna secara real-time.
+
+### Apa yang dikerjakan
+1. **Penyempurnaan Logo & Pembersihan Teks Sidebar (`components/layout/Sidebar.tsx`, `components/layout/CandidateSidebar.tsx`):**
+   - Menampilkan logo resmi korporat `/images/branding/dpp-logo-new.png` dengan rasio proporsional (`h-10 w-auto object-contain priority` pada sidebar staf/admin dan `h-8` pada sidebar kandidat) saat status bilah sisi diperluas (*expanded*).
+   - Menjaga tampilan ikon tunggal yang simetris dan rapi di tengah ketika sidebar diciutkan (*collapsed*).
+   - Menghapus string teks `"DIAN PANDU PRATAMA"`, sub-label `"E-Recruitment Portal"`, serta badge `"Labor & Job Supply"` sesuai instruksi.
+   - Menautkan logo langsung ke `/dashboard` (atau `/candidate/jobs` untuk portal kandidat).
+2. **Implementasi Breadcrumbs Dinamis pada Header Navbar (`components/layout/Header.tsx`):**
+   - Mengintegrasikan hook `usePathname()` dari `next/navigation` untuk membaca segmen URL secara reaktif.
+   - Menyusun kamus pemetaan komprehensif `ROUTE_LABELS` untuk seluruh rute aplikasi (Dashboard, Pipeline Rekrutmen, Lowongan Kerja, Verifikasi Pelamar, Talent Pool, Blacklist, Arsip, Generate Dokumen, Kalender, Master Data: Posisi/Dept/Customer/Site/Klinik/Provinsi/Kota/Sertifikasi/Tipe Permintaan/Template Penolakan, Manajemen Pengguna, Audit Log PDP, Konfigurasi SLA, dan Profil Kandidat).
+   - Membangun navigasi bertingkat dengan ikon `<Home className="w-3.5 h-3.5" />` yang mengarah ke `/dashboard`, pemisah chevron `<ChevronRight className="w-3 h-3" />`, tautan aktif ke level induk yang bisa diklik, dan teks tebal warna navy `#0A2540` pada node halaman aktif (daun).
+   - Menambahkan deteksi cerdas untuk ID/CUID/UUID dinamis agar otomatis dilabeli `"Detail"`.
+3. **Verifikasi Mutu & Testing:**
+   - Static Type Checking `npx tsc --noEmit` (**0 ERROR**).
+   - Unit Tests Suite `npm test` (**20/20 PASS**).
+   - End-to-End Suite `npm run check:e2e` (**21/21 PASS**).
+
+### Status
+Fase 4.8 selesai 100%. Antarmuka utama dashboard kini memiliki branding logo yang jernih tanpa redundansi teks, serta didukung navigasi *breadcrumbs* kontekstual yang mempermudah orientasi pengguna di seluruh modul aplikasi.
+
 
 
 

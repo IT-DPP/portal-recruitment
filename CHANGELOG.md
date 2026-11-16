@@ -4,6 +4,20 @@ All notable changes to the **DPP Recruitment Portal Dashboard** project will be 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Phase 4.8 Sidebar Official Logo & Header Dynamic Breadcrumbs] — Sidebar Logo Display, Brand Text Cleanup, and Dynamic Breadcrumbs Header — 2026-11-16
+
+### Changed
+- **Main & Candidate Sidebar Branding (`components/layout/Sidebar.tsx`, `components/layout/CandidateSidebar.tsx`):**
+  - Replaced placeholder icon box and static typography with official high-resolution corporate logo `/images/branding/dpp-logo-new.png` (`priority`, `h-10` for admin, `h-8` for candidate).
+  - Centered icon mark when sidebar is collapsed (`isCollapsed === true`).
+  - Removed text "DIAN PANDU PRATAMA", subtitle "E-Recruitment Portal", and badge "Labor & Job Supply" from sidebar headers as requested.
+  - Wrapped branding in accessible `<Link href="/dashboard">` (and `/candidate/jobs` for candidates).
+- **Dynamic Navbar Breadcrumbs (`components/layout/Header.tsx`):**
+  - Replaced static brand status line ("PT Dian Pandu Pratama • E-Recruitment Portal • Labor & Job Supply") with dynamic, hierarchical breadcrumb navigation powered by `usePathname()`.
+  - Comprehensive segment dictionary `ROUTE_LABELS` covering all internal dashboard routes, master data tables, recruitment pipeline, audit logs, SLA configuration, and candidate portal.
+  - Interactive breadcrumbs featuring `<Home />` icon leading to `/dashboard`, clickable ancestor crumbs, chevron dividers (`<ChevronRight />`), and bold active leaf node indicator (`#0A2540`).
+  - Automatic detection and humanization of dynamic CUID/UUID identifiers into clean `"Detail"` crumbs.
+
 ## [Phase 4.7 Landing Redirection, Login & Register UI Polish] — Dedicated Jobs Route, Clean Auth Panels, and Register Header Space-Between — 2026-11-15
 
 ### Changed

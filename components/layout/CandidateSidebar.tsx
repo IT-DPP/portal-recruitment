@@ -66,29 +66,30 @@ export default function CandidateSidebar() {
         `}
       >
         {/* Header */}
-        <div className="h-16 flex items-center px-4 border-b border-table-border shrink-0 gap-3">
-          <div className="w-9 h-9 bg-white border border-slate-200 rounded-lg p-1.5 flex items-center justify-center shrink-0 shadow-2xs">
-            <Image
-              src="/icon.png"
-              alt="Logo DPP"
-              width={28}
-              height={28}
-              className="object-contain"
-            />
-          </div>
-          {!isCollapsed && (
-            <div className="min-w-0">
-              <h1 className="font-extrabold text-xs text-[#0A2540] leading-tight truncate">
-                DIAN PANDU PRATAMA
-              </h1>
-              <p className="text-[10px] font-medium text-slate-500 truncate">
-                Candidate Portal
-              </p>
-              <span className="inline-block text-[9px] font-bold text-[#D9232A] uppercase tracking-wider">
-                Labor & Job Supply
-              </span>
-            </div>
-          )}
+        <div className={`h-16 flex items-center border-b border-table-border shrink-0 ${isCollapsed ? "justify-center px-0" : "px-4"}`}>
+          <Link href="/candidate/jobs" className="flex items-center" aria-label="Portal Kandidat PT Dian Pandu Pratama">
+            {isCollapsed ? (
+              <div className="w-9 h-9 bg-white border border-slate-200 rounded-lg p-1 flex items-center justify-center shrink-0 shadow-2xs">
+                <Image
+                  src="/icon.png"
+                  alt="Logo DPP"
+                  width={28}
+                  height={28}
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            ) : (
+              <Image
+                src="/images/branding/dpp-logo-new.png"
+                alt="Logo PT Dian Pandu Pratama"
+                width={160}
+                height={70}
+                className="h-8 w-auto object-contain"
+                priority
+              />
+            )}
+          </Link>
         </div>
 
         {/* Navigation */}
