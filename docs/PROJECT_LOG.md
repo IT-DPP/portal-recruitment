@@ -458,7 +458,9 @@ IT Leader DPP menginstruksikan 2 pembaruan pengalaman pengguna (UX) dan keseraga
 2. **Filter & Pencarian Lowongan Bersifat Sticky (`app/jobs/PublicJobsClient.tsx`):**
    - Menambahkan prop `isSticky?: boolean` pada `PublicJobsClient` dan mengaktifkannya pada `/jobs`.
    - Menggunakan positioning `sticky top-20 z-30 py-3 -my-3 bg-[#F8FAFC]/95 backdrop-blur-md` sehingga bar filter menempel rapi tepat di bawah navbar (tinggi `h-20` = 80px) tanpa tertutup oleh header dan tanpa glitch saat kartu lowongan lewat di bawahnya.
-3. **Verifikasi Mutu & Testing:**
+3. **Konfigurasi GitHub Code Owners (`.github/CODEOWNERS`):**
+   - Menambahkan file `.github/CODEOWNERS` dengan entri `* @itdpp` agar akun GitHub `@itdpp` otomatis terdaftar sebagai peninjau utama (reviewer) dan tombol approve langsung aktif saat Pull Request dibuat di bawah ruleset perlindungan branch.
+4. **Verifikasi Mutu & Testing:**
    - Static Type Checking `npx tsc --noEmit` (**0 ERROR**).
    - Unit Tests Suite `npm test` (**20/20 PASS**).
    - End-to-End Suite `npm run check:e2e` (**21/21 PASS**).
@@ -521,7 +523,9 @@ IT Leader DPP menginstruksikan penyempurnaan pada *wrapper* konten utama dashboa
    - Menyusun kamus pemetaan komprehensif `ROUTE_LABELS` untuk seluruh rute aplikasi (Dashboard, Pipeline Rekrutmen, Lowongan Kerja, Verifikasi Pelamar, Talent Pool, Blacklist, Arsip, Generate Dokumen, Kalender, Master Data: Posisi/Dept/Customer/Site/Klinik/Provinsi/Kota/Sertifikasi/Tipe Permintaan/Template Penolakan, Manajemen Pengguna, Audit Log PDP, Konfigurasi SLA, dan Profil Kandidat).
    - Membangun navigasi bertingkat dengan ikon `<Home className="w-3.5 h-3.5" />` yang mengarah ke `/dashboard`, pemisah chevron `<ChevronRight className="w-3 h-3" />`, tautan aktif ke level induk yang bisa diklik, dan teks tebal warna navy `#0A2540` pada node halaman aktif (daun).
    - Menambahkan deteksi cerdas untuk ID/CUID/UUID dinamis agar otomatis dilabeli `"Detail"`.
-3. **Verifikasi Mutu & Testing:**
+3. **Konfigurasi GitHub Code Owners (`.github/CODEOWNERS`):**
+   - Menambahkan file `.github/CODEOWNERS` dengan entri `* @itdpp` agar akun GitHub `@itdpp` otomatis terdaftar sebagai peninjau utama (reviewer) dan tombol approve langsung aktif saat Pull Request dibuat di bawah ruleset perlindungan branch.
+4. **Verifikasi Mutu & Testing:**
    - Static Type Checking `npx tsc --noEmit` (**0 ERROR**).
    - Unit Tests Suite `npm test` (**20/20 PASS**).
    - End-to-End Suite `npm run check:e2e` (**21/21 PASS**).
