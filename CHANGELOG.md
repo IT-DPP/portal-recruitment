@@ -11,6 +11,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Configured `@itdpp` as the global code owner (`* @itdpp`) for pull request review automation and branch ruleset approval.
 
 ### Fixed
+- **Database Schema Sync for Job Opening Description (`prisma/migrations/20261115110000_add_job_opening_deskripsi/migration.sql`):**
+  - Added dedicated Prisma migration adding column `JobOpening.deskripsi` (`ALTER TABLE "JobOpening" ADD COLUMN "deskripsi" TEXT;`).
+  - Resolves runtime database schema mismatch error on staging/production environments where `JobOpening.deskripsi` column did not exist, fixing `/dashboard/pipeline` and `/dashboard/generate-documents`.
 - **Collapsed Sidebar DPP Mark Visibility (`components/layout/Sidebar.tsx`, `components/layout/CandidateSidebar.tsx`, `public/images/branding/dpp-icon.png`, `app/icon.png`, `public/icon.png`):**
   - Resolved issue where collapsing the sidebar rendered an invisible icon: legacy `/icon.png` and `app/icon.png` were white monochrome icons (#ffffff) blending completely into the white container background.
   - Generated dedicated high-resolution, centered corporate red DPP logo mark (`/images/branding/dpp-icon.png`, 512x512) directly from official corporate assets.
