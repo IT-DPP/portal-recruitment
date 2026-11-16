@@ -64,16 +64,21 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
       <div
         className={`mb-6 flex items-center ${isCollapsed ? "justify-center px-0" : "px-5"}`}
       >
-        <Link href="/dashboard" className="flex items-center" aria-label="Dashboard PT Dian Pandu Pratama">
+        <Link
+          href="/dashboard"
+          className={`flex items-center ${isCollapsed ? "justify-center" : ""}`}
+          aria-label="Dashboard PT Dian Pandu Pratama"
+        >
           {isCollapsed ? (
-            <div className="w-10 h-10 bg-white rounded-xl border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+            <div className="w-10 h-10 bg-white rounded-xl border border-slate-200/80 p-1 flex items-center justify-center shrink-0 shadow-2xs hover:border-[#D9232A]/40 transition-colors">
               <Image
-                src="/icon.png"
-                alt="DPP Logo"
+                src="/images/branding/dpp-icon.png"
+                alt="Logo DPP"
                 width={36}
                 height={36}
-                className="object-contain"
+                className="w-7 h-7 object-contain"
                 priority
+                unoptimized
               />
             </div>
           ) : (
@@ -84,6 +89,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
               height={78}
               className="h-10 w-auto object-contain"
               priority
+              unoptimized
             />
           )}
         </Link>

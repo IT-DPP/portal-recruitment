@@ -511,9 +511,11 @@ IT Leader DPP menginstruksikan penyempurnaan pada *wrapper* konten utama dashboa
 ### Apa yang dikerjakan
 1. **Penyempurnaan Logo & Pembersihan Teks Sidebar (`components/layout/Sidebar.tsx`, `components/layout/CandidateSidebar.tsx`):**
    - Menampilkan logo resmi korporat `/images/branding/dpp-logo-new.png` dengan rasio proporsional (`h-10 w-auto object-contain priority` pada sidebar staf/admin dan `h-8` pada sidebar kandidat) saat status bilah sisi diperluas (*expanded*).
-   - Menjaga tampilan ikon tunggal yang simetris dan rapi di tengah ketika sidebar diciutkan (*collapsed*).
    - Menghapus string teks `"DIAN PANDU PRATAMA"`, sub-label `"E-Recruitment Portal"`, serta badge `"Labor & Job Supply"` sesuai instruksi.
    - Menautkan logo langsung ke `/dashboard` (atau `/candidate/jobs` untuk portal kandidat).
+   - **Perbaikan Ikon Sidebar Collapse:**
+     - *Akar Masalah:* File bawaan `app/icon.png` dan `public/icon.png` (panjang 9.584 bytes) berisi ikon monokrom putih polos `#ffffff` yang berasal dari template Next.js. Ketika sidebar di-collapse, ikon putih ini dirender di atas kotak putih (`bg-white`), menyebabkannya 100% tidak kasat mata (*invisible*).
+     - *Solusi:* Mengesktrak dan menghasilkan ikon resmi DPP berwarna merah korporat `#fc0615` dalam format PNG 512x512 berpresisi tinggi (`public/images/branding/dpp-icon.png`). Mengarahkan `Sidebar.tsx` dan `CandidateSidebar.tsx` untuk memuat `/images/branding/dpp-icon.png` dengan `unoptimized priority`, serta menyelaraskan `app/icon.png` dan `public/icon.png` sehingga favicon aplikasi di tab browser juga menampilkan logo merah DPP yang tajam.
 2. **Implementasi Breadcrumbs Dinamis pada Header Navbar (`components/layout/Header.tsx`):**
    - Mengintegrasikan hook `usePathname()` dari `next/navigation` untuk membaca segmen URL secara reaktif.
    - Menyusun kamus pemetaan komprehensif `ROUTE_LABELS` untuk seluruh rute aplikasi (Dashboard, Pipeline Rekrutmen, Lowongan Kerja, Verifikasi Pelamar, Talent Pool, Blacklist, Arsip, Generate Dokumen, Kalender, Master Data: Posisi/Dept/Customer/Site/Klinik/Provinsi/Kota/Sertifikasi/Tipe Permintaan/Template Penolakan, Manajemen Pengguna, Audit Log PDP, Konfigurasi SLA, dan Profil Kandidat).

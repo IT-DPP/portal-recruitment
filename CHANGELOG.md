@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Phase 4.8 Sidebar Official Logo & Header Dynamic Breadcrumbs] — Sidebar Logo Display, Brand Text Cleanup, and Dynamic Breadcrumbs Header — 2026-11-16
 
+### Fixed
+- **Collapsed Sidebar DPP Mark Visibility (`components/layout/Sidebar.tsx`, `components/layout/CandidateSidebar.tsx`, `public/images/branding/dpp-icon.png`, `app/icon.png`, `public/icon.png`):**
+  - Resolved issue where collapsing the sidebar rendered an invisible icon: legacy `/icon.png` and `app/icon.png` were white monochrome icons (#ffffff) blending completely into the white container background.
+  - Generated dedicated high-resolution, centered corporate red DPP logo mark (`/images/branding/dpp-icon.png`, 512x512) directly from official corporate assets.
+  - Updated both admin and candidate sidebars to use `/images/branding/dpp-icon.png` with `unoptimized priority`, ensuring crisp visibility when collapsed.
+  - Updated `app/icon.png` and `public/icon.png` so the application favicon consistently displays the corporate red DPP logo mark.
+
 ### Changed
 - **Main & Candidate Sidebar Branding (`components/layout/Sidebar.tsx`, `components/layout/CandidateSidebar.tsx`):**
   - Replaced placeholder icon box and static typography with official high-resolution corporate logo `/images/branding/dpp-logo-new.png` (`priority`, `h-10` for admin, `h-8` for candidate).

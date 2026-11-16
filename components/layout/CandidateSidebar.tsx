@@ -67,16 +67,21 @@ export default function CandidateSidebar() {
       >
         {/* Header */}
         <div className={`h-16 flex items-center border-b border-table-border shrink-0 ${isCollapsed ? "justify-center px-0" : "px-4"}`}>
-          <Link href="/candidate/jobs" className="flex items-center" aria-label="Portal Kandidat PT Dian Pandu Pratama">
+          <Link
+            href="/candidate/jobs"
+            className={`flex items-center ${isCollapsed ? "justify-center" : ""}`}
+            aria-label="Portal Kandidat PT Dian Pandu Pratama"
+          >
             {isCollapsed ? (
-              <div className="w-9 h-9 bg-white border border-slate-200 rounded-lg p-1 flex items-center justify-center shrink-0 shadow-2xs">
+              <div className="w-9 h-9 bg-white border border-slate-200/80 rounded-lg p-1 flex items-center justify-center shrink-0 shadow-2xs hover:border-[#D9232A]/40 transition-colors">
                 <Image
-                  src="/icon.png"
+                  src="/images/branding/dpp-icon.png"
                   alt="Logo DPP"
                   width={28}
                   height={28}
-                  className="object-contain"
+                  className="w-6 h-6 object-contain"
                   priority
+                  unoptimized
                 />
               </div>
             ) : (
@@ -87,6 +92,7 @@ export default function CandidateSidebar() {
                 height={70}
                 className="h-8 w-auto object-contain"
                 priority
+                unoptimized
               />
             )}
           </Link>
