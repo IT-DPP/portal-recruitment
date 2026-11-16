@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Phase 4.8 Sidebar Official Logo & Header Dynamic Breadcrumbs] — Sidebar Logo Display, Brand Text Cleanup, and Dynamic Breadcrumbs Header — 2026-11-16
 
+### Added
+- **GitHub Code Owners Configuration (`.github/CODEOWNERS`):**
+  - Configured `@itdpp` as the global code owner (`* @itdpp`) for pull request review automation and branch ruleset approval.
+
 ### Fixed
 - **Collapsed Sidebar DPP Mark Visibility (`components/layout/Sidebar.tsx`, `components/layout/CandidateSidebar.tsx`, `public/images/branding/dpp-icon.png`, `app/icon.png`, `public/icon.png`):**
   - Resolved issue where collapsing the sidebar rendered an invisible icon: legacy `/icon.png` and `app/icon.png` were white monochrome icons (#ffffff) blending completely into the white container background.

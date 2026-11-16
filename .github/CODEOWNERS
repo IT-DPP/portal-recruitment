@@ -1,0 +1,10 @@
+# ==============================================================================
+# CODEOWNERS — DPP Recruitment Portal Dashboard
+# ==============================================================================
+# Repositori: IT-DPP/portal-recruitment
+# Dokumen ini menentukan pemilik kode (code owner) yang otomatis diminta review
+# dan berwenang menyetujui (approve) Pull Request (PR) pada repositori ini.
+# ==============================================================================
+
+# Default global code owner untuk seluruh file dan direktori dalam repositori:
+* @itdpp
