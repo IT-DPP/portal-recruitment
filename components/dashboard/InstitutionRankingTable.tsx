@@ -157,7 +157,7 @@ export default function InstitutionRankingTable({ data }: InstitutionRankingTabl
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-table-border flex flex-col">
+    <div className="bg-white rounded-md shadow-sm border border-table-border flex flex-col">
       {/* Header Bar */}
       <div className="p-5 border-b border-table-border flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
@@ -177,7 +177,7 @@ export default function InstitutionRankingTable({ data }: InstitutionRankingTabl
                 setCurrentSort(e.target.value as SortOption);
                 setPage(1);
               }}
-              className="px-2.5 py-1.5 border border-outline-variant rounded-xl text-xs bg-white text-slate-800 font-semibold focus:outline-none focus:border-primary shadow-2xs cursor-pointer"
+              className="px-2.5 py-1.5 border border-outline-variant rounded-md text-xs bg-white text-slate-800 font-semibold focus:outline-none focus:border-primary shadow-2xs cursor-pointer"
             >
               <option value="totalApplicants_desc">Paling Banyak Mendaftar</option>
               <option value="totalApplicants_asc">Paling Sedikit Mendaftar</option>

@@ -248,7 +248,7 @@ export default function OfferingActionCard({
     <div className="bg-gradient-to-br from-blue-50/50 via-white to-indigo-50/40 rounded-2xl border-2 border-blue-200 p-6 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-blue-100">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-sm shrink-0">
             <FileText className="w-5 h-5" />
           </div>
           <div>

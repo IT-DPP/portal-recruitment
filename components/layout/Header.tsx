@@ -3,9 +3,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, ChevronRight, Home } from 'lucide-react';
+import { User, ChevronRight, Home, Menu } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
+
+interface HeaderProps {
+  onToggleMobile?: () => void;
+}
 
 const ROUTE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
@@ -60,7 +64,7 @@ function getBreadcrumbLabel(segment: string): string {
     .join(" ");
 }
 
-export default function Header() {
+export default function Header({ onToggleMobile }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -81,38 +85,50 @@ export default function Header() {
   });
 
   return (
-    <header className="flex justify-between items-center h-16 px-6 sm:px-8 bg-surface-container-lowest border-b border-table-border sticky top-0 z-40 font-sans w-full">
-      {/* Left Dynamic Breadcrumbs Navigation */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 sm:gap-2 text-xs font-medium min-w-0 flex-1">
-        <Link
-          href="/dashboard"
-          className="text-slate-400 hover:text-[#C81E25] transition-colors shrink-0 flex items-center"
-          title="Beranda Dashboard"
-        >
-          <Home className="w-3.5 h-3.5 text-slate-500" />
-        </Link>
+    <header className="flex justify-between items-center h-16 px-4 sm:px-8 bg-surface-container-lowest border-b border-table-border sticky top-0 z-30 font-sans w-full">
+      {/* Left Dynamic Breadcrumbs Navigation with Mobile Hamburger */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+        {onToggleMobile && (
+          <button
+            type="button"
+            onClick={onToggleMobile}
+            className="md:hidden p-2 -ml-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors shrink-0 cursor-pointer"
+            aria-label="Buka menu navigasi"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 sm:gap-2 text-xs font-medium min-w-0 flex-1 overflow-x-auto no-scrollbar py-1">
+          <Link
+            href="/dashboard"
+            className="text-slate-400 hover:text-[#D9232A] transition-colors shrink-0 flex items-center"
+            title="Beranda Dashboard"
+          >
+            <Home className="w-3.5 h-3.5 text-slate-500" />
+          </Link>
 
-        {breadcrumbs.map((crumb, idx) => {
-          const isLast = idx === breadcrumbs.length - 1;
-          return (
-            <div key={crumb.href} className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-              <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />
-              {isLast ? (
-                <span className="font-bold text-[#0A2540] truncate max-w-[180px] sm:max-w-none">
-                  {crumb.label}
-                </span>
-              ) : (
-                <Link
-                  href={crumb.href}
-                  className="text-slate-500 hover:text-slate-900 transition-colors truncate max-w-[120px] sm:max-w-none"
-                >
-                  {crumb.label}
-                </Link>
-              )}
-            </div>
-          );
-        })}
-      </nav>
+          {breadcrumbs.map((crumb, idx) => {
+            const isLast = idx === breadcrumbs.length - 1;
+            return (
+              <div key={crumb.href} className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
+                <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />
+                {isLast ? (
+                  <span className="font-bold text-[#0A2540] truncate max-w-[160px] sm:max-w-none">
+                    {crumb.label}
+                  </span>
+                ) : (
+                  <Link
+                    href={crumb.href}
+                    className="text-slate-500 hover:text-slate-900 transition-colors truncate max-w-[110px] sm:max-w-none"
+                  >
+                    {crumb.label}
+                  </Link>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+      </div>
 
       {/* Right Actions & Profile */}
       <div className="flex items-center gap-4 shrink-0">

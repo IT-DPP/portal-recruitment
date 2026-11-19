@@ -14,6 +14,28 @@ export default function DashboardLayout({
   const router = useRouter();
   const { data: session, status } = useSession();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Restore persisted desktop collapse state
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem("dpp_sidebar_collapsed");
+      if (saved !== null) {
+        setIsCollapsed(saved === "true");
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleSetCollapsed = (val: boolean) => {
+    setIsCollapsed(val);
+    try {
+      localStorage.setItem("dpp_sidebar_collapsed", String(val));
+    } catch {
+      // ignore
+    }
+  };
 
   // Not authenticated — redirect to login
   React.useEffect(() => {
@@ -40,10 +62,19 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-bright font-sans text-on-surface relative">
-      <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-      <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300 ${isCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
-        <Header />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-surface-bright p-6">
+      <Sidebar
+        isCollapsed={isCollapsed}
+        setIsCollapsed={handleSetCollapsed}
+        isMobileOpen={isMobileOpen}
+        setIsMobileOpen={setIsMobileOpen}
+      />
+      <div
+        className={`flex flex-col flex-1 min-w-0 transition-all duration-300 ml-0 ${
+          isCollapsed ? 'md:ml-[80px]' : 'md:ml-[260px]'
+        }`}
+      >
+        <Header onToggleMobile={() => setIsMobileOpen(true)} />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-surface-bright p-4 sm:p-6">
           {children}
         </main>
       </div>

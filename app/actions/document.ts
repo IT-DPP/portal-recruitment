@@ -277,3 +277,66 @@ export async function batchSaveBastData(
     };
   }
 }
+
+/**
+ * Batch save MCU document details to DB for selected candidates
+ */
+export async function batchSaveMcuData(
+  entries: { appId: string; data: Record<string, any> }[]
+) {
+  const auth = await requireStaffSession();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    for (const item of entries) {
+      const app = await prisma.application.findUnique({
+        where: { id: item.appId },
+      });
+
+      if (app) {
+        let currentStageData: any = {};
+        if (app.stageData) {
+          try {
+            currentStageData =
+              typeof app.stageData === "string"
+                ? JSON.parse(app.stageData)
+                : app.stageData;
+          } catch {
+            currentStageData = {};
+          }
+        }
+
+        const merged = {
+          ...currentStageData,
+          mcu: {
+            ...(currentStageData.mcu || {}),
+            ...item.data,
+            savedAt: new Date().toISOString(),
+            savedBy: session.user.name || session.user.email,
+          },
+        };
+
+        await prisma.application.update({
+          where: { id: item.appId },
+          data: { stageData: merged },
+        });
+      }
+    }
+
+    revalidatePath("/dashboard/generate-documents");
+    revalidatePath("/dashboard/pipeline");
+    return { success: true };
+  } catch (error: any) {
+    console.error("batchSaveMcuData Error:", error);
+    return {
+      success: false,
+      error: "Gagal menyimpan data MCU ke database: " + (error?.message || String(error)),
+    };
+  }
+}

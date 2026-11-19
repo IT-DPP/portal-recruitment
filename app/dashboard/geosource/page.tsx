@@ -431,25 +431,33 @@ export default function GeoSourceDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
         {/* Left Column: Map */}
-        <div className="xl:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-table-border p-5 h-[600px] flex flex-col">
-            <h3 className="font-bold text-on-surface mb-4">Site Operations Candidate Distribution</h3>
-            <div className="flex-1 w-full relative z-0">
+        <div className="xl:col-span-2 flex flex-col">
+          <div className="bg-white rounded-md shadow-sm border border-table-border p-5 flex-1 flex flex-col min-h-[520px]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 className="font-bold text-on-surface text-base">Site Operations Candidate Distribution</h3>
+                <p className="text-xs text-on-surface-variant">Sebaran kandidat dan site operasional di seluruh wilayah Indonesia</p>
+              </div>
+              <span className="self-start sm:self-auto text-xs font-semibold px-2.5 py-1 bg-surface-container text-on-surface-variant rounded-md border border-table-border">
+                {metrics.mapMarkers.length} Sites Active
+              </span>
+            </div>
+            <div className="flex-1 w-full min-h-[440px] relative z-0 rounded-md overflow-hidden border border-table-border">
               <GeoMap markers={metrics.mapMarkers} />
             </div>
           </div>
         </div>
 
         {/* Right Column: Charts */}
-        <div className="xl:col-span-1 space-y-6">
+        <div className="xl:col-span-1 flex flex-col gap-6">
           <RegionalDistributionChart data={metrics.regionalData} />
           <TopBlkChart data={metrics.topBlkData} />
         </div>
       </div>
 
-      <div className="mt-0">
+      <div className="w-full">
         <InstitutionRankingTable data={institutionRankingData} />
       </div>
 
