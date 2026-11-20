@@ -10,6 +10,7 @@ import { recordAuditLog } from "@/lib/audit-log";
 import { encryptField, decryptField, hashField } from "@/lib/crypto";
 import bcrypt from "bcryptjs";
 import {
+  ApplicationStatus,
   AssessmentStage,
   AssessmentResult,
   McuFitnessStatus,
@@ -668,6 +669,14 @@ export async function updateApplicationStage(appId: string, targetStageId: strin
       return { success: false, error: "Application not found" };
     }
 
+    // Backend Guard: Recruiter cannot advance or resurrect candidate whose application is already REJECTED (Archived)
+    if (app.status === "REJECTED") {
+      return {
+        success: false,
+        error: "Lamaran kandidat ini telah ditolak (Archived). Kandidat yang telah ditolak tidak dapat dipindahkan kembali ke pipeline rekrutmen aktif."
+      };
+    }
+
     // Backend Guard: Recruiter cannot advance candidate from Offering Letter stage before candidate accepts
     const currentStageId = app.currentStageId || "";
     const isCurrentOfferingStage = currentStageId === "stage_6";
@@ -700,7 +709,7 @@ export async function updateApplicationStage(appId: string, targetStageId: strin
       targetStageName = stage?.name || targetStageId;
     }
 
-    let newStatus = app.status;
+    let newStatus: ApplicationStatus = app.status;
     let newCurrentStageId: string | null = targetStageId;
 
     if (targetStageId === "Rejected") {
@@ -2312,6 +2321,13 @@ export async function bulkAdvanceApplicationStage(
 
     for (const app of apps) {
       affectedJobIds.add(app.jobId);
+
+      // Guard: Kandidat yang sudah ditolak (REJECTED/Archived) tidak boleh dipindahkan ke pipeline aktif
+      if (app.status === "REJECTED") {
+        skippedErrors.push(`Kandidat ID ${app.id.slice(0, 8)}: Lamaran telah ditolak (Archived) dan tidak dapat dimajukan.`);
+        continue;
+      }
+
       const currentStageId = app.currentStageId || "";
       const isCurrentOfferingStage = currentStageId === "stage_6";
 
@@ -2332,7 +2348,7 @@ export async function bulkAdvanceApplicationStage(
         }
       }
 
-      let newStatus = app.status;
+      let newStatus: ApplicationStatus = app.status;
       let newCurrentStageId: string | null = targetStageId;
 
       if (targetStageId === "Rejected") {

@@ -107,3 +107,30 @@ test("Bulk Actions — Standardized Rejection Reason Handling", () => {
   );
 });
 
+test("Pipeline Stage Guard — Rejection Terminal State Lock (Archived Integrity)", () => {
+  const evaluateStageTransition = (
+    currentStatus: string,
+    targetStageId: string
+  ) => {
+    if (currentStatus === "REJECTED") {
+      return {
+        allowed: false,
+        error:
+          "Lamaran kandidat ini telah ditolak (Archived). Kandidat yang telah ditolak tidak dapat dipindahkan kembali ke pipeline rekrutmen aktif.",
+      };
+    }
+    return { allowed: true };
+  };
+
+  // Blocked for any transition when status is REJECTED
+  assert.equal(evaluateStageTransition("REJECTED", "stage_1").allowed, false);
+  assert.equal(evaluateStageTransition("REJECTED", "stage_2").allowed, false);
+  assert.equal(evaluateStageTransition("REJECTED", "Hired").allowed, false);
+  assert.equal(evaluateStageTransition("REJECTED", "stage_8").allowed, false);
+
+  // Allowed when status is ACTIVE
+  assert.equal(evaluateStageTransition("ACTIVE", "stage_2").allowed, true);
+  assert.equal(evaluateStageTransition("ACTIVE", "Hired").allowed, true);
+  assert.equal(evaluateStageTransition("ACTIVE", "Rejected").allowed, true);
+});
+

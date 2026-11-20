@@ -492,7 +492,7 @@ export default function McuDocumentTemplate({
             {contact?.billing?.company || "PT. Dian Pandu Pratama"}
           </p>
 
-          {/* Signature & Stamp Graphics */}
+          {/* Ruang Tanda Tangan Basah & Cap Stempel Fisik (Manual) */}
           <div
             style={{
               position: "relative",
@@ -500,82 +500,7 @@ export default function McuDocumentTemplate({
               height: "64px",
               margin: "6px 0",
             }}
-          >
-            {showSignature && (
-              <>
-                {/* Stamp Circle Overlay */}
-                <div
-                  style={{
-                    position: "absolute",
-                    left: "-10px",
-                    top: "4px",
-                    width: "56px",
-                    height: "56px",
-                    borderRadius: "50%",
-                    border: "2px solid #e11d48",
-                    opacity: 0.85,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textAlign: "center",
-                    transform: "rotate(-12deg)",
-                    pointerEvents: "none",
-                  }}
-                >
-                  <span
-                    style={{
-                      color: "#e11d48",
-                      fontSize: "7px",
-                      fontWeight: "bold",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.2px",
-                      lineHeight: "1.1",
-                    }}
-                  >
-                    DIAN PANDU
-                    <br />
-                    PRATAMA
-                  </span>
-                </div>
-
-                {/* Hand-drawn stylized SVG Signature */}
-                <svg
-                  viewBox="0 0 160 60"
-                  style={{
-                    position: "absolute",
-                    left: "4px",
-                    top: "0",
-                    width: "140px",
-                    height: "55px",
-                    pointerEvents: "none",
-                  }}
-                >
-                  <path
-                    d="M15,45 C25,20 28,10 32,8 C35,7 38,15 35,42 C33,48 40,25 46,22 C50,20 54,40 58,42 C62,43 65,28 72,26 C80,24 88,40 95,38 C105,35 120,30 135,28"
-                    fill="none"
-                    stroke="#111827"
-                    strokeWidth="2.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M8,46 Q45,35 90,44 T142,39"
-                    fill="none"
-                    stroke="#111827"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M26,18 C30,30 35,40 40,48"
-                    fill="none"
-                    stroke="#111827"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </>
-            )}
-          </div>
+          />
 
           <p
             style={{

@@ -568,6 +568,16 @@ export default function AdvancedDocumentVerificationPage({
     (application.status === "HIRED" && !application.currentStageId
       ? "Hired (Active Employee)"
       : application.currentStageId || "");
+  const isArchived = application.status === "REJECTED";
+  const rejectionHistory = application.history?.find(
+    (h: any) => h.stageId === "Rejected" || h.stageName === "Rejected"
+  );
+  let rejectionReason = rejectionHistory?.note || "Kandidat telah ditolak pada proses rekrutmen.";
+  if (rejectionReason.startsWith("Reason: ")) {
+    rejectionReason = rejectionReason.substring(8);
+  }
+  const rejectionDate = rejectionHistory?.date || rejectionHistory?.createdAt || application.updatedAt;
+
   const isCandidateHired =
     application.status === "HIRED" ||
     application.currentStageId === "Hired" ||
@@ -1844,7 +1854,11 @@ export default function AdvancedDocumentVerificationPage({
               {profile.fullName}{" "}
               <span className="text-on-surface-variant font-normal">—</span>{" "}
               {job.positionName || job.position?.name}
-              {application.currentStageId === "Hired" ||
+              {isArchived ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 uppercase tracking-wide">
+                  Archived (Ditolak)
+                </span>
+              ) : application.currentStageId === "Hired" ||
               (application.status === "HIRED" &&
                 !application.currentStageId) ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 uppercase tracking-wide">
@@ -1865,12 +1879,14 @@ export default function AdvancedDocumentVerificationPage({
         </div>
 
         <div className="flex gap-3 items-center">
-          <button
-            onClick={handleDraftMark}
-            className="px-5 py-2 border border-outline-variant bg-white text-on-surface hover:bg-surface-container-low font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5 shadow-sm"
-          >
-            <Save className="w-4 h-4" /> Save as Draft
-          </button>
+          {!isArchived && (
+            <button
+              onClick={handleDraftMark}
+              className="px-5 py-2 border border-outline-variant bg-white text-on-surface hover:bg-surface-container-low font-semibold rounded-lg text-sm transition-colors flex items-center gap-1.5 shadow-sm"
+            >
+              <Save className="w-4 h-4" /> Save as Draft
+            </button>
+          )}
 
           <button
             onClick={() => setShowActionModal(true)}
@@ -1880,6 +1896,36 @@ export default function AdvancedDocumentVerificationPage({
           </button>
         </div>
       </div>
+
+      {/* Archived Candidate Alert Banner */}
+      {isArchived && (
+        <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-3.5 text-rose-900 shadow-xs">
+          <Ban className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="font-bold text-sm text-rose-900">
+                Kandidat Berstatus Terarsip (Ditolak)
+              </h4>
+              {rejectionDate && (
+                <span className="text-xs text-rose-700 font-medium">
+                  • Ditolak pada:{" "}
+                  {new Date(rejectionDate).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-rose-800 mt-1">
+              <span className="font-semibold">Alasan Penolakan:</span> {rejectionReason}
+            </p>
+            <p className="text-[11px] text-rose-700 mt-1 italic">
+              Seluruh aksi pemindahan status dan pemajuan tahapan seleksi dinonaktifkan demi menjaga integritas pipeline rekrutmen dan audit trail.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Breadcrumbs & Title */}
       <div className="mb-6">
@@ -4228,7 +4274,17 @@ export default function AdvancedDocumentVerificationPage({
               </button>
             </div>
             <div className="p-6 flex flex-col gap-4">
-              {application.status === "HIRED" && !application.currentStageId ? (
+              {isArchived ? (
+                <div className="w-full px-4 py-3 bg-rose-50 border border-rose-200 text-rose-900 font-medium rounded-lg text-xs flex items-start gap-2.5 shadow-sm">
+                  <Ban className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold block text-rose-950">
+                      Kandidat Terarsip (Status Ditolak)
+                    </span>
+                    Kandidat ini telah ditolak. Aksi pemindahan tahapan pipeline seleksi dinonaktifkan demi integritas data dan audit trail.
+                  </div>
+                </div>
+              ) : application.status === "HIRED" && !application.currentStageId ? (
                 <div className="w-full px-5 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold rounded-lg text-sm flex items-center justify-between shadow-sm">
                   <span className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-emerald-600" /> Seluruh
@@ -4264,18 +4320,20 @@ export default function AdvancedDocumentVerificationPage({
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}
-              <button
-                onClick={() => {
-                  setShowActionModal(false);
-                  handleApproveAll();
-                }}
-                className="w-full px-5 py-3 bg-primary hover:bg-primary-container text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm"
-              >
-                <span className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5" /> Approve All Stages
-                </span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              {!isArchived && (
+                <button
+                  onClick={() => {
+                    setShowActionModal(false);
+                    handleApproveAll();
+                  }}
+                  className="w-full px-5 py-3 bg-primary hover:bg-primary-container text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-between shadow-sm"
+                >
+                  <span className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" /> Approve All Stages
+                  </span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleDownloadZip}
@@ -4313,15 +4371,17 @@ export default function AdvancedDocumentVerificationPage({
                 <MessageSquare className="w-5 h-5" /> Message in WhatsApp
               </a>
               <div className="h-px bg-outline-variant my-1"></div>
-              <button
-                onClick={() => {
-                  setShowActionModal(false);
-                  setShowRejectModal(true);
-                }}
-                className="w-full px-5 py-3 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm"
-              >
-                <Ban className="w-5 h-5" /> Reject Candidate
-              </button>
+              {!isArchived && (
+                <button
+                  onClick={() => {
+                    setShowActionModal(false);
+                    setShowRejectModal(true);
+                  }}
+                  className="w-full px-5 py-3 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  <Ban className="w-5 h-5" /> Reject Candidate
+                </button>
+              )}
               <button
                 onClick={() => {
                   setShowActionModal(false);
@@ -4331,15 +4391,17 @@ export default function AdvancedDocumentVerificationPage({
               >
                 <UserX className="w-5 h-5" /> Blacklist Candidate
               </button>
-              <button
-                onClick={() => {
-                  setShowActionModal(false);
-                  setShowMoveJobModal(true);
-                }}
-                className="w-full px-5 py-3 border border-amber-500 text-amber-700 bg-amber-50 hover:bg-amber-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm"
-              >
-                <ArrowRight className="w-5 h-5" /> Move Candidate to Other Job
-              </button>
+              {!isArchived && (
+                <button
+                  onClick={() => {
+                    setShowActionModal(false);
+                    setShowMoveJobModal(true);
+                  }}
+                  className="w-full px-5 py-3 border border-amber-500 text-amber-700 bg-amber-50 hover:bg-amber-100 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  <ArrowRight className="w-5 h-5" /> Move Candidate to Other Job
+                </button>
+              )}
             </div>
           </div>
         </div>

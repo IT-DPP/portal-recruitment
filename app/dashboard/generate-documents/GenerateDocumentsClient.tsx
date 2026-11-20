@@ -1184,10 +1184,6 @@ export default function GenerateDocumentsClient({
       alert("Harap lengkapi Nomor Surat, Lowongan, dan Kandidat.");
       return;
     }
-    // Auto save to DB on generate
-    if (selectedAppId) {
-      handleSaveOfferingToDb();
-    }
     generateOfferingLetterDocx(olFormData, "/logo_company.png");
   };
 
@@ -1196,10 +1192,6 @@ export default function GenerateDocumentsClient({
       alert("Harap lengkapi form dengan benar.");
       return;
     }
-    // Auto save to DB on generate
-    if (selectedAppId) {
-      handleSaveOfferingToDb();
-    }
     setIsDownloading(true);
     await generatePdfFromElement(
       "offering-pdf-template",
@@ -1207,21 +1199,6 @@ export default function GenerateDocumentsClient({
       "/logo_company.png",
     );
     setIsDownloading(false);
-  };
-
-  const handlePrintOffering = () => {
-    if (!olFormData) {
-      alert("Harap lengkapi form dengan benar.");
-      return;
-    }
-    if (selectedAppId) {
-      handleSaveOfferingToDb();
-    }
-    printDocument(
-      "offering-pdf-template",
-      `Offering Letter - ${candidateFullName}`,
-      "/logo_company.png",
-    );
   };
 
   const handleSaveMcuToDb = async () => {
@@ -1280,7 +1257,6 @@ export default function GenerateDocumentsClient({
       alert("Pilih minimal satu kandidat yang sudah mencapai tahap MCU.");
       return;
     }
-    handleSaveMcuToDb();
     const batchData: McuBatchDocumentData = {
       nomorSurat: mcuNomorSurat,
       perihal: "Surat Pengantar MCU",
@@ -1319,7 +1295,6 @@ export default function GenerateDocumentsClient({
       alert("Pilih minimal satu kandidat yang sudah mencapai tahap MCU.");
       return;
     }
-    handleSaveMcuToDb();
     setIsDownloading(true);
     const cleanSurat = mcuNomorSurat.replace(/[\/\\]/g, "_");
     await generatePdfFromElement(
@@ -1328,23 +1303,6 @@ export default function GenerateDocumentsClient({
       "/logo_company.png",
     );
     setIsDownloading(false);
-  };
-
-  const handlePrintMcu = () => {
-    if (!mcuNomorSurat) {
-      alert("Harap isi Nomor Surat terlebih dahulu.");
-      return;
-    }
-    if (selectedMcuCandidatesList.length === 0) {
-      alert("Pilih minimal satu kandidat yang sudah mencapai tahap MCU.");
-      return;
-    }
-    handleSaveMcuToDb();
-    printDocument(
-      "mcu-pdf-template",
-      `Surat Pengantar MCU - ${mcuNomorSurat}`,
-      "/logo_company.png",
-    );
   };
 
   // Current formatted date
@@ -1803,30 +1761,6 @@ export default function GenerateDocumentsClient({
 
               {/* Action Buttons */}
               <div className="pt-4 border-t border-table-border flex flex-wrap justify-end gap-3">
-                {/* <button
-                  type="button"
-                  onClick={handleSaveOfferingToDb}
-                  disabled={!selectedJob || !selectedCandidateProfile || isSavingOl}
-                  className="px-4 py-2.5 bg-surface border border-emerald-300 hover:bg-emerald-50 text-emerald-800 rounded-md font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40 shadow-2xs"
-                  title="Simpan data Offering Letter ke database"
-                >
-                  {isSavingOl ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
-                  ) : (
-                    <Save className="w-4 h-4 text-emerald-600" />
-                  )}
-                  <span>{isSavingOl ? "Menyimpan..." : "Simpan ke DB"}</span>
-                </button> */}
-                <button
-                  type="button"
-                  onClick={handlePrintOffering}
-                  disabled={!selectedJob || !selectedCandidateProfile}
-                  className="px-4 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-md font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40"
-                  title="Cetak langsung atau simpan via browser print engine"
-                >
-                  <Printer className="w-4 h-4 text-neutral-600" />
-                  <span>Cetak / Print</span>
-                </button>
                 <button
                   type="button"
                   onClick={handleDownloadOfferingPdf}
@@ -1869,20 +1803,6 @@ export default function GenerateDocumentsClient({
                     format Excel.
                   </p>
                 </div>
-                {bastSelectedApps.length > 0 && (
-                  <button
-                    onClick={handleBatchSaveBast}
-                    disabled={isSavingBast}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-xs"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>
-                      {isSavingBast
-                        ? "Menyimpan..."
-                        : `Simpan ${bastSelectedApps.length} Data ke DB`}
-                    </span>
-                  </button>
-                )}
               </div>
 
               {/* Form & Filter Grid */}
@@ -2359,17 +2279,6 @@ export default function GenerateDocumentsClient({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">
-                  {/* <button
-                    onClick={handleBatchSaveBast}
-                    disabled={bastSelectedApps.length === 0 || isSavingBast}
-                    className="px-3.5 py-2 bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-2xs"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>
-                      {isSavingBast ? "Menyimpan..." : "Simpan ke DB"}
-                    </span>
-                  </button> */}
-
                   <button
                     onClick={handleDownloadStatementPdfBAST}
                     disabled={
@@ -2868,34 +2777,6 @@ export default function GenerateDocumentsClient({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  {/* <button
-                    type="button"
-                    onClick={handleSaveMcuToDb}
-                    disabled={
-                      selectedMcuCandidatesList.length === 0 || isSavingMcu
-                    }
-                    className="px-4 py-2.5 bg-surface border border-emerald-300 hover:bg-emerald-50 text-emerald-800 rounded-md font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40 shadow-2xs"
-                    title="Simpan data Surat Pengantar MCU ke database"
-                  >
-                    {isSavingMcu ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
-                    ) : (
-                      <Save className="w-4 h-4 text-emerald-600" />
-                    )}
-                    <span>{isSavingMcu ? "Menyimpan..." : "Simpan ke DB"}</span>
-                  </button> */}
-
-                  <button
-                    type="button"
-                    onClick={handlePrintMcu}
-                    disabled={selectedMcuCandidatesList.length === 0}
-                    className="px-4 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-md font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40 shadow-xs"
-                    title="Cetak langsung atau simpan via browser print engine (Vector Crisp)"
-                  >
-                    <Printer className="w-4 h-4 text-neutral-600" />
-                    <span>Cetak / Print</span>
-                  </button>
-
                   <button
                     type="button"
                     onClick={handleDownloadMcuPdf}
@@ -3355,7 +3236,7 @@ export default function GenerateDocumentsClient({
           candidates={selectedMcuCandidatesList}
           tanggalSurat={formattedDate}
           logoSrc={logoBase64 || "/logo_company.png"}
-          showSignature={true}
+          showSignature={false}
         />
       </div>
 
