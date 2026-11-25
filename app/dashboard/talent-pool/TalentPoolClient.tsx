@@ -10,7 +10,6 @@ import {
   Plus,
   User as UserIcon,
   Loader2,
-  FileSpreadsheet,
   CheckSquare,
   Square,
   ArrowRightCircle,
@@ -19,7 +18,6 @@ import {
 import PaginationBar from "@/components/ui/PaginationBar";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getPaginatedTalentPool, bulkAssignCandidatesToJob } from "@/app/actions/job";
-import BulkImportModal from "@/components/dashboard/BulkImportModal";
 
 interface TalentPoolClientProps {
   initialCandidates?: any[];
@@ -54,9 +52,6 @@ export default function TalentPoolClient({
   const [isPending, startTransition] = useTransition();
 
   const [hasMounted, setHasMounted] = useState(false);
-
-  // Bulk Import state
-  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   // Multi-selection state
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set());
@@ -226,15 +221,6 @@ export default function TalentPoolClient({
             {hasActiveFilters && (
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsBulkImportOpen(true)}
-            className="px-3.5 py-2 bg-[#0A2540] hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0 shadow-2xs cursor-pointer"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-            <span>Import Massal Excel</span>
           </button>
 
           <Link
@@ -578,29 +564,6 @@ export default function TalentPoolClient({
           </div>
         </div>
       )}
-
-      {/* Bulk Candidate Import Modal */}
-      <BulkImportModal
-        isOpen={isBulkImportOpen}
-        onClose={() => setIsBulkImportOpen(false)}
-        jobId={null}
-        jobTitle={null}
-        onSuccess={() => {
-          // Trigger data reload by bumping search or page
-          startTransition(async () => {
-            const res = await getPaginatedTalentPool({
-              page: currentPage,
-              limit: itemsPerPage,
-              search: debouncedSearch,
-              education: activeEducation,
-            });
-            if (res.success && res.data) {
-              setCandidates(res.data);
-              if (res.pagination) setPagination(res.pagination);
-            }
-          });
-        }}
-      />
     </div>
   );
 }

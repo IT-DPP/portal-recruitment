@@ -17,9 +17,6 @@ import {
   OfferingLetterDataV2,
 } from "@/lib/document-generator";
 import {
-  saveCandidateDocumentData,
-  batchSaveBastData,
-  batchSaveMcuData,
   getDocumentGenerationData,
 } from "@/app/actions/document";
 import McuDocumentTemplate from "@/components/dashboard/documents/McuDocumentTemplate";
@@ -36,7 +33,6 @@ import {
   Download,
   Printer,
   Eye,
-  Save,
   CheckCircle2,
   AlertCircle,
   RefreshCw,
@@ -188,9 +184,7 @@ export default function GenerateDocumentsClient({
     "offering",
   );
 
-  // Document generation & database persistence states
-  const [isSavingOl, setIsSavingOl] = useState(false);
-  const [isSavingMcu, setIsSavingMcu] = useState(false);
+  // Document generation export states
   const [isDownloading, setIsDownloading] = useState(false);
   const [logoBase64, setLogoBase64] = useState<string>("/logo_company.png");
 
@@ -283,7 +277,6 @@ export default function GenerateDocumentsClient({
   const [bastSelectedApps, setBastSelectedApps] = useState<string[]>([]);
   const [bastSearchQuery, setBastSearchQuery] = useState("");
   const [bastInputs, setBastInputs] = useState<Record<string, any>>({});
-  const [isSavingBast, setIsSavingBast] = useState(false);
   const [isGeneratingBastExcel, setIsGeneratingBastExcel] = useState(false);
   const [isGeneratingBastZip, setIsGeneratingBastZip] = useState(false);
   const [bastZipProgress, setBastZipProgress] =
@@ -688,34 +681,6 @@ export default function GenerateDocumentsClient({
         [field]: value,
       },
     }));
-  };
-
-  const handleBatchSaveBast = async () => {
-    if (bastSelectedApps.length === 0) {
-      alert("Centang minimal 1 kandidat untuk disimpan.");
-      return;
-    }
-    setIsSavingBast(true);
-    const payload = bastSelectedApps.map((appId) => ({
-      appId,
-      data: bastInputs[appId] || {},
-    }));
-
-    const res = await batchSaveBastData(payload);
-    setIsSavingBast(false);
-
-    if (res.success) {
-      setFeedbackMsg({
-        type: "success",
-        text: `Data BAST untuk ${bastSelectedApps.length} kandidat berhasil disimpan di database.`,
-      });
-    } else {
-      setFeedbackMsg({
-        type: "error",
-        text: res.error || "Gagal menyimpan data BAST.",
-      });
-    }
-    setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
   const getCandidateDocStatus = (app: any) => {
@@ -1143,42 +1108,8 @@ export default function GenerateDocumentsClient({
   // -------------------------------------------------------------------------
   // DATABASE PERSISTENCE & GENERATION HANDLERS
   // -------------------------------------------------------------------------
-  const handleSaveOfferingToDb = async () => {
-    if (!selectedAppId || !olFormData) {
-      alert("Harap pilih lowongan dan kandidat terlebih dahulu.");
-      return;
-    }
-    setIsSavingOl(true);
-    try {
-      const res = await saveCandidateDocumentData(selectedAppId, "offering", {
-        ...olFormData,
-        bpjsPerusahaan,
-        bpjsKaryawan,
-        updatedAt: new Date().toISOString(),
-      });
-      if (res.success) {
-        setFeedbackMsg({
-          type: "success",
-          text: `Data Offering Letter (${candidateFullName}) berhasil disimpan ke database.`,
-        });
-      } else {
-        setFeedbackMsg({
-          type: "error",
-          text:
-            res.error || "Gagal menyimpan data Offering Letter ke database.",
-        });
-      }
-    } catch (err: any) {
-      setFeedbackMsg({
-        type: "error",
-        text: err?.message || "Gagal menyimpan data Offering Letter.",
-      });
-    } finally {
-      setIsSavingOl(false);
-      setTimeout(() => setFeedbackMsg(null), 4000);
-    }
-  };
-
+  // DOCUMENT GENERATION & EXPORT HANDLERS
+  // -------------------------------------------------------------------------
   const handleDownloadOfferingDocx = async () => {
     if (!olFormData) {
       alert("Harap lengkapi Nomor Surat, Lowongan, dan Kandidat.");
@@ -1199,53 +1130,6 @@ export default function GenerateDocumentsClient({
       "/logo_company.png",
     );
     setIsDownloading(false);
-  };
-
-  const handleSaveMcuToDb = async () => {
-    if (selectedMcuCandidatesList.length === 0) {
-      alert("Pilih minimal satu kandidat yang sudah mencapai tahap MCU.");
-      return;
-    }
-    if (!mcuNomorSurat) {
-      alert("Harap isi Nomor Surat Pengantar MCU terlebih dahulu.");
-      return;
-    }
-    setIsSavingMcu(true);
-    try {
-      const payload = selectedMcuCandidatesList.map((c: any) => ({
-        appId: c.applicationId || c.id,
-        data: {
-          nomorSurat: mcuNomorSurat,
-          perihal: "Surat Pengantar MCU",
-          klinikId: selectedClinic.id,
-          klinikNama: selectedClinic.name || selectedClinic.nama,
-          klinikAlamat: selectedClinic.address || selectedClinic.alamat,
-          paketMcu: c.paketMcu,
-          kategori: c.kategori,
-          tanggalSurat: formattedDate,
-        },
-      }));
-      const res = await batchSaveMcuData(payload);
-      if (res.success) {
-        setFeedbackMsg({
-          type: "success",
-          text: `Data Surat Pengantar MCU (${selectedMcuCandidatesList.length} kandidat) berhasil disimpan ke database.`,
-        });
-      } else {
-        setFeedbackMsg({
-          type: "error",
-          text: res.error || "Gagal menyimpan data MCU ke database.",
-        });
-      }
-    } catch (err: any) {
-      setFeedbackMsg({
-        type: "error",
-        text: err?.message || "Gagal menyimpan data MCU.",
-      });
-    } finally {
-      setIsSavingMcu(false);
-      setTimeout(() => setFeedbackMsg(null), 4000);
-    }
   };
 
   const handleDownloadMcuDocx = async () => {

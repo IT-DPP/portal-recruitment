@@ -10,20 +10,12 @@ import {
   AlertCircle,
   ChevronDown,
   Loader2,
-  CheckSquare,
-  Square,
-  ArrowRightCircle,
-  Ban,
-  Users,
   CheckCircle,
 } from "lucide-react";
 import { useModal } from "@/components/providers/ModalProvider";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   getFilteredPipelineData,
-  bulkAdvanceApplicationStage,
-  bulkRejectApplications,
-  bulkAddToTalentPool,
 } from "@/app/actions/job";
 
 interface PipelineClientProps {
@@ -69,26 +61,6 @@ export default function PipelineClient({
   const [stageLimits, setStageLimits] = useState<Record<string, number>>({});
   const [isPending, startTransition] = useTransition();
   const [hasMounted, setHasMounted] = useState(false);
-
-  // Multi-selection state
-  const [selectedAppIds, setSelectedAppIds] = useState<Set<string>>(new Set());
-
-  // Bulk Modals state
-  const [showBulkAdvanceModal, setShowBulkAdvanceModal] = useState(false);
-  const [selectedTargetStageId, setSelectedTargetStageId] = useState("");
-  const [bulkAdvanceNote, setBulkAdvanceNote] = useState("");
-
-  const [showBulkRejectModal, setShowBulkRejectModal] = useState(false);
-  const [selectedRejectReason, setSelectedRejectReason] = useState(
-    "Kualifikasi Belum Sesuai Kebutuhan Klien"
-  );
-  const [customRejectReason, setCustomRejectReason] = useState("");
-
-  const [isBulkPending, setIsBulkPending] = useState(false);
-  const [bulkFeedback, setBulkFeedback] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
 
   useEffect(() => {
     setJobs(initialJobs || []);
@@ -181,138 +153,6 @@ export default function PipelineClient({
       ...prev,
       [stageId]: (prev[stageId] || 15) + 15,
     }));
-  };
-
-  // Selection helpers
-  const toggleSelectApp = (appId: string) => {
-    setSelectedAppIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(appId)) next.delete(appId);
-      else next.add(appId);
-      return next;
-    });
-  };
-
-  const toggleSelectStage = (stageAppIds: string[]) => {
-    if (stageAppIds.length === 0) return;
-    setSelectedAppIds((prev) => {
-      const next = new Set(prev);
-      const allSelected = stageAppIds.every((id) => next.has(id));
-      if (allSelected) {
-        stageAppIds.forEach((id) => next.delete(id));
-      } else {
-        stageAppIds.forEach((id) => next.add(id));
-      }
-      return next;
-    });
-  };
-
-  const clearSelection = () => {
-    setSelectedAppIds(new Set());
-  };
-
-  // Bulk Advance Submit
-  const handleConfirmBulkAdvance = async () => {
-    if (!selectedTargetStageId) {
-      alert("Pilih tahapan tujuan terlebih dahulu.");
-      return;
-    }
-
-    const appIds = Array.from(selectedAppIds);
-    setIsBulkPending(true);
-
-    try {
-      const res = await bulkAdvanceApplicationStage(
-        appIds,
-        selectedTargetStageId,
-        bulkAdvanceNote.trim() || undefined
-      );
-
-      if (res.success && res.data) {
-        setBulkFeedback({
-          type: "success",
-          message: `Berhasil meloloskan ${res.data.updatedCount} kandidat ke tahap baru.${
-            res.data.skippedCount > 0 ? ` (${res.data.skippedCount} dilewati karena belum konfirmasi Offering)` : ""
-          }`,
-        });
-        setShowBulkAdvanceModal(false);
-        clearSelection();
-        setTimeout(() => window.location.reload(), 1200);
-      } else {
-        alert(res.error || "Gagal memindahkan kandidat secara massal.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Terjadi kesalahan sistem.");
-    } finally {
-      setIsBulkPending(false);
-    }
-  };
-
-  // Bulk Reject Submit
-  const handleConfirmBulkReject = async () => {
-    const finalReason =
-      selectedRejectReason === "Lainnya"
-        ? customRejectReason.trim() || "Kualifikasi belum sesuai kebutuhan"
-        : selectedRejectReason;
-
-    const appIds = Array.from(selectedAppIds);
-    setIsBulkPending(true);
-
-    try {
-      const res = await bulkRejectApplications(appIds, finalReason);
-      if (res.success) {
-        setBulkFeedback({
-          type: "success",
-          message: `Berhasil menolak ${res.count} kandidat dengan alasan: "${finalReason}".`,
-        });
-        setShowBulkRejectModal(false);
-        clearSelection();
-        setTimeout(() => window.location.reload(), 1200);
-      } else {
-        alert(res.error || "Gagal menolak kandidat massal.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Terjadi kesalahan sistem.");
-    } finally {
-      setIsBulkPending(false);
-    }
-  };
-
-  // Bulk Talent Pool Submit
-  const handleBulkTalentPool = async () => {
-    const selectedApps = applications.filter((a) => selectedAppIds.has(a.id));
-    const profileIds = Array.from(new Set(selectedApps.map((a) => a.candidateProfileId).filter(Boolean)));
-
-    if (profileIds.length === 0) {
-      alert("Tidak ada profil kandidat yang valid.");
-      return;
-    }
-
-    if (!confirm(`Pindahkan ${profileIds.length} profil kandidat ke Talent Pool?`)) {
-      return;
-    }
-
-    setIsBulkPending(true);
-    try {
-      const res = await bulkAddToTalentPool(profileIds);
-      if (res.success) {
-        setBulkFeedback({
-          type: "success",
-          message: `Berhasil memindahkan ${res.count} kandidat ke Talent Pool.`,
-        });
-        clearSelection();
-        setTimeout(() => setBulkFeedback(null), 3000);
-      } else {
-        alert(res.error || "Gagal memindahkan ke Talent Pool.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Terjadi kesalahan sistem.");
-    } finally {
-      setIsBulkPending(false);
-    }
   };
 
   // Filter application cards by active status
@@ -428,25 +268,6 @@ export default function PipelineClient({
         </div>
       )}
 
-      {/* Bulk Feedback Banner */}
-      {bulkFeedback && (
-        <div
-          className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-between shrink-0 ${
-            bulkFeedback.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-              : "bg-red-50 text-red-800 border-red-200"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-emerald-600" />
-            <span>{bulkFeedback.message}</span>
-          </div>
-          <button onClick={() => setBulkFeedback(null)} className="text-slate-400 hover:text-slate-600">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       {/* Kanban Board Container */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden flex gap-4 pb-20 px-1 custom-scrollbar relative overscroll-x-contain">
         {isPending && (
@@ -462,10 +283,6 @@ export default function PipelineClient({
           const hasMore = allStageApps.length > currentLimit;
           const remainingCount = allStageApps.length - currentLimit;
 
-          const stageAppIds = visibleStageApps.map((a: any) => a.id);
-          const isAllStageSelected =
-            stageAppIds.length > 0 && stageAppIds.every((id) => selectedAppIds.has(id));
-
           return (
             <div
               key={stage.id}
@@ -475,27 +292,6 @@ export default function PipelineClient({
               <div className="p-3.5 border-b border-slate-200 rounded-t-xl shrink-0 bg-white">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2 min-w-0 pr-1">
-                    <button
-                      type="button"
-                      onClick={() => toggleSelectStage(stageAppIds)}
-                      disabled={stageAppIds.length === 0}
-                      title={
-                        isAllStageSelected
-                          ? "Batalkan pilihan di kolom ini"
-                          : "Pilih semua kandidat di kolom ini"
-                      }
-                      className={`p-1 rounded text-xs transition-colors shrink-0 ${
-                        isAllStageSelected
-                          ? "bg-primary text-white"
-                          : "bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                      }`}
-                    >
-                      {isAllStageSelected ? (
-                        <CheckSquare className="w-3.5 h-3.5" />
-                      ) : (
-                        <Square className="w-3.5 h-3.5" />
-                      )}
-                    </button>
                     <h4 className="font-bold text-xs text-slate-900 truncate" title={stage.name}>
                       {stage.name}
                     </h4>
@@ -513,33 +309,16 @@ export default function PipelineClient({
                   const status = getAppStatus(app);
                   const isAppOverdue = status === "overdue";
                   const hasNote = app.stageNotes && app.stageNotes[app.currentStageId];
-                  const isSelected = selectedAppIds.has(app.id);
 
                   return (
                     <div
                       key={app.id}
                       className={`
-                        bg-white p-3.5 rounded-xl border transition-all relative
-                        ${
-                          isSelected
-                            ? "border-primary ring-2 ring-primary/30 shadow-md bg-blue-50/20"
-                            : "border-slate-200 hover:border-slate-300 shadow-2xs hover:shadow-xs"
-                        }
+                        bg-white p-3.5 rounded-xl border transition-all relative border-slate-200 hover:border-slate-300 shadow-2xs hover:shadow-xs
                         ${isAppOverdue && !hasNote ? "border-l-4 border-l-red-500" : ""}
                       `}
                     >
                       <div className="flex items-start gap-2.5">
-                        {/* Checkbox */}
-                        <div className="pt-0.5">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelectApp(app.id)}
-                            className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer shrink-0"
-                            aria-label={`Pilih ${profile.fullName || "kandidat"}`}
-                          />
-                        </div>
-
                         {/* Avatar */}
                         <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden border border-slate-200 mt-0.5">
                           {profile.filePhoto?.base64 ? (
@@ -622,213 +401,6 @@ export default function PipelineClient({
           );
         })}
       </div>
-
-      {/* Floating Sticky Bottom Bulk Action Bar */}
-      {selectedAppIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#0A2540] text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex flex-wrap items-center justify-between gap-4 max-w-3xl w-[92vw] animate-in slide-in-from-bottom-4">
-          <div className="flex items-center gap-3">
-            <span className="px-2.5 py-1 bg-white/10 rounded-lg text-xs font-bold text-white">
-              {selectedAppIds.size} Kandidat Dipilih
-            </span>
-            <button
-              onClick={clearSelection}
-              className="text-xs text-slate-300 hover:text-white underline cursor-pointer"
-            >
-              Batal Pilih
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setSelectedTargetStageId(stages[1]?.id || stages[0]?.id || "");
-                setShowBulkAdvanceModal(true);
-              }}
-              disabled={isBulkPending}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-            >
-              <ArrowRightCircle className="w-3.5 h-3.5" /> Loloskan ke Tahap...
-            </button>
-            <button
-              onClick={() => setShowBulkRejectModal(true)}
-              disabled={isBulkPending}
-              className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-            >
-              <Ban className="w-3.5 h-3.5" /> Tolak Massal
-            </button>
-            <button
-              onClick={handleBulkTalentPool}
-              disabled={isBulkPending}
-              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <Users className="w-3.5 h-3.5" /> Talent Pool
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Advance Modal */}
-      {showBulkAdvanceModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="global-bulk-advance-title"
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
-        >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200">
-            <div className="px-5 py-4 bg-[#0A2540] text-white flex items-center justify-between">
-              <h3 id="global-bulk-advance-title" className="text-sm font-bold flex items-center gap-2">
-                <ArrowRightCircle className="w-4 h-4 text-emerald-400" />
-                Loloskan Massal ({selectedAppIds.size} Kandidat)
-              </h3>
-              <button
-                onClick={() => setShowBulkAdvanceModal(false)}
-                className="text-slate-300 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Pilih Tahapan Tujuan <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedTargetStageId}
-                  onChange={(e) => setSelectedTargetStageId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-900 bg-white focus:outline-hidden focus:ring-1 focus:ring-primary"
-                >
-                  {stages.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                  <option value="Hired">Lulus Rekrutmen (Hired)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Catatan Kemajuan (Opsional)
-                </label>
-                <input
-                  type="text"
-                  value={bulkAdvanceNote}
-                  onChange={(e) => setBulkAdvanceNote(e.target.value)}
-                  placeholder="Contoh: Lolos verifikasi berkas batch"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-primary"
-                />
-              </div>
-            </div>
-            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end gap-2.5">
-              <button
-                onClick={() => setShowBulkAdvanceModal(false)}
-                disabled={isBulkPending}
-                className="px-3.5 py-1.5 border border-slate-300 bg-white text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-100 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleConfirmBulkAdvance}
-                disabled={isBulkPending}
-                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-2xs"
-              >
-                {isBulkPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Loloskan Sekarang
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Reject Modal */}
-      {showBulkRejectModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="global-bulk-reject-title"
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
-        >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200">
-            <div className="px-5 py-4 bg-red-700 text-white flex items-center justify-between">
-              <h3 id="global-bulk-reject-title" className="text-sm font-bold flex items-center gap-2">
-                <Ban className="w-4 h-4" /> Tolak Massal ({selectedAppIds.size} Kandidat)
-              </h3>
-              <button
-                onClick={() => setShowBulkRejectModal(false)}
-                className="text-white/80 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <p className="text-xs text-slate-600">
-                Pilih alasan standar penolakan. Status kandidat akan diubah menjadi{" "}
-                <span className="font-bold text-red-600">REJECTED</span> dan tercatat dalam audit log.
-              </p>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Alasan Penolakan Standar
-                </label>
-                <select
-                  value={selectedRejectReason}
-                  onChange={(e) => setSelectedRejectReason(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-900 bg-white focus:outline-hidden focus:ring-1 focus:ring-red-500"
-                >
-                  <option value="Kualifikasi Belum Sesuai Kebutuhan Klien">
-                    Kualifikasi Belum Sesuai Kebutuhan Klien
-                  </option>
-                  <option value="Hasil Asesmen / Interview Tidak Memenuhi Standar">
-                    Hasil Asesmen / Interview Tidak Memenuhi Standar
-                  </option>
-                  <option value="Hasil MCU Unfit / Tidak Lolos Standar Medis Klien">
-                    Hasil MCU Unfit / Tidak Lolos Standar Medis Klien
-                  </option>
-                  <option value="Kandidat Mengundurkan Diri / Tidak Hadir">
-                    Kandidat Mengundurkan Diri / Tidak Hadir
-                  </option>
-                  <option value="Ekspektasi Kompensasi Melebihi Budget Klien">
-                    Ekspektasi Kompensasi Melebihi Budget Klien
-                  </option>
-                  <option value="Lainnya">Lainnya (Tulis Manual)</option>
-                </select>
-              </div>
-
-              {selectedRejectReason === "Lainnya" && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Detail Alasan Penolakan
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={customRejectReason}
-                    onChange={(e) => setCustomRejectReason(e.target.value)}
-                    placeholder="Tuliskan alasan spesifik..."
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-red-500"
-                  />
-                </div>
-              )}
-            </div>
-            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end gap-2.5">
-              <button
-                onClick={() => setShowBulkRejectModal(false)}
-                disabled={isBulkPending}
-                className="px-3.5 py-1.5 border border-slate-300 bg-white text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-100 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleConfirmBulkReject}
-                disabled={isBulkPending}
-                className="px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-2xs"
-              >
-                {isBulkPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Konfirmasi Tolak Massal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Filter Modal */}
       {isFilterModalOpen && (

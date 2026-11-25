@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getS3ObjectBuffer } from "@/lib/s3";
+import { decryptField } from "@/lib/crypto";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -74,11 +75,13 @@ export async function GET(request: NextRequest) {
           const mimeMatch = parts[0].match(/:(.*?);/);
           const mime = mimeMatch ? mimeMatch[1] : "application/pdf";
           const buffer = Buffer.from(parts[1], "base64");
+          const rawNik = application.candidateProfile?.nik ? decryptField(application.candidateProfile.nik) : appId;
+          const safeNik = (rawNik || appId).replace(/[^a-zA-Z0-9_\-]/g, "_");
           return new Response(new Uint8Array(buffer), {
             status: 200,
             headers: {
               "Content-Type": mime,
-              "Content-Disposition": `attachment; filename="sertifikat_${application.candidateProfile?.nik || appId}.pdf"`,
+              "Content-Disposition": `attachment; filename="sertifikat_${safeNik}.pdf"`,
             },
           });
         }
@@ -135,7 +138,9 @@ export async function GET(request: NextRequest) {
         const mimeMatch = parts[0].match(/:(.*?);/);
         const mime = mimeMatch ? mimeMatch[1] : fileObj.type || "application/pdf";
         const buffer = Buffer.from(parts[1], "base64");
-        const filename = fileObj.name || `validasi_${application.candidateProfile?.nik || appId}.pdf`;
+        const rawNik = application.candidateProfile?.nik ? decryptField(application.candidateProfile.nik) : appId;
+        const safeNik = (rawNik || appId).replace(/[^a-zA-Z0-9_\-]/g, "_");
+        const filename = fileObj.name || `validasi_${safeNik}.pdf`;
 
         return new Response(new Uint8Array(buffer), {
           status: 200,

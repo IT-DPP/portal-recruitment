@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { requireStaffSession } from "@/lib/auth-guard";
+import { normalizeCandidateProfile } from "@/lib/crypto";
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 600): Promise<T> {
   let lastError: any;
@@ -123,7 +124,10 @@ export async function getDocumentGenerationData(): Promise<DocumentGenerationDat
       return {
         success: true,
         jobs: enrichedJobs,
-        applications,
+        applications: applications.map((app) => ({
+          ...app,
+          candidateProfile: normalizeCandidateProfile(app.candidateProfile),
+        })),
         customers,
         sites,
         stages,
@@ -136,207 +140,6 @@ export async function getDocumentGenerationData(): Promise<DocumentGenerationDat
     return {
       success: false,
       error: "Gagal memuat data dokumen dari database: " + (error?.message || String(error)),
-    };
-  }
-}
-
-/**
- * Save candidate stage documentation data (Offering, BAST, or MCU details) to database
- */
-export async function saveCandidateDocumentData(
-  appId: string,
-  docType: "offering" | "bast" | "mcu",
-  data: Record<string, any>
-) {
-  const auth = await requireStaffSession();
-  if (!auth.authorized) {
-    return { success: false, error: auth.error };
-  }
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return { success: false, error: "Unauthorized" };
-  }
-
-  try {
-    const existingApp = await prisma.application.findUnique({
-      where: { id: appId },
-    });
-
-    if (!existingApp) {
-      return { success: false, error: "Lamaran (Application) tidak ditemukan." };
-    }
-
-    let existingStageData: Record<string, any> = {};
-    if (existingApp.stageData) {
-      try {
-        existingStageData =
-          typeof existingApp.stageData === "string"
-            ? JSON.parse(existingApp.stageData)
-            : existingApp.stageData;
-      } catch (e) {
-        existingStageData = {};
-      }
-    }
-
-    // Merge document data
-    const updatedStageData = {
-      ...existingStageData,
-      [docType]: {
-        ...(existingStageData[docType] || {}),
-        ...data,
-        updatedAt: new Date().toISOString(),
-        updatedBy: session.user.name || session.user.email,
-      },
-    };
-
-    const updatedApp = await prisma.application.update({
-      where: { id: appId },
-      data: {
-        stageData: updatedStageData,
-      },
-      include: {
-        candidateProfile: {
-          include: {
-            user: true,
-          },
-        },
-      },
-    });
-
-    revalidatePath("/dashboard/generate-documents");
-    revalidatePath("/dashboard/pipeline");
-    revalidatePath(`/dashboard/job-openings/${updatedApp.jobId}`);
-
-    return { success: true, data: updatedApp };
-  } catch (error: any) {
-    console.error("saveCandidateDocumentData Error:", error);
-    return {
-      success: false,
-      error: "Gagal menyimpan data dokumen kandidat: " + (error?.message || String(error)),
-    };
-  }
-}
-
-/**
- * Batch save BAST table inputs to DB
- */
-export async function batchSaveBastData(
-  entries: { appId: string; data: Record<string, any> }[]
-) {
-  const auth = await requireStaffSession();
-  if (!auth.authorized) {
-    return { success: false, error: auth.error };
-  }
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return { success: false, error: "Unauthorized" };
-  }
-
-  try {
-    for (const item of entries) {
-      const app = await prisma.application.findUnique({
-        where: { id: item.appId },
-      });
-
-      if (app) {
-        let currentStageData: any = {};
-        if (app.stageData) {
-          try {
-            currentStageData =
-              typeof app.stageData === "string"
-                ? JSON.parse(app.stageData)
-                : app.stageData;
-          } catch {
-            currentStageData = {};
-          }
-        }
-
-        const merged = {
-          ...currentStageData,
-          bast: {
-            ...(currentStageData.bast || {}),
-            ...item.data,
-            savedAt: new Date().toISOString(),
-          },
-        };
-
-        await prisma.application.update({
-          where: { id: item.appId },
-          data: { stageData: merged },
-        });
-      }
-    }
-
-    revalidatePath("/dashboard/generate-documents");
-    return { success: true };
-  } catch (error: any) {
-    console.error("batchSaveBastData Error:", error);
-    return {
-      success: false,
-      error: "Gagal menyimpan batch data BAST: " + (error?.message || String(error)),
-    };
-  }
-}
-
-/**
- * Batch save MCU document details to DB for selected candidates
- */
-export async function batchSaveMcuData(
-  entries: { appId: string; data: Record<string, any> }[]
-) {
-  const auth = await requireStaffSession();
-  if (!auth.authorized) {
-    return { success: false, error: auth.error };
-  }
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return { success: false, error: "Unauthorized" };
-  }
-
-  try {
-    for (const item of entries) {
-      const app = await prisma.application.findUnique({
-        where: { id: item.appId },
-      });
-
-      if (app) {
-        let currentStageData: any = {};
-        if (app.stageData) {
-          try {
-            currentStageData =
-              typeof app.stageData === "string"
-                ? JSON.parse(app.stageData)
-                : app.stageData;
-          } catch {
-            currentStageData = {};
-          }
-        }
-
-        const merged = {
-          ...currentStageData,
-          mcu: {
-            ...(currentStageData.mcu || {}),
-            ...item.data,
-            savedAt: new Date().toISOString(),
-            savedBy: session.user.name || session.user.email,
-          },
-        };
-
-        await prisma.application.update({
-          where: { id: item.appId },
-          data: { stageData: merged },
-        });
-      }
-    }
-
-    revalidatePath("/dashboard/generate-documents");
-    revalidatePath("/dashboard/pipeline");
-    return { success: true };
-  } catch (error: any) {
-    console.error("batchSaveMcuData Error:", error);
-    return {
-      success: false,
-      error: "Gagal menyimpan data MCU ke database: " + (error?.message || String(error)),
     };
   }
 }

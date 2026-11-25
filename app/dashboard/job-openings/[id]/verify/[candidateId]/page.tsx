@@ -814,10 +814,28 @@ export default function AdvancedDocumentVerificationPage({
       };
     } else if (isTrainingUser) {
       updatedApp.trainingDocs = trainingDocs;
+      updatedApp.trainingUser = {
+        date: trainingDate,
+        file: trainingFile,
+        history: trainingHistory,
+      };
     } else if (isInduction) {
       updatedApp.inductionDocs = inductionDocs;
+      updatedApp.induction = {
+        date: inductionDate,
+        file: inductionFile,
+        history: inductionHistory,
+      };
     } else if (isPkwt) {
       updatedApp.pkwtDocs = pkwtDocs;
+      updatedApp.pkwt = {
+        startDate: pkwtStartDate,
+        endDate: pkwtEndDate,
+        file: pkwtFile,
+        safetyFile: pkwtSafetyFile,
+        neopFile: pkwtNeopFile,
+        mcuFile: pkwtMcuFile,
+      };
     }
 
     await safeSaveApplications(updatedApp, true);
@@ -895,10 +913,28 @@ export default function AdvancedDocumentVerificationPage({
       };
     } else if (isTrainingUser) {
       updatedApp.trainingDocs = trainingDocs;
+      updatedApp.trainingUser = {
+        date: trainingDate,
+        file: trainingFile,
+        history: trainingHistory,
+      };
     } else if (isInduction) {
       updatedApp.inductionDocs = inductionDocs;
+      updatedApp.induction = {
+        date: inductionDate,
+        file: inductionFile,
+        history: inductionHistory,
+      };
     } else if (isPkwt) {
       updatedApp.pkwtDocs = pkwtDocs;
+      updatedApp.pkwt = {
+        startDate: pkwtStartDate,
+        endDate: pkwtEndDate,
+        file: pkwtFile,
+        safetyFile: pkwtSafetyFile,
+        neopFile: pkwtNeopFile,
+        mcuFile: pkwtMcuFile,
+      };
     }
     updatedApp.isDraft = true;
 
@@ -1057,6 +1093,39 @@ export default function AdvancedDocumentVerificationPage({
       }
     }
 
+    if (isTrainingUser) {
+      const hasDocs = trainingDocs && trainingDocs.length > 0;
+      const hasScheduleAndFile = trainingDate && trainingFile;
+      if (!hasDocs && !hasScheduleAndFile) {
+        window.alert(
+          "Anda harus melengkapi seluruh form pada stage Training (Tanggal Pelaksanaan dan Bukti Pengajuan/Pelaksanaan Training) sebelum melanjutkan ke tahap berikutnya.",
+        );
+        return;
+      }
+    }
+
+    if (isInduction) {
+      const hasDocs = inductionDocs && inductionDocs.length > 0;
+      const hasScheduleAndFile = inductionDate && inductionFile;
+      if (!hasDocs && !hasScheduleAndFile) {
+        window.alert(
+          "Anda harus melengkapi seluruh form pada stage Induksi (Tanggal Pelaksanaan dan Bukti Pengajuan/Pelaksanaan Induksi) sebelum melanjutkan ke tahap berikutnya.",
+        );
+        return;
+      }
+    }
+
+    if (isPkwt) {
+      const hasDocs = pkwtDocs && pkwtDocs.length > 0;
+      const hasDetails = pkwtStartDate && pkwtEndDate && pkwtFile;
+      if (!hasDocs && !hasDetails) {
+        window.alert(
+          "Anda harus melengkapi seluruh form pada stage PKWT (Tanggal Awal & Akhir Kontrak, serta Berkas PKWT bertandatangan) sebelum menyelesaikan tahapan onboarding.",
+        );
+        return;
+      }
+    }
+
     await handleSaveDraftSilent();
     const currentIndex = job.timeline?.findIndex(
       (t: any) => t.stageId === application.currentStageId,
@@ -1083,7 +1152,7 @@ export default function AdvancedDocumentVerificationPage({
         }
         router.push(`/dashboard/job-openings/${job.id}`);
       } else {
-        window.alert("Gagal menyetujui kandidat.");
+        window.alert(res.error || "Gagal menyetujui kandidat.");
       }
     } else {
       const { updateApplicationStage } = await import("@/app/actions/job");
@@ -1098,7 +1167,7 @@ export default function AdvancedDocumentVerificationPage({
         );
         router.push(`/dashboard/job-openings/${job.id}`);
       } else {
-        window.alert("Gagal menyetujui kandidat.");
+        window.alert(res.error || "Gagal menyetujui kandidat.");
       }
     }
   };
