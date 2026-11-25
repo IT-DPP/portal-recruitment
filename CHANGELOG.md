@@ -11,6 +11,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Configured `@itdpp` as the global code owner (`* @itdpp`) for pull request review automation and branch ruleset approval.
 
 ### Fixed
+- **Plaintext NIK & KK Storage and Presentation Alignment (`app/actions/candidate-profile.ts`, `app/actions/job.ts`, `app/actions/document.ts`, `app/dashboard/pipeline/page.tsx`, `scripts/restore-plaintext-nik.ts`):**
+  - Updated candidate profile save actions and bulk candidate import to store NIK and KK directly as normal plaintext 16-digit strings in the database, avoiding ciphertext strings (`enc:v1:...`) in database storage and administrative views.
+  - Added transparent `decryptField` sanitization to `PipelinePage`, `getFilteredPipelineData`, and `getDocumentGenerationData` ensuring NIK is always rendered cleanly in the recruitment pipeline and generated documents.
+  - Added database restoration script `scripts/restore-plaintext-nik.ts` (`npm run db:restore:plaintext-nik`) to automatically decrypt and restore all previously encrypted NIK and KK values back to their original 16-digit plaintext values.
 - **Database Schema Sync for Job Opening Description & Slug (`prisma/migrations/20261115110000_add_job_opening_deskripsi/`, `prisma/migrations/20261115120000_add_job_opening_slug/`):**
   - Added dedicated Prisma migrations for `JobOpening.deskripsi` (`TEXT`) and `JobOpening.slug` (`TEXT UNIQUE`).
   - Resolves runtime database schema mismatch error on staging/production environments where `JobOpening.deskripsi` and `JobOpening.slug` columns did not exist, fixing `/dashboard/pipeline` and `/dashboard/generate-documents`.

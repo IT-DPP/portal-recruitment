@@ -533,6 +533,30 @@ IT Leader DPP menginstruksikan penyempurnaan pada *wrapper* konten utama dashboa
 ### Status
 Fase 4.8 selesai 100%. Antarmuka utama dashboard kini memiliki branding logo yang jernih tanpa redundansi teks, serta didukung navigasi *breadcrumbs* kontekstual yang mempermudah orientasi pengguna di seluruh modul aplikasi.
 
+---
+
+## 2026-11-25 — Fase 4.9: Pemulihan Format Plaintext NIK & KK pada Penyimpanan dan Tampilan
+
+### Konteks & Arahan IT Leader
+IT Leader menginstruksikan bahwa data NIK tidak boleh tersimpan dalam bentuk enkripsi ciphertext acak (`enc:v1:...`) di database maupun terlihat terenkripsi pada antarmuka admin/recruiter. Data NIK harus tersimpan normal dalam bentuk teks asli (16 digit angka) dan tetap terlihat jelas di seluruh halaman aplikasi (Pipeline, Generate Dokumen, Profil Kandidat, dsb.).
+
+### Apa yang dikerjakan
+1. **Pemulihan Data Database (Restorasi NIK/KK ke Plaintext):**
+   - Membuat script mandiri [`scripts/restore-plaintext-nik.ts`](../scripts/restore-plaintext-nik.ts) yang dapat dijalankan melalui perintah `npm run db:restore:plaintext-nik`.
+   - Menjalankan restorasi seluruh 37 profil kandidat di database lokal: mendekripsi string `enc:v1:...` kembali ke nomor NIK dan KK asli 16 digit angka.
+2. **Standardisasi Penyimpanan Baru (`saveCandidateProfile` & `bulkImportCandidates`):**
+   - Menghilangkan `encryptField` pada saat penyimpanan profil kandidat di [`app/actions/candidate-profile.ts`](../app/actions/candidate-profile.ts) dan impor massal recruiter di [`app/actions/job.ts`](../app/actions/job.ts).
+   - Data NIK dan KK kini disimpan langsung dalam format plaintext 16-digit angka asli.
+3. **Penyajian Data di UI (Pipeline & Document Generator):**
+   - Memastikan pembacaan data di [`app/dashboard/pipeline/page.tsx`](../app/dashboard/pipeline/page.tsx), `getFilteredPipelineData`, dan `getDocumentGenerationData` di [`app/actions/document.ts`](../app/actions/document.ts) selalu menyajikan NIK dalam bentuk plaintext yang terbaca jelas.
+4. **Verifikasi Mutu & Testing:**
+   - Static Type Checking `npx tsc --noEmit` (**0 ERROR**).
+   - Unit Tests Suite `npm test` (**20/20 PASS**).
+   - End-to-End Suite `npm run check:e2e` (**21/21 PASS**).
+
+### Status
+Fase 4.9 selesai 100%. Seluruh data NIK dan KK kini tersimpan dan ditampilkan dalam bentuk teks asli (16 digit angka) yang terbaca secara normal tanpa enkripsi pada antarmuka recruiter maupun penyimpanan database.
+
 
 
 

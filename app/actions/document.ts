@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { requireStaffSession } from "@/lib/auth-guard";
+import { decryptField } from "@/lib/crypto";
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 600): Promise<T> {
   let lastError: any;
@@ -120,10 +121,21 @@ export async function getDocumentGenerationData(): Promise<DocumentGenerationDat
         noB1: j.noFormB1 || "-",
       }));
 
+      const sanitizedApplications = applications.map((app) => ({
+        ...app,
+        candidateProfile: app.candidateProfile
+          ? {
+              ...app.candidateProfile,
+              nik: decryptField(app.candidateProfile.nik),
+              kk: decryptField(app.candidateProfile.kk),
+            }
+          : null,
+      }));
+
       return {
         success: true,
         jobs: enrichedJobs,
-        applications,
+        applications: sanitizedApplications,
         customers,
         sites,
         stages,

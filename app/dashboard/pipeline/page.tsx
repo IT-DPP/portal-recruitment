@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import React from "react";
 import prisma from "@/lib/prisma";
+import { decryptField } from "@/lib/crypto";
 import PipelineClient from "./PipelineClient";
 
 import { ensureExtendedPipelineStages } from "@/app/actions/master-data";
@@ -52,10 +53,21 @@ export default async function PipelinePage() {
       prisma.masterCustomer.findMany()
     ]);
 
+    const sanitizedApplications = applications.map((app) => ({
+      ...app,
+      candidateProfile: app.candidateProfile
+        ? {
+            ...app.candidateProfile,
+            nik: decryptField(app.candidateProfile.nik),
+            kk: decryptField(app.candidateProfile.kk),
+          }
+        : null,
+    }));
+
     return (
       <PipelineClient
         initialJobs={jobs}
-        initialApplications={applications}
+        initialApplications={sanitizedApplications}
         customers={customers}
         stages={allStages}
       />

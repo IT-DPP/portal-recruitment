@@ -2235,11 +2235,22 @@ export async function getFilteredPipelineData({
       })
     ]);
 
+    const sanitizedApplications = applications.map((app) => ({
+      ...app,
+      candidateProfile: app.candidateProfile
+        ? {
+            ...app.candidateProfile,
+            nik: decryptField(app.candidateProfile.nik),
+            kk: decryptField(app.candidateProfile.kk),
+          }
+        : null,
+    }));
+
     return {
       success: true,
       data: {
         jobs,
-        applications,
+        applications: sanitizedApplications,
         customers,
         stages: allStages
       }
@@ -2732,9 +2743,8 @@ export async function bulkImportCandidates(
 
     try {
       const nikHash = hashField(rawNik);
-      const encryptedNik = encryptField(rawNik);
       const rawKk = (row.kk || "").toString().trim().replace(/\D/g, "");
-      const encryptedKk = rawKk && rawKk.length === 16 ? encryptField(rawKk) : null;
+      const cleanKk = rawKk && rawKk.length === 16 ? rawKk : null;
 
       // Parse birth date
       let parsedBirthDate: Date | null = null;
@@ -2749,13 +2759,12 @@ export async function bulkImportCandidates(
       const userEmail =
         (row.email || "").toString().trim() || `kandidat.${rawNik}@recruitment.dpp.co.id`;
 
-      // Cek apakah profil kandidat sudah ada berdasarkan nikHash atau enkripsi
+      // Cek apakah profil kandidat sudah ada berdasarkan NIK atau nikHash
       let profile = await prisma.candidateProfile.findFirst({
         where: {
           OR: [
-            ...(nikHash ? [{ nikHash }] : []),
-            ...(encryptedNik ? [{ nik: encryptedNik }] : []),
             { nik: rawNik },
+            ...(nikHash ? [{ nikHash }] : []),
           ],
         },
         include: { user: true },
@@ -2766,8 +2775,8 @@ export async function bulkImportCandidates(
           where: { id: profile.id },
           data: {
             nikHash: profile.nikHash || nikHash,
-            nik: encryptedNik,
-            kk: encryptedKk || profile.kk,
+            nik: rawNik,
+            kk: cleanKk || profile.kk,
             birthPlace: row.birthPlace?.toString().trim() || profile.birthPlace,
             birthDate: parsedBirthDate || profile.birthDate,
             gender: row.gender?.toString().trim() || profile.gender,
@@ -2808,9 +2817,9 @@ export async function bulkImportCandidates(
         profile = await prisma.candidateProfile.create({
           data: {
             userId: user.id,
-            nik: encryptedNik,
+            nik: rawNik,
             nikHash,
-            kk: encryptedKk,
+            kk: cleanKk,
             birthPlace: row.birthPlace?.toString().trim() || null,
             birthDate: parsedBirthDate,
             gender: row.gender?.toString().trim() || null,

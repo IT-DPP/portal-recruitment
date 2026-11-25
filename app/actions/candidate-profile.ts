@@ -126,19 +126,22 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
     }
 
     // Enkripsi PII dan hitung Blind Index untuk NIK (UU PDP)
-    let encryptedNik: string | null = null
+    let cleanNik: string | null = null
     let nikHash: string | null = null
-    let encryptedKk: string | null = null
+    let cleanKk: string | null = null
 
     if (data.nik && data.nik.trim().length > 0) {
-      const cleanNik = data.nik.trim()
+      cleanNik = data.nik.trim().replace(/\D/g, "")
       nikHash = hashField(cleanNik)
 
       // Cek apakah NIK ini sudah digunakan oleh akun lain
-      if (nikHash) {
+      if (cleanNik) {
         const duplicate = await prisma.candidateProfile.findFirst({
           where: {
-            nikHash,
+            OR: [
+              { nik: cleanNik },
+              ...(nikHash ? [{ nikHash }] : []),
+            ],
             userId: { not: userId },
           },
           select: { id: true },
@@ -147,21 +150,19 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
           return { success: false, error: "Nomor Induk Kependudukan (NIK) sudah terdaftar pada akun lain." }
         }
       }
-
-      encryptedNik = encryptField(cleanNik)
     }
 
     if (data.kk && data.kk.trim().length > 0) {
-      encryptedKk = encryptField(data.kk.trim())
+      cleanKk = data.kk.trim().replace(/\D/g, "")
     }
 
     // Upsert CandidateProfile
     const profile = await prisma.candidateProfile.upsert({
       where: { userId },
       update: {
-        nik: encryptedNik,
+        nik: cleanNik,
         nikHash,
-        kk: encryptedKk,
+        kk: cleanKk,
         birthPlace: data.birthPlace || null,
         birthDate: data.birthDate ? new Date(data.birthDate) : null,
         gender: data.gender || null,
@@ -182,9 +183,9 @@ export async function saveCandidateProfile(data: any, isDraft: boolean) {
       },
       create: {
         userId,
-        nik: encryptedNik,
+        nik: cleanNik,
         nikHash,
-        kk: encryptedKk,
+        kk: cleanKk,
         birthPlace: data.birthPlace || null,
         birthDate: data.birthDate ? new Date(data.birthDate) : null,
         gender: data.gender || null,
