@@ -14,6 +14,9 @@ import {
   Square,
   ArrowRightCircle,
   CheckCircle,
+  CheckCircle2,
+  AlertCircle,
+  Edit3,
 } from "lucide-react";
 import PaginationBar from "@/components/ui/PaginationBar";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -136,6 +139,17 @@ export default function TalentPoolClient({
   const handleConfirmAssign = async () => {
     if (!selectedJobId) {
       alert("Pilih lowongan pekerjaan tujuan.");
+      return;
+    }
+
+    // Pre-check: Jangan izinkan kandidat dengan profil belum lengkap untuk ditugaskan ke lowongan
+    const selectedList = candidates.filter((c) => selectedCandidateIds.has(c.id));
+    const incompleteList = selectedList.filter((c) => !c.isProfileCompleted);
+    if (incompleteList.length > 0) {
+      const names = incompleteList.map((c) => c.fullName).join(", ");
+      alert(
+        `Kandidat "${names}" belum dapat ditugaskan ke lowongan karena data profilnya masih Belum Lengkap. Silakan edit dan lengkapi data kandidat terlebih dahulu.`
+      );
       return;
     }
 
@@ -290,7 +304,9 @@ export default function TalentPoolClient({
                 <th className="px-4 py-3.5">Pendidikan</th>
                 <th className="px-4 py-3.5">Kontak & Lokasi</th>
                 <th className="px-4 py-3.5">Lamaran Terakhir</th>
+                <th className="px-4 py-3.5 text-center">Status Profil</th>
                 <th className="px-4 py-3.5 text-center">Status Terakhir</th>
+                <th className="px-4 py-3.5 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -366,6 +382,22 @@ export default function TalentPoolClient({
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
+                        {candidate.isProfileCompleted ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            Lengkap
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"
+                            title="Profil belum lengkap. Belum dapat di-assign ke lowongan."
+                          >
+                            <AlertCircle className="w-3 h-3 text-amber-600" />
+                            Draft
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
                             candidate.lastStage === "Hired"
@@ -378,12 +410,22 @@ export default function TalentPoolClient({
                           {candidate.lastStage}
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        <Link
+                          href={`/dashboard/talent-pool/${candidate.id}/edit`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-primary transition-colors shadow-2xs"
+                          title="Edit data profil kandidat"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </Link>
+                      </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center text-slate-400">
+                  <td colSpan={8} className="px-6 py-16 text-center text-slate-400">
                     <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="text-sm font-semibold text-slate-700">Tidak ada kandidat ditemukan</p>
                     <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">

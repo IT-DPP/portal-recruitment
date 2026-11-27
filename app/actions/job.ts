@@ -1023,8 +1023,9 @@ export async function syncStageDataToRelational(appId: string, stageData: any) {
           status,
           issuedDate: issuedDate && !isNaN(issuedDate.getTime()) ? issuedDate : null,
           signedAt: signedAt && !isNaN(signedAt.getTime()) ? signedAt : null,
-          documentUrl: typeof ol.file === "string" ? ol.file : null,
-          signedDocumentUrl: ol.candidateResponse?.signedFile?.url || null,
+          documentUrl: typeof ol.file === "string" ? ol.file : (ol.file?.base64 || ol.file?.url || null),
+          documentKey: typeof ol.file === "object" ? (ol.file?.objectKey || null) : null,
+          signedDocumentUrl: ol.candidateResponse?.signedFile?.url || ol.candidateResponse?.signedFile?.base64 || null,
           signedDocumentKey: ol.candidateResponse?.signedFile?.objectKey || null,
           candidateNote: ol.candidateResponse?.note || null,
           baseSalaryEncrypted: ol.salary ? encryptField(String(ol.salary)) : null,
@@ -1034,8 +1035,9 @@ export async function syncStageDataToRelational(appId: string, stageData: any) {
           status,
           issuedDate: issuedDate && !isNaN(issuedDate.getTime()) ? issuedDate : undefined,
           signedAt: signedAt && !isNaN(signedAt.getTime()) ? signedAt : undefined,
-          documentUrl: typeof ol.file === "string" ? ol.file : undefined,
-          signedDocumentUrl: ol.candidateResponse?.signedFile?.url || undefined,
+          documentUrl: typeof ol.file === "string" ? ol.file : (ol.file?.base64 || ol.file?.url || undefined),
+          documentKey: typeof ol.file === "object" ? (ol.file?.objectKey || undefined) : undefined,
+          signedDocumentUrl: ol.candidateResponse?.signedFile?.url || ol.candidateResponse?.signedFile?.base64 || undefined,
           signedDocumentKey: ol.candidateResponse?.signedFile?.objectKey || undefined,
           candidateNote: ol.candidateResponse?.note || undefined,
         },
@@ -1628,6 +1630,16 @@ export async function getPaginatedTalentPool({
         }
       }
 
+      const isComplete = Boolean(
+        c.isProfileCompleted ||
+        (c.user?.name &&
+          (c.nik ? decryptField(c.nik) : "")?.replace(/\D/g, "").length === 16 &&
+          c.whatsapp &&
+          c.birthDate &&
+          (c.domicileAddress || c.currentAddress) &&
+          c.latestEducation)
+      );
+
       return {
         ...c,
         nik: decryptField(c.nik) || c.nik,
@@ -1639,7 +1651,8 @@ export async function getPaginatedTalentPool({
         lastJobApplied: lastJobApplied || "Belum Ada Lamaran",
         lastStage: lastStage || "Belum Melamar",
         hasApplied: !!lastApp,
-        filePhoto: photoUrl ? { base64: photoUrl } : null
+        filePhoto: photoUrl ? { base64: photoUrl } : null,
+        isProfileCompleted: isComplete,
       };
     });
 
@@ -2641,6 +2654,34 @@ export async function bulkAssignCandidatesToJob(
     });
     if (!job) {
       return { success: false, error: "Lowongan tujuan tidak ditemukan." };
+    }
+
+    // Guard: Kandidat yang datanya belum lengkap TIDAK BOLEH ditugaskan/diapply ke lowongan
+    const candidateProfiles = await prisma.candidateProfile.findMany({
+      where: { id: { in: candidateProfileIds } },
+      include: { user: true },
+    });
+
+    const incompleteCandidates = candidateProfiles.filter((p) => {
+      if (p.isProfileCompleted) return false;
+      const cleanNik = (p.nik ? decryptField(p.nik) : "")?.replace(/\D/g, "") || "";
+      const isComplete = Boolean(
+        p.user?.name &&
+        cleanNik.length === 16 &&
+        p.whatsapp &&
+        p.birthDate &&
+        (p.domicileAddress || p.currentAddress) &&
+        p.latestEducation
+      );
+      return !isComplete;
+    });
+
+    if (incompleteCandidates.length > 0) {
+      const names = incompleteCandidates.map((p) => p.user?.name || "Kandidat").join(", ");
+      return {
+        success: false,
+        error: `Kandidat "${names}" belum dapat ditugaskan ke lowongan karena data profil belum lengkap. Silakan lengkapi data profil kandidat (NIK 16 digit, Kontak WA, Tanggal Lahir, Domisili, dan Pendidikan) di menu Talent Pool terlebih dahulu.`,
+      };
     }
 
     let assignedCount = 0;

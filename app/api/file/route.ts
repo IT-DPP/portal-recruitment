@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { getObjectFromS3, isS3Configured } from "@/lib/s3";
 import prisma from "@/lib/prisma";
-import { requireRole, isObjectKeyOwnedByUser } from "@/lib/auth-guard";
+import { requireRole, isObjectKeyOwnedByUser, isApplicationKeyOwnedByCandidate } from "@/lib/auth-guard";
 import { recordAuditLog } from "@/lib/audit-log";
 import {
   generateDummyAvatarSvg,
@@ -50,6 +50,58 @@ export async function GET(request: NextRequest) {
       isOwner = !!docRecord;
     }
 
+    // Allow candidate to access their own application documents (Offering Letter, MCU Pengantar, etc.)
+    if (!isOwner && key.startsWith("applications/")) {
+      const candidateProfile = await prisma.candidateProfile.findUnique({
+        where: { userId: auth.user.id },
+        select: {
+          id: true,
+          applications: {
+            select: {
+              id: true,
+              stageData: true,
+              offeringLetter: {
+                select: {
+                  documentKey: true,
+                  signedDocumentKey: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (candidateProfile) {
+        const appIds = candidateProfile.applications.map((app) => app.id);
+        if (isApplicationKeyOwnedByCandidate(key, candidateProfile.id, appIds)) {
+          isOwner = true;
+        } else {
+          // Check if key is registered in offeringLetter record
+          const inOffering = candidateProfile.applications.some(
+            (app) =>
+              app.offeringLetter?.documentKey === key ||
+              app.offeringLetter?.signedDocumentKey === key,
+          );
+          if (inOffering) {
+            isOwner = true;
+          } else {
+            // Check if key is referenced in stageData JSON
+            const inStageData = candidateProfile.applications.some((app) => {
+              if (!app.stageData) return false;
+              const jsonStr =
+                typeof app.stageData === "string"
+                  ? app.stageData
+                  : JSON.stringify(app.stageData);
+              return jsonStr.includes(key);
+            });
+            if (inStageData) {
+              isOwner = true;
+            }
+          }
+        }
+      }
+    }
+
     if (!isOwner) {
       return new NextResponse("Forbidden", { status: 403 });
     }
@@ -57,6 +109,10 @@ export async function GET(request: NextRequest) {
 
   try {
     const fileName = path.basename(key);
+    const isDownload =
+      searchParams.get("download") === "true" ||
+      searchParams.get("download") === "1";
+    const dispositionType = isDownload ? "attachment" : "inline";
 
     // 1. Check remote S3 / Cloudflare R2 if configured
     if (isS3Configured()) {
@@ -77,7 +133,7 @@ export async function GET(request: NextRequest) {
           status: 200,
           headers: {
             "Content-Type": mimeType,
-            "Content-Disposition": `inline; filename="${fileName}"`,
+            "Content-Disposition": `${dispositionType}; filename="${fileName}"`,
             "Cache-Control": "private, max-age=3600",
           },
         });
@@ -107,7 +163,7 @@ export async function GET(request: NextRequest) {
         status: 200,
         headers: {
           "Content-Type": mimeType,
-          "Content-Disposition": `inline; filename="${fileName}"`,
+          "Content-Disposition": `${dispositionType}; filename="${fileName}"`,
           "Cache-Control": "private, max-age=3600",
         },
       });
@@ -139,7 +195,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${pdfName}"`,
+        "Content-Disposition": `${dispositionType}; filename="${pdfName}"`,
         "Cache-Control": "private, max-age=3600",
       },
     });
