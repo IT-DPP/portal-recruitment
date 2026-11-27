@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { isCandidatePortalEnabled, isPublicJobsEnabled } from "../feature-flags";
 import {
   isObjectKeyOwnedByUser,
+  isApplicationKeyOwnedByCandidate,
   validateUploadMetadata,
   MAX_UPLOAD_SIZE_BYTES,
 } from "../auth-guard";
@@ -56,6 +57,51 @@ test("Storage IDOR Guard — only allows candidate access to their own namespace
   assert.equal(isObjectKeyOwnedByUser(`candidates/${userB}/profile/cv.pdf`, userA), false);
   assert.equal(isObjectKeyOwnedByUser(`candidates/${userA}/../${userB}/cv.pdf`, userA), false);
   assert.equal(isObjectKeyOwnedByUser("", userA), false);
+
+  // Application document ownership (Offering Letter, MCU, etc.)
+  const candProfileId = "cand_profile_123";
+  const otherProfileId = "cand_profile_999";
+  const appId = "app_abc_456";
+
+  // Recruiter uploaded offering letter to applications/<jobId>/<candidateProfileId>/stage_6/...
+  assert.equal(
+    isApplicationKeyOwnedByCandidate(
+      `applications/job_1/${candProfileId}/stage_6/offering.pdf`,
+      candProfileId,
+      [appId]
+    ),
+    true
+  );
+
+  // Candidate uploaded signed offering to applications/<jobId>/<applicationId>/signed-offering/...
+  assert.equal(
+    isApplicationKeyOwnedByCandidate(
+      `applications/job_1/${appId}/signed-offering/signed.pdf`,
+      candProfileId,
+      [appId]
+    ),
+    true
+  );
+
+  // Blocked if key belongs to another candidate
+  assert.equal(
+    isApplicationKeyOwnedByCandidate(
+      `applications/job_1/${otherProfileId}/stage_6/offering.pdf`,
+      candProfileId,
+      [appId]
+    ),
+    false
+  );
+
+  // Blocked on path traversal attempts
+  assert.equal(
+    isApplicationKeyOwnedByCandidate(
+      `applications/job_1/../${otherProfileId}/stage_6/offering.pdf`,
+      candProfileId,
+      [appId]
+    ),
+    false
+  );
 });
 
 test("Upload Metadata Guard — validates allowed MIME types, extensions, and 5MB size limit", () => {

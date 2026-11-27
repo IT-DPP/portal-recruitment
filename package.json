@@ -16,7 +16,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:fase2": "ts-node -r ./prisma/load-env.ts --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} scripts/migrate-stagedata-to-relational.ts",
-    "db:setup": "npm run db:ensure && npm run db:generate && npm run db:migrate:deploy && npm run db:seed:essential",
+    "db:setup": "npm run db:generate && npm run db:ensure && npm run db:migrate:deploy && npm run db:seed:essential",
     "db:seed:essential": "ts-node -r ./prisma/load-env.ts --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} prisma/seed-essential.ts",
     "db:seed:dummy": "ts-node -r ./prisma/load-env.ts --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} prisma/seed-dummy.ts",
     "qa:generate-excel": "ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} scripts/generate-qa-testcases.ts"

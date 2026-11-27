@@ -17,8 +17,6 @@ import {
   OfferingLetterDataV2,
 } from "@/lib/document-generator";
 import {
-  saveCandidateDocumentData,
-  batchSaveBastData,
   getDocumentGenerationData,
 } from "@/app/actions/document";
 import McuDocumentTemplate from "@/components/dashboard/documents/McuDocumentTemplate";
@@ -35,7 +33,6 @@ import {
   Download,
   Printer,
   Eye,
-  Save,
   CheckCircle2,
   AlertCircle,
   RefreshCw,
@@ -61,7 +58,6 @@ import {
   FileCheck,
 } from "lucide-react";
 import SearchableSelect from "@/components/ui/SearchableSelect";
-
 
 // -------------------------------------------------------------------------
 // Reusable Repeatable Field Component
@@ -101,7 +97,8 @@ const RepeatableField = ({
       {items.length === 0 ? (
         <div className="p-3 bg-surface-container-low rounded-lg border border-dashed border-table-border text-center mb-2">
           <p className="text-xs text-on-surface-variant italic">
-            Belum ada {label.toLowerCase()} yang ditambahkan. Klik tombol di bawah untuk menambah.
+            Belum ada {label.toLowerCase()} yang ditambahkan. Klik tombol di
+            bawah untuk menambah.
           </p>
         </div>
       ) : (
@@ -115,7 +112,9 @@ const RepeatableField = ({
                 rows={2}
                 value={item}
                 onChange={(e) => handleChange(idx, e.target.value)}
-                placeholder={placeholder || `Isi ${label.toLowerCase()} ke-${idx + 1}`}
+                placeholder={
+                  placeholder || `Isi ${label.toLowerCase()} ke-${idx + 1}`
+                }
                 className="flex-1 bg-surface-container-lowest border border-table-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface resize-none"
               />
               <button
@@ -170,7 +169,9 @@ export default function GenerateDocumentsClient({
   );
   const [sites, setSites] = useState<any[]>(initialData?.sites || []);
   const [clinics, setClinics] = useState<any[]>(initialData?.clinics || []);
-  const [provinces, setProvinces] = useState<any[]>(initialData?.provinces || []);
+  const [provinces, setProvinces] = useState<any[]>(
+    initialData?.provinces || [],
+  );
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{
@@ -183,8 +184,7 @@ export default function GenerateDocumentsClient({
     "offering",
   );
 
-  // Preview Modal
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  // Document generation export states
   const [isDownloading, setIsDownloading] = useState(false);
   const [logoBase64, setLogoBase64] = useState<string>("/logo_company.png");
 
@@ -216,7 +216,10 @@ export default function GenerateDocumentsClient({
   const [benefit, setBenefit] = useState<string[]>([]);
 
   // Function to apply standard templates matching official documents
-  const applyDefaultTemplate = (type: "employee" | "internship", jobPosisi?: string) => {
+  const applyDefaultTemplate = (
+    type: "employee" | "internship",
+    jobPosisi?: string,
+  ) => {
     const pos = jobPosisi || selectedJob?.posisi || "";
     if (type === "employee") {
       setPointOfHire("Lokal");
@@ -274,11 +277,12 @@ export default function GenerateDocumentsClient({
   const [bastSelectedApps, setBastSelectedApps] = useState<string[]>([]);
   const [bastSearchQuery, setBastSearchQuery] = useState("");
   const [bastInputs, setBastInputs] = useState<Record<string, any>>({});
-  const [isSavingBast, setIsSavingBast] = useState(false);
   const [isGeneratingBastExcel, setIsGeneratingBastExcel] = useState(false);
   const [isGeneratingBastZip, setIsGeneratingBastZip] = useState(false);
-  const [bastZipProgress, setBastZipProgress] = useState<BastZipProgress | null>(null);
-  const [isGeneratingStatementPdf, setIsGeneratingStatementPdf] = useState(false);
+  const [bastZipProgress, setBastZipProgress] =
+    useState<BastZipProgress | null>(null);
+  const [isGeneratingStatementPdf, setIsGeneratingStatementPdf] =
+    useState(false);
 
   // -------------------------------------------------------------------------
   // 3. MCU STATES (Prototype Surat Pengantar MCU Batch)
@@ -350,7 +354,6 @@ export default function GenerateDocumentsClient({
     if (!bastNomorSurat) {
       setBastNomorSurat(`DPP/247/BASTMP/${rMonth}/${year}`);
     }
-
 
     if (typeof window !== "undefined") {
       getBase64FromUrl("/logo_company.png").then((b64) => {
@@ -456,7 +459,9 @@ export default function GenerateDocumentsClient({
     return eligibleCandidates.map((app) => {
       const name = app.candidateProfile?.user?.name || "Kandidat";
       const stageName = app.currentStage?.name || app.status || "Offering";
-      const nik = app.candidateProfile?.nik ? `NIK: ${app.candidateProfile.nik}` : "";
+      const nik = app.candidateProfile?.nik
+        ? `NIK: ${app.candidateProfile.nik}`
+        : "";
       const phone = app.candidateProfile?.user?.phone
         ? `Telp: ${app.candidateProfile.user.phone}`
         : "";
@@ -678,34 +683,6 @@ export default function GenerateDocumentsClient({
     }));
   };
 
-  const handleBatchSaveBast = async () => {
-    if (bastSelectedApps.length === 0) {
-      alert("Centang minimal 1 kandidat untuk disimpan.");
-      return;
-    }
-    setIsSavingBast(true);
-    const payload = bastSelectedApps.map((appId) => ({
-      appId,
-      data: bastInputs[appId] || {},
-    }));
-
-    const res = await batchSaveBastData(payload);
-    setIsSavingBast(false);
-
-    if (res.success) {
-      setFeedbackMsg({
-        type: "success",
-        text: `Data BAST untuk ${bastSelectedApps.length} kandidat berhasil disimpan di database.`,
-      });
-    } else {
-      setFeedbackMsg({
-        type: "error",
-        text: res.error || "Gagal menyimpan data BAST.",
-      });
-    }
-    setTimeout(() => setFeedbackMsg(null), 4000);
-  };
-
   const getCandidateDocStatus = (app: any) => {
     const docs = app?.candidateProfile?.documents || [];
     const certDoc = docs.find((d: any) => {
@@ -791,7 +768,9 @@ export default function GenerateDocumentsClient({
 
   const handleDownloadStatementPdfBAST = async () => {
     if (bastSelectedApps.length === 0) {
-      alert("Pilih minimal satu kandidat yang ingin disertakan dalam Surat Pernyataan BAST.");
+      alert(
+        "Pilih minimal satu kandidat yang ingin disertakan dalam Surat Pernyataan BAST.",
+      );
       return;
     }
 
@@ -808,7 +787,10 @@ export default function GenerateDocumentsClient({
       });
     } catch (err: any) {
       console.error("Error generating Surat Pernyataan BAST PDF:", err);
-      alert("Terjadi kesalahan saat memproses Surat Pernyataan BAST PDF: " + (err?.message || err));
+      alert(
+        "Terjadi kesalahan saat memproses Surat Pernyataan BAST PDF: " +
+          (err?.message || err),
+      );
     } finally {
       setIsGeneratingStatementPdf(false);
     }
@@ -816,7 +798,9 @@ export default function GenerateDocumentsClient({
 
   const handleDownloadZipBAST = async () => {
     if (bastSelectedApps.length === 0) {
-      alert("Pilih minimal satu kandidat yang ingin disertakan dalam paket BAST.");
+      alert(
+        "Pilih minimal satu kandidat yang ingin disertakan dalam paket BAST.",
+      );
       return;
     }
 
@@ -863,7 +847,7 @@ export default function GenerateDocumentsClient({
         },
         (progress) => {
           setBastZipProgress(progress);
-        }
+        },
       );
 
       setFeedbackMsg({
@@ -872,7 +856,9 @@ export default function GenerateDocumentsClient({
       });
     } catch (err: any) {
       console.error("Error generating ZIP BAST:", err);
-      alert("Terjadi kesalahan saat membuat paket BAST: " + (err?.message || err));
+      alert(
+        "Terjadi kesalahan saat membuat paket BAST: " + (err?.message || err),
+      );
     } finally {
       setIsGeneratingBastZip(false);
       setBastZipProgress(null);
@@ -919,9 +905,7 @@ export default function GenerateDocumentsClient({
         site: "-",
       };
     }
-    return (
-      MCU_CLINICS.find((c) => c.id === mcuClinicId) || MCU_CLINICS[0]
-    );
+    return MCU_CLINICS.find((c) => c.id === mcuClinicId) || MCU_CLINICS[0];
   }, [clinics, mcuClinicId]);
 
   // Helper to determine if an application reached MCU stage
@@ -932,7 +916,7 @@ export default function GenerateDocumentsClient({
     const inHistory = app.history?.some(
       (h: any) =>
         (h.stageId || "").toLowerCase() === "stage_7" ||
-        (h.stage?.name || "").toLowerCase().includes("mcu")
+        (h.stage?.name || "").toLowerCase().includes("mcu"),
     );
     return (
       stageId === "stage_7" ||
@@ -958,9 +942,11 @@ export default function GenerateDocumentsClient({
           nik: cand?.nik || "-",
           posisi: (job?.posisi || "WELDER").toUpperCase(),
           kategori: "PRE EMPLOYEE",
-          paketMcu: site?.mcuPackage || "Paket Standar OHS Tambang - Fit to Work",
+          paketMcu:
+            site?.mcuPackage || "Paket Standar OHS Tambang - Fit to Work",
           site: site?.name || job?.location || "Head Office / Cikarang",
-          customer: customer?.name || job?.customerName || "PT. Dian Pandu Pratama",
+          customer:
+            customer?.name || job?.customerName || "PT. Dian Pandu Pratama",
           jobOpeningId: job?.id,
           applicationId: app.id,
         };
@@ -971,17 +957,23 @@ export default function GenerateDocumentsClient({
 
   // Unique Filter Options
   const mcuPositions = useMemo(() => {
-    const pos = Array.from(new Set(allMcuCandidates.map((c) => c.posisi))).filter(Boolean);
+    const pos = Array.from(
+      new Set(allMcuCandidates.map((c) => c.posisi)),
+    ).filter(Boolean);
     return pos.sort();
   }, [allMcuCandidates]);
 
   const mcuSites = useMemo(() => {
-    const sts = Array.from(new Set(allMcuCandidates.map((c) => c.site))).filter(Boolean);
+    const sts = Array.from(new Set(allMcuCandidates.map((c) => c.site))).filter(
+      Boolean,
+    );
     return sts.sort();
   }, [allMcuCandidates]);
 
   const mcuCustomers = useMemo(() => {
-    const custs = Array.from(new Set(allMcuCandidates.map((c) => c.customer))).filter(Boolean);
+    const custs = Array.from(
+      new Set(allMcuCandidates.map((c) => c.customer)),
+    ).filter(Boolean);
     return custs.sort();
   }, [allMcuCandidates]);
 
@@ -1036,7 +1028,8 @@ export default function GenerateDocumentsClient({
     return allMcuCandidates.filter((cand) => {
       if (mcuFilterPosisi && cand.posisi !== mcuFilterPosisi) return false;
       if (mcuFilterSite && cand.site !== mcuFilterSite) return false;
-      if (mcuFilterCustomer && cand.customer !== mcuFilterCustomer) return false;
+      if (mcuFilterCustomer && cand.customer !== mcuFilterCustomer)
+        return false;
       if (mcuSearchQuery) {
         const q = mcuSearchQuery.toLowerCase();
         const matchName = cand.nama.toLowerCase().includes(q);
@@ -1069,41 +1062,39 @@ export default function GenerateDocumentsClient({
           posisi: cand.posisi,
           kategori: overrides.kategori || cand.kategori || "PRE EMPLOYEE",
           paketMcu:
-            overrides.paketMcu || cand.paketMcu || "Paket Standar OHS Tambang - Fit to Work",
+            overrides.paketMcu ||
+            cand.paketMcu ||
+            "Paket Standar OHS Tambang - Fit to Work",
           site: cand.site,
           customer: cand.customer,
         };
       });
-  }, [
-    mcuSelectedCandIds,
-    allMcuCandidates,
-    mcuCandidateOverrides,
-  ]);
+  }, [mcuSelectedCandIds, allMcuCandidates, mcuCandidateOverrides]);
 
   const handleToggleSelectCandidate = (id: string) => {
     setMcuSelectedCandIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
 
   const handleSelectAllFiltered = () => {
     const filteredIds = filteredMcuCandidates.map((c) => c.id);
     setMcuSelectedCandIds((prev) =>
-      Array.from(new Set([...prev, ...filteredIds]))
+      Array.from(new Set([...prev, ...filteredIds])),
     );
   };
 
   const handleDeselectAllFiltered = () => {
     const filteredIdSet = new Set(filteredMcuCandidates.map((c) => c.id));
     setMcuSelectedCandIds((prev) =>
-      prev.filter((id) => !filteredIdSet.has(id))
+      prev.filter((id) => !filteredIdSet.has(id)),
     );
   };
 
   const handleUpdateCandidateOverride = (
     id: string,
     field: "kategori" | "paketMcu",
-    value: string
+    value: string,
   ) => {
     setMcuCandidateOverrides((prev) => ({
       ...prev,
@@ -1115,9 +1106,11 @@ export default function GenerateDocumentsClient({
   };
 
   // -------------------------------------------------------------------------
-  // DOWNLOAD & PRINT HANDLERS
+  // DATABASE PERSISTENCE & GENERATION HANDLERS
   // -------------------------------------------------------------------------
-  const handleDownloadOfferingDocx = () => {
+  // DOCUMENT GENERATION & EXPORT HANDLERS
+  // -------------------------------------------------------------------------
+  const handleDownloadOfferingDocx = async () => {
     if (!olFormData) {
       alert("Harap lengkapi Nomor Surat, Lowongan, dan Kandidat.");
       return;
@@ -1134,24 +1127,12 @@ export default function GenerateDocumentsClient({
     await generatePdfFromElement(
       "offering-pdf-template",
       `Offering_Letter_${candidateFullName.replace(/\s+/g, "_")}`,
-      "/logo_company.png"
+      "/logo_company.png",
     );
     setIsDownloading(false);
   };
 
-  const handlePrintOffering = () => {
-    if (!olFormData) {
-      alert("Harap lengkapi form dengan benar.");
-      return;
-    }
-    printDocument(
-      "offering-pdf-template",
-      `Offering Letter - ${candidateFullName}`,
-      "/logo_company.png"
-    );
-  };
-
-  const handleDownloadMcuDocx = () => {
+  const handleDownloadMcuDocx = async () => {
     if (!mcuNomorSurat) {
       alert("Harap isi Nomor Surat terlebih dahulu.");
       return;
@@ -1163,7 +1144,8 @@ export default function GenerateDocumentsClient({
     const batchData: McuBatchDocumentData = {
       nomorSurat: mcuNomorSurat,
       perihal: "Surat Pengantar MCU",
-      klinikNama: selectedClinic.name || selectedClinic.nama || "Klinik Rekanan MCU",
+      klinikNama:
+        selectedClinic.name || selectedClinic.nama || "Klinik Rekanan MCU",
       klinikAlamat: selectedClinic.address || selectedClinic.alamat || "-",
       candidates: selectedMcuCandidatesList.map((c, i) => ({
         no: i + 1,
@@ -1202,27 +1184,10 @@ export default function GenerateDocumentsClient({
     await generatePdfFromElement(
       "mcu-pdf-template",
       `Surat_Pengantar_MCU_${cleanSurat}`,
-      "/logo_company.png"
+      "/logo_company.png",
     );
     setIsDownloading(false);
   };
-
-  const handlePrintMcu = () => {
-    if (!mcuNomorSurat) {
-      alert("Harap isi Nomor Surat terlebih dahulu.");
-      return;
-    }
-    if (selectedMcuCandidatesList.length === 0) {
-      alert("Pilih minimal satu kandidat yang sudah mencapai tahap MCU.");
-      return;
-    }
-    printDocument(
-      "mcu-pdf-template",
-      `Surat Pengantar MCU - ${mcuNomorSurat}`,
-      "/logo_company.png"
-    );
-  };
-
 
   // Current formatted date
   const formattedDate = new Date().toLocaleDateString("id-ID", {
@@ -1232,9 +1197,10 @@ export default function GenerateDocumentsClient({
   });
 
   // Compute document title for the OL type
-  const olDocTitle = olType === "internship"
-    ? "SURAT PENAWARAN MAGANG"
-    : "SURAT PENAWARAN KERJA";
+  const olDocTitle =
+    olType === "internship"
+      ? "SURAT PENAWARAN MAGANG"
+      : "SURAT PENAWARAN KERJA";
 
   const olDocSubtitle = "(OFFERING LETTER)";
 
@@ -1348,18 +1314,14 @@ export default function GenerateDocumentsClient({
                     Form Offering Letter
                   </h2>
                   <p className="text-xs text-on-surface-variant">
-                    Pilih tipe OL, lowongan, dan kandidat yang telah mencapai tahap offering letter atau di atasnya.
+                    Pilih tipe OL, lowongan, dan kandidat yang telah mencapai
+                    tahap offering letter atau di atasnya.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setIsPreviewOpen(true)}
-                    disabled={!selectedJob || !selectedCandidateProfile}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-lg transition-colors disabled:opacity-40 cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Live Preview</span>
-                  </button>
+                  <span className="px-2.5 py-1 text-[11px] font-semibold bg-primary/10 text-primary rounded-md border border-primary/20">
+                    Format Resmi DPP
+                  </span>
                 </div>
               </div>
 
@@ -1371,7 +1333,9 @@ export default function GenerateDocumentsClient({
                   </label>
                   <button
                     type="button"
-                    onClick={() => applyDefaultTemplate(olType, selectedJob?.posisi)}
+                    onClick={() =>
+                      applyDefaultTemplate(olType, selectedJob?.posisi)
+                    }
                     className="text-xs text-primary hover:underline font-medium cursor-pointer"
                     title="Muat ulang teks template resmi sesuai dokumen acuan"
                   >
@@ -1389,7 +1353,9 @@ export default function GenerateDocumentsClient({
                     }`}
                   >
                     <div className="flex items-center justify-center gap-2">
-                      <div className={`w-3 h-3 rounded-full border-2 ${olType === "employee" ? "border-primary bg-primary" : "border-gray-300"}`} />
+                      <div
+                        className={`w-3 h-3 rounded-full border-2 ${olType === "employee" ? "border-primary bg-primary" : "border-gray-300"}`}
+                      />
                       <span>Employee (Karyawan)</span>
                     </div>
                   </button>
@@ -1403,7 +1369,9 @@ export default function GenerateDocumentsClient({
                     }`}
                   >
                     <div className="flex items-center justify-center gap-2">
-                      <div className={`w-3 h-3 rounded-full border-2 ${olType === "internship" ? "border-primary bg-primary" : "border-gray-300"}`} />
+                      <div
+                        className={`w-3 h-3 rounded-full border-2 ${olType === "internship" ? "border-primary bg-primary" : "border-gray-300"}`}
+                      />
                       <span>Internship (Magang)</span>
                     </div>
                   </button>
@@ -1455,7 +1423,8 @@ export default function GenerateDocumentsClient({
                   />
                   {eligibleJobs.length === 0 && (
                     <p className="text-[11px] text-amber-600 mt-1">
-                      Belum ada lowongan dengan kandidat di tahap Offering Letter atau di atasnya.
+                      Belum ada lowongan dengan kandidat di tahap Offering
+                      Letter atau di atasnya.
                     </p>
                   )}
                 </div>
@@ -1555,7 +1524,11 @@ export default function GenerateDocumentsClient({
                     type="text"
                     value={masaKontrak}
                     onChange={(e) => setMasaKontrak(e.target.value)}
-                    placeholder={olType === "internship" ? "Contoh: 3 (Tiga) Bulan" : "Contoh: 1 Tahun"}
+                    placeholder={
+                      olType === "internship"
+                        ? "Contoh: 3 (Tiga) Bulan"
+                        : "Contoh: 1 Tahun"
+                    }
                     className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
                   />
                 </div>
@@ -1582,9 +1555,10 @@ export default function GenerateDocumentsClient({
                 items={tanggungJawab}
                 onChange={setTanggungJawab}
                 addLabel="Tambah Tanggung Jawab"
-                placeholder={olType === "internship"
-                  ? `Contoh: Bertanggung jawab dan menjalani tugas sebagai ${selectedJob?.posisi || "Internship"}`
-                  : `Contoh: Melaksanakan pekerjaan sesuai dengan jabatan ${selectedJob?.posisi || "posisi"} dan uraian pekerjaan yang diberikan oleh perusahaan.`
+                placeholder={
+                  olType === "internship"
+                    ? `Contoh: Bertanggung jawab dan menjalani tugas sebagai ${selectedJob?.posisi || "Internship"}`
+                    : `Contoh: Melaksanakan pekerjaan sesuai dengan jabatan ${selectedJob?.posisi || "posisi"} dan uraian pekerjaan yang diberikan oleh perusahaan.`
                 }
               />
 
@@ -1594,9 +1568,10 @@ export default function GenerateDocumentsClient({
                 items={hak}
                 onChange={setHak}
                 addLabel="Tambah Hak"
-                placeholder={olType === "internship"
-                  ? "Contoh: Uang Saku : Rp. 1.250.000,00,."
-                  : "Contoh: Upah : Rp 6.033.000 (UMSK Kab. Bekasi 2026)"
+                placeholder={
+                  olType === "internship"
+                    ? "Contoh: Uang Saku : Rp. 1.250.000,00,."
+                    : "Contoh: Upah : Rp 6.033.000 (UMSK Kab. Bekasi 2026)"
                 }
               />
 
@@ -1606,9 +1581,10 @@ export default function GenerateDocumentsClient({
                 items={benefit}
                 onChange={setBenefit}
                 addLabel="Tambah Benefit"
-                placeholder={olType === "internship"
-                  ? "Contoh: BPJS Ketenaga Kerjaan (selama Magang)"
-                  : "Contoh: Tunjangan Lembur : Dibayarkan sesuai jam lembur actual"
+                placeholder={
+                  olType === "internship"
+                    ? "Contoh: BPJS Ketenaga Kerjaan (selama Magang)"
+                    : "Contoh: Tunjangan Lembur : Dibayarkan sesuai jam lembur actual"
                 }
               />
 
@@ -1626,9 +1602,16 @@ export default function GenerateDocumentsClient({
                       </p>
                       <div className="space-y-1">
                         {bpjsPerusahaan.map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-xs text-emerald-700">
-                            <span>{idx + 1}. {item.label}</span>
-                            <span className="font-semibold">: {item.value}</span>
+                          <div
+                            key={idx}
+                            className="flex justify-between text-xs text-emerald-700"
+                          >
+                            <span>
+                              {idx + 1}. {item.label}
+                            </span>
+                            <span className="font-semibold">
+                              : {item.value}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -1640,10 +1623,17 @@ export default function GenerateDocumentsClient({
                       </p>
                       <div className="space-y-1">
                         {bpjsKaryawan.map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-xs text-amber-700">
-                            <span>{idx + 1}. {item.label}</span>
+                          <div
+                            key={idx}
+                            className="flex justify-between text-xs text-amber-700"
+                          >
+                            <span>
+                              {idx + 1}. {item.label}
+                            </span>
                             {item.value && (
-                              <span className="font-semibold">: {item.value}</span>
+                              <span className="font-semibold">
+                                : {item.value}
+                              </span>
                             )}
                           </div>
                         ))}
@@ -1656,28 +1646,12 @@ export default function GenerateDocumentsClient({
               {/* Action Buttons */}
               <div className="pt-4 border-t border-table-border flex flex-wrap justify-end gap-3">
                 <button
-                  onClick={() => setIsPreviewOpen(true)}
-                  disabled={!selectedJob || !selectedCandidateProfile}
-                  className="px-4 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span>Preview</span>
-                </button>
-                <button
-                  onClick={handlePrintOffering}
-                  disabled={!selectedJob || !selectedCandidateProfile}
-                  className="px-4 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40"
-                  title="Cetak langsung atau simpan via browser print engine"
-                >
-                  <Printer className="w-4 h-4 text-neutral-600" />
-                  <span>Cetak / Print</span>
-                </button>
-                <button
+                  type="button"
                   onClick={handleDownloadOfferingPdf}
                   disabled={
                     !selectedJob || !selectedCandidateProfile || isDownloading
                   }
-                  className="px-5 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40"
+                  className="px-5 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-md font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40"
                 >
                   <Download className="w-4 h-4 text-red-600" />
                   <span>
@@ -1685,9 +1659,10 @@ export default function GenerateDocumentsClient({
                   </span>
                 </button>
                 <button
+                  type="button"
                   onClick={handleDownloadOfferingDocx}
                   disabled={!selectedJob || !selectedCandidateProfile}
-                  className="px-6 py-2.5 text-white bg-primary hover:bg-primary/90 text-on-primary rounded-xl font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
+                  className="px-6 py-2.5 text-white bg-primary hover:bg-primary/90 text-on-primary rounded-md font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
                 >
                   <Download className="w-4 h-4 text-blue-200" />
                   <span>Download DOCX (Word)</span>
@@ -1712,20 +1687,6 @@ export default function GenerateDocumentsClient({
                     format Excel.
                   </p>
                 </div>
-                {bastSelectedApps.length > 0 && (
-                  <button
-                    onClick={handleBatchSaveBast}
-                    disabled={isSavingBast}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-xs"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>
-                      {isSavingBast
-                        ? "Menyimpan..."
-                        : `Simpan ${bastSelectedApps.length} Data ke DB`}
-                    </span>
-                  </button>
-                )}
               </div>
 
               {/* Form & Filter Grid */}
@@ -1742,7 +1703,8 @@ export default function GenerateDocumentsClient({
                     className="w-full bg-surface-container-lowest border border-table-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface font-mono"
                   />
                   <p className="text-[11px] text-on-surface-variant mt-1">
-                    Nomor surat resmi lampiran BAST yang dicantumkan pada judul Excel.
+                    Nomor surat resmi lampiran BAST yang dicantumkan pada judul
+                    Excel.
                   </p>
                 </div>
 
@@ -2163,46 +2125,49 @@ export default function GenerateDocumentsClient({
                       </span>
                     )}
                   </div>
-                  {bastSelectedApps.length > 0 && (() => {
-                    const statuses = bastSelectedApps.map((id) => {
-                      const a = applications.find((x) => x.id === id);
-                      return a ? getCandidateDocStatus(a) : null;
-                    });
-                    const missingCert = statuses.filter((s) => !s?.hasCert).length;
-                    const missingVal = statuses.filter((s) => !s?.hasValidation).length;
+                  {bastSelectedApps.length > 0 &&
+                    (() => {
+                      const statuses = bastSelectedApps.map((id) => {
+                        const a = applications.find((x) => x.id === id);
+                        return a ? getCandidateDocStatus(a) : null;
+                      });
+                      const missingCert = statuses.filter(
+                        (s) => !s?.hasCert,
+                      ).length;
+                      const missingVal = statuses.filter(
+                        (s) => !s?.hasValidation,
+                      ).length;
 
-                    if (missingCert > 0 || missingVal > 0) {
+                      if (missingCert > 0 || missingVal > 0) {
+                        return (
+                          <p className="text-[11px] text-amber-700 flex items-center gap-1.5 font-medium">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                            <span>
+                              Audit Alert: {missingCert} sertifikat &{" "}
+                              {missingVal} bukti validasi belum lengkap. File
+                              catatan audit otomatis akan disertakan dalam ZIP.
+                            </span>
+                          </p>
+                        );
+                      }
                       return (
-                        <p className="text-[11px] text-amber-700 flex items-center gap-1.5 font-medium">
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                        <p className="text-[11px] text-emerald-700 flex items-center gap-1.5 font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
                           <span>
-                            Audit Alert: {missingCert} sertifikat & {missingVal} bukti validasi belum lengkap. File catatan audit otomatis akan disertakan dalam ZIP.
+                            Seluruh berkas sertifikat dan bukti validasi
+                            kandidat terpilih lengkap.
                           </span>
                         </p>
                       );
-                    }
-                    return (
-                      <p className="text-[11px] text-emerald-700 flex items-center gap-1.5 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
-                        <span>Seluruh berkas sertifikat dan bukti validasi kandidat terpilih lengkap.</span>
-                      </p>
-                    );
-                  })()}
+                    })()}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">
                   <button
-                    onClick={handleBatchSaveBast}
-                    disabled={bastSelectedApps.length === 0 || isSavingBast}
-                    className="px-3.5 py-2 bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-2xs"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>{isSavingBast ? "Menyimpan..." : "Simpan ke DB"}</span>
-                  </button>
-
-                  <button
                     onClick={handleDownloadStatementPdfBAST}
-                    disabled={bastSelectedApps.length === 0 || isGeneratingStatementPdf}
+                    disabled={
+                      bastSelectedApps.length === 0 || isGeneratingStatementPdf
+                    }
                     className="px-3.5 py-2 bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-2xs"
                     title="Unduh Surat Pernyataan Serah Terima Resmi (PDF)"
                   >
@@ -2216,7 +2181,9 @@ export default function GenerateDocumentsClient({
 
                   <button
                     onClick={handleDownloadExcelBAST}
-                    disabled={bastSelectedApps.length === 0 || isGeneratingBastExcel}
+                    disabled={
+                      bastSelectedApps.length === 0 || isGeneratingBastExcel
+                    }
                     className="px-3.5 py-2 bg-surface border border-emerald-300 hover:bg-emerald-50 text-emerald-800 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-2xs"
                     title="Unduh Lembar Kerja Excel Rekapitulasi BAST"
                   >
@@ -2230,8 +2197,10 @@ export default function GenerateDocumentsClient({
 
                   <button
                     onClick={handleDownloadZipBAST}
-                    disabled={bastSelectedApps.length === 0 || isGeneratingBastZip}
-                    className="px-5 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
+                    disabled={
+                      bastSelectedApps.length === 0 || isGeneratingBastZip
+                    }
+                    className="px-5 py-2.5 text-white bg-primary hover:bg-primary-container rounded-xl font-bold text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
                     title="Unduh 1 Bundel ZIP: Excel BAST, Surat Pernyataan PDF, Folder Sertifikat, dan Folder Validasi"
                   >
                     {isGeneratingBastZip ? (
@@ -2268,22 +2237,15 @@ export default function GenerateDocumentsClient({
                     </span>
                   </div>
                   <p className="text-xs text-on-surface-variant mt-0.5">
-                    Pilih klinik rujukan site operations dan centang kandidat yang telah mencapai tahap seleksi MCU untuk diterbitkan dokumen pengantar resmi.
+                    Pilih klinik rujukan site operations dan centang kandidat
+                    yang telah mencapai tahap seleksi MCU untuk diterbitkan
+                    dokumen pengantar resmi.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsPreviewOpen(true)}
-                    disabled={selectedMcuCandidatesList.length === 0}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-surface border border-table-border hover:bg-surface-container text-on-surface rounded-lg transition-colors disabled:opacity-40 cursor-pointer shadow-xs"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-primary" />
-                    <span>Live Preview</span>
-                    <span className="ml-1 px-1.5 py-0.2 bg-primary/10 text-primary text-[10px] rounded-full font-bold">
-                      {selectedMcuCandidatesList.length}
-                    </span>
-                  </button>
+                  <span className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200">
+                    {selectedMcuCandidatesList.length} Kandidat Terpilih
+                  </span>
                 </div>
               </div>
 
@@ -2293,7 +2255,8 @@ export default function GenerateDocumentsClient({
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-xs font-semibold text-on-surface uppercase">
-                      No. Surat Pengantar <span className="text-red-500">*</span>
+                      No. Surat Pengantar{" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <span className="text-[11px] text-on-surface-variant font-medium">
                       Free Text
@@ -2373,7 +2336,10 @@ export default function GenerateDocumentsClient({
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                       <MapPin className="w-3 h-3" />
-                      Provinsi: {selectedClinic.province?.name || selectedClinic.wilayah || "-"}
+                      Provinsi:{" "}
+                      {selectedClinic.province?.name ||
+                        selectedClinic.wilayah ||
+                        "-"}
                     </span>
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                       <Sparkles className="w-3 h-3" />
@@ -2397,7 +2363,9 @@ export default function GenerateDocumentsClient({
                     </span>
                     <div className="p-2 bg-surface-container-lowest rounded border border-table-border/80 text-on-surface text-[11px] leading-relaxed">
                       <p className="text-on-surface-variant text-[11px]">
-                        Standar paket MCU masing-masing kandidat terkonfigurasi secara dinamis sesuai ketentuan penempatan <strong>Site Operations</strong>.
+                        Standar paket MCU masing-masing kandidat terkonfigurasi
+                        secara dinamis sesuai ketentuan penempatan{" "}
+                        <strong>Site Operations</strong>.
                       </p>
                     </div>
                   </div>
@@ -2420,7 +2388,8 @@ export default function GenerateDocumentsClient({
                       </span>
                     </div>
                     <p className="text-xs text-on-surface-variant mt-0.5">
-                      Dapat memilih kandidat dari berbagai area, posisi, dan customer asalkan telah mencapai tahap seleksi MCU.
+                      Dapat memilih kandidat dari berbagai area, posisi, dan
+                      customer asalkan telah mencapai tahap seleksi MCU.
                     </p>
                   </div>
 
@@ -2519,7 +2488,7 @@ export default function GenerateDocumentsClient({
                               checked={
                                 filteredMcuCandidates.length > 0 &&
                                 filteredMcuCandidates.every((c) =>
-                                  mcuSelectedCandIds.includes(c.id)
+                                  mcuSelectedCandIds.includes(c.id),
                                 )
                               }
                               onChange={(e) => {
@@ -2549,15 +2518,21 @@ export default function GenerateDocumentsClient({
                               colSpan={8}
                               className="p-8 text-center text-on-surface-variant italic"
                             >
-                              Tidak ada kandidat di stage MCU yang sesuai dengan kriteria filter saat ini.
+                              Tidak ada kandidat di stage MCU yang sesuai dengan
+                              kriteria filter saat ini.
                             </td>
                           </tr>
                         ) : (
                           filteredMcuCandidates.map((cand, idx) => {
-                            const isSelected = mcuSelectedCandIds.includes(cand.id);
-                            const overrides = mcuCandidateOverrides[cand.id] || {};
+                            const isSelected = mcuSelectedCandIds.includes(
+                              cand.id,
+                            );
+                            const overrides =
+                              mcuCandidateOverrides[cand.id] || {};
                             const currentKategori =
-                              overrides.kategori || cand.kategori || "PRE EMPLOYEE";
+                              overrides.kategori ||
+                              cand.kategori ||
+                              "PRE EMPLOYEE";
                             const currentPaket =
                               overrides.paketMcu ||
                               cand.paketMcu ||
@@ -2574,7 +2549,9 @@ export default function GenerateDocumentsClient({
                                   <input
                                     type="checkbox"
                                     checked={isSelected}
-                                    onChange={() => handleToggleSelectCandidate(cand.id)}
+                                    onChange={() =>
+                                      handleToggleSelectCandidate(cand.id)
+                                    }
                                     className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
                                   />
                                 </td>
@@ -2609,14 +2586,18 @@ export default function GenerateDocumentsClient({
                                       handleUpdateCandidateOverride(
                                         cand.id,
                                         "kategori",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     className="bg-surface-container-lowest border border-table-border rounded px-2 py-1 text-xs text-on-surface font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer w-full"
                                   >
-                                    <option value="PRE EMPLOYEE">PRE EMPLOYEE</option>
+                                    <option value="PRE EMPLOYEE">
+                                      PRE EMPLOYEE
+                                    </option>
                                     <option value="EMPLOYEE">EMPLOYEE</option>
-                                    <option value="INTERNSHIP">INTERNSHIP</option>
+                                    <option value="INTERNSHIP">
+                                      INTERNSHIP
+                                    </option>
                                   </select>
                                 </td>
                                 <td className="p-3">
@@ -2627,7 +2608,7 @@ export default function GenerateDocumentsClient({
                                       handleUpdateCandidateOverride(
                                         cand.id,
                                         "paketMcu",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     className="w-full bg-surface-container-lowest border border-table-border rounded px-2 py-1 text-[11px] text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
@@ -2653,14 +2634,17 @@ export default function GenerateDocumentsClient({
                   <div className="flex items-center gap-2">
                     <CheckSquare className="w-4 h-4 text-emerald-600" />
                     <span className="text-xs font-semibold text-on-surface">
-                      {selectedMcuCandidatesList.length} dari {allMcuCandidates.length} kandidat dipilih untuk dicetak pada Surat Pengantar MCU
+                      {selectedMcuCandidatesList.length} dari{" "}
+                      {allMcuCandidates.length} kandidat dipilih untuk dicetak
+                      pada Surat Pengantar MCU
                     </span>
                   </div>
 
                   {selectedMcuCandidatesList.length === 0 && (
                     <span className="text-xs text-red-600 font-medium flex items-center gap-1">
                       <AlertCircle className="w-3.5 h-3.5" />
-                      Centang minimal 1 kandidat di atas untuk mengaktifkan download.
+                      Centang minimal 1 kandidat di atas untuk mengaktifkan
+                      download.
                     </span>
                   )}
                 </div>
@@ -2671,37 +2655,19 @@ export default function GenerateDocumentsClient({
                 <div className="flex items-center gap-2 text-xs text-on-surface-variant font-medium">
                   <Sparkles className="w-4 h-4 text-amber-500" />
                   <span>
-                    Template resmi PT Dian Pandu Pratama — Sesuai format layout aktual site.
+                    Template resmi PT Dian Pandu Pratama — Sesuai format layout
+                    aktual site.
                   </span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => setIsPreviewOpen(true)}
-                    disabled={selectedMcuCandidatesList.length === 0}
-                    className="px-4 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40 shadow-xs"
-                  >
-                    <Eye className="w-4 h-4 text-primary" />
-                    <span>Live Preview</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handlePrintMcu}
-                    disabled={selectedMcuCandidatesList.length === 0}
-                    className="px-4 py-2.5 bg-surface border border-table-border hover:bg-surface-container-low text-on-surface rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-40 shadow-xs"
-                    title="Cetak langsung atau simpan via browser print engine (Vector Crisp)"
-                  >
-                    <Printer className="w-4 h-4 text-neutral-600" />
-                    <span>Cetak / Print</span>
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={handleDownloadMcuPdf}
-                    disabled={selectedMcuCandidatesList.length === 0 || isDownloading}
-                    className="px-5 py-2.5 text-white bg-red-600 hover:bg-red-700 rounded-xl font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
+                    disabled={
+                      selectedMcuCandidatesList.length === 0 || isDownloading
+                    }
+                    className="px-5 py-2.5 text-white bg-red-600 hover:bg-red-700 rounded-md font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
                   >
                     {isDownloading ? (
                       <>
@@ -2720,7 +2686,7 @@ export default function GenerateDocumentsClient({
                     type="button"
                     onClick={handleDownloadMcuDocx}
                     disabled={selectedMcuCandidatesList.length === 0}
-                    className="px-5 py-2.5 text-white bg-primary hover:bg-primary/90 rounded-xl font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
+                    className="px-5 py-2.5 text-white bg-primary hover:bg-primary/90 rounded-md font-semibold text-sm transition-colors shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-40"
                   >
                     <Download className="w-4 h-4 text-blue-200" />
                     <span>Download DOCX (Word)</span>
@@ -2729,128 +2695,8 @@ export default function GenerateDocumentsClient({
               </div>
             </div>
           )}
-
         </div>
       </div>
-
-      {/* ========================================================================= */}
-      {/* LIVE PREVIEW MODAL */}
-      {/* ========================================================================= */}
-      {isPreviewOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-surface rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-table-border">
-            <div className="flex items-center justify-between p-4 border-b border-table-border">
-              <div className="flex items-center gap-2">
-                <Eye className="w-5 h-5 text-primary" />
-                <h3 className="font-bold text-on-surface">
-                  {documentType === "offering"
-                    ? `Preview Offering Letter (${olType === "internship" ? "Magang" : "Employee"})`
-                    : "Preview Surat Pengantar MCU"}
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                {documentType === "offering" ? (
-                  <>
-                    <button
-                      onClick={handlePrintOffering}
-                      className="px-3 py-1.5 text-xs font-semibold bg-surface border border-table-border text-on-surface rounded-lg hover:bg-surface-container flex items-center gap-1.5"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Cetak</span>
-                    </button>
-                    <button
-                      onClick={handleDownloadOfferingPdf}
-                      disabled={isDownloading}
-                      className="px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>{isDownloading ? "Memproses..." : "PDF"}</span>
-                    </button>
-                    <button
-                      onClick={handleDownloadOfferingDocx}
-                      className="px-3 py-1.5 text-xs font-semibold bg-surface border border-table-border text-on-surface rounded-lg hover:bg-surface-container flex items-center gap-1.5"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>DOCX</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={handlePrintMcu}
-                      className="px-3 py-1.5 text-xs font-semibold bg-surface border border-table-border text-on-surface rounded-lg hover:bg-surface-container flex items-center gap-1.5"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Cetak</span>
-                    </button>
-                    <button
-                      onClick={handleDownloadMcuPdf}
-                      disabled={isDownloading}
-                      className="px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>{isDownloading ? "Memproses..." : "PDF"}</span>
-                    </button>
-                    <button
-                      onClick={handleDownloadMcuDocx}
-                      className="px-3 py-1.5 text-xs font-semibold bg-surface border border-table-border text-on-surface rounded-lg hover:bg-surface-container flex items-center gap-1.5"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>DOCX</span>
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={() => setIsPreviewOpen(false)}
-                  className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 bg-neutral-100 flex justify-center">
-              {documentType === "offering" ? (
-                /* ===== OFFERING LETTER PREVIEW ===== */
-                <OfferingLetterPreview
-                  olType={olType}
-                  nomorSurat={nomorSurat}
-                  perihal={perihal}
-                  candidateFullName={candidateFullName}
-                  posisi={selectedJob?.posisi || "-"}
-                  pointOfHire={pointOfHire}
-                  area={selectedArea}
-                  masaKontrak={masaKontrak}
-                  rosterJamKerja={rosterJamKerja}
-                  tanggungJawab={tanggungJawab.filter((t) => t.trim() !== "")}
-                  hak={hak.filter((h) => h.trim() !== "")}
-                  benefit={benefit.filter((b) => b.trim() !== "")}
-                  bpjsPerusahaan={bpjsPerusahaan}
-                  bpjsKaryawan={bpjsKaryawan}
-                  formattedDate={formattedDate}
-                  olDocTitle={olDocTitle}
-                  olDocSubtitle={olDocSubtitle}
-                  logoSrc={logoBase64}
-                />
-              ) : (
-                /* MCU Letter Visual Document (Batch Candidates DPP Official Format) */
-                <div className="bg-white shadow-xl rounded border border-neutral-300 overflow-hidden">
-                  <McuDocumentTemplate
-                    id="mcu-preview-document"
-                    nomorSurat={mcuNomorSurat}
-                    perihal="Surat Pengantar MCU"
-                    klinik={selectedClinic}
-                    candidates={selectedMcuCandidatesList}
-                    tanggalSurat={formattedDate}
-                    logoSrc={logoBase64 || "/logo_company.png"}
-                    showSignature={true}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* HIDDEN TEMPLATES FOR PDF CONVERSION */}
@@ -2880,7 +2726,13 @@ export default function GenerateDocumentsClient({
           }}
         >
           {/* Header with Logo (Top Right) */}
-          <table style={{ width: "100%", marginBottom: "8px", borderCollapse: "collapse" }}>
+          <table
+            style={{
+              width: "100%",
+              marginBottom: "8px",
+              borderCollapse: "collapse",
+            }}
+          >
             <tbody>
               <tr>
                 <td style={{ textAlign: "right", padding: 0 }}>
@@ -2896,7 +2748,16 @@ export default function GenerateDocumentsClient({
                         objectFit: "contain",
                       }}
                     />
-                    <p style={{ fontSize: "11px", fontWeight: "bold", textTransform: "lowercase", letterSpacing: "0.5px", margin: 0, color: "#111" }}>
+                    <p
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: "bold",
+                        textTransform: "lowercase",
+                        letterSpacing: "0.5px",
+                        margin: 0,
+                        color: "#111",
+                      }}
+                    >
                       dian pandu pratama
                     </p>
                   </div>
@@ -2908,7 +2769,14 @@ export default function GenerateDocumentsClient({
           {/* Title (Only for internship OL) */}
           {olType === "internship" && (
             <div style={{ textAlign: "center", marginBottom: "14px" }}>
-              <h1 style={{ fontSize: "15px", fontWeight: "bold", textTransform: "uppercase", margin: "0 0 2px 0" }}>
+              <h1
+                style={{
+                  fontSize: "15px",
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                  margin: "0 0 2px 0",
+                }}
+              >
                 SURAT PENAWARAN MAGANG
               </h1>
               <p style={{ fontSize: "12px", fontWeight: "bold", margin: 0 }}>
@@ -2921,14 +2789,36 @@ export default function GenerateDocumentsClient({
           <table style={{ width: "100%", marginBottom: "12px" }}>
             <tbody>
               <tr>
-                <td style={{ width: "70px", padding: "1px 0", verticalAlign: "top" }}>No.</td>
-                <td style={{ width: "15px", padding: "1px 0", verticalAlign: "top" }}>:</td>
-                <td style={{ padding: "1px 0", fontWeight: "bold" }}>{nomorSurat || "......"}</td>
+                <td
+                  style={{
+                    width: "70px",
+                    padding: "1px 0",
+                    verticalAlign: "top",
+                  }}
+                >
+                  No.
+                </td>
+                <td
+                  style={{
+                    width: "15px",
+                    padding: "1px 0",
+                    verticalAlign: "top",
+                  }}
+                >
+                  :
+                </td>
+                <td style={{ padding: "1px 0", fontWeight: "bold" }}>
+                  {nomorSurat || "......"}
+                </td>
               </tr>
               <tr>
-                <td style={{ padding: "1px 0", verticalAlign: "top" }}>Perihal</td>
+                <td style={{ padding: "1px 0", verticalAlign: "top" }}>
+                  Perihal
+                </td>
                 <td style={{ padding: "1px 0", verticalAlign: "top" }}>:</td>
-                <td style={{ padding: "1px 0", fontWeight: "bold" }}>{perihal}</td>
+                <td style={{ padding: "1px 0", fontWeight: "bold" }}>
+                  {perihal}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -2937,57 +2827,102 @@ export default function GenerateDocumentsClient({
           <p style={{ marginBottom: "10px", textAlign: "justify" }}>
             {olType === "employee"
               ? "Sebagai tindak lanjut proses rekrutmen di PT Dian Pandu Pratama, berikut kami informasikan perincian hak dan benefit serta tugas dan tanggung jawab calon karyawan sebagaimana yang tercantum dalam kontrak kerja sebagai berikut:"
-              : "Sebagai tindak lanjut proses rekrutmen di PT Dian Pandu Pratama, berikut kami informasikan perincian hak dan benefit serta tugas dan tanggung jawab calon karyawan sebagaimana yang tercantum dalam kontrak kerja sebagai berikut:"
-            }
+              : "Sebagai tindak lanjut proses rekrutmen di PT Dian Pandu Pratama, berikut kami informasikan perincian hak dan benefit serta tugas dan tanggung jawab calon karyawan sebagaimana yang tercantum dalam kontrak kerja sebagai berikut:"}
           </p>
 
           {/* Detail Fields Table */}
           <table style={{ width: "100%", marginBottom: "10px" }}>
             <tbody>
               <tr>
-                <td style={{ width: "140px", padding: "2px 0", verticalAlign: "top" }}>Nama</td>
-                <td style={{ width: "15px", padding: "2px 0", verticalAlign: "top" }}>:</td>
+                <td
+                  style={{
+                    width: "140px",
+                    padding: "2px 0",
+                    verticalAlign: "top",
+                  }}
+                >
+                  Nama
+                </td>
+                <td
+                  style={{
+                    width: "15px",
+                    padding: "2px 0",
+                    verticalAlign: "top",
+                  }}
+                >
+                  :
+                </td>
                 <td style={{ padding: "2px 0" }}>{candidateFullName}</td>
               </tr>
               <tr>
-                <td style={{ padding: "2px 0", verticalAlign: "top" }}>Posisi</td>
+                <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                  Posisi
+                </td>
                 <td style={{ padding: "2px 0", verticalAlign: "top" }}>:</td>
-                <td style={{ padding: "2px 0" }}>{selectedJob?.posisi || "-"}</td>
+                <td style={{ padding: "2px 0" }}>
+                  {selectedJob?.posisi || "-"}
+                </td>
               </tr>
               {olType === "employee" && (
                 <>
                   <tr>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>Masa Kontrak</td>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>:</td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      Masa Kontrak
+                    </td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      :
+                    </td>
                     <td style={{ padding: "2px 0" }}>{masaKontrak || "-"}</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>Point Of Hire</td>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>:</td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      Point Of Hire
+                    </td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      :
+                    </td>
                     <td style={{ padding: "2px 0" }}>{pointOfHire || "-"}</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>Area</td>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>:</td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      Area
+                    </td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      :
+                    </td>
                     <td style={{ padding: "2px 0" }}>{selectedArea || "-"}</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>Roster & Jam Kerja</td>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>:</td>
-                    <td style={{ padding: "2px 0", textAlign: "justify" }}>{rosterJamKerja}</td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      Roster & Jam Kerja
+                    </td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      :
+                    </td>
+                    <td style={{ padding: "2px 0", textAlign: "justify" }}>
+                      {rosterJamKerja}
+                    </td>
                   </tr>
                 </>
               )}
               {olType === "internship" && (
                 <>
                   <tr>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>Area</td>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>:</td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      Area
+                    </td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      :
+                    </td>
                     <td style={{ padding: "2px 0" }}>{selectedArea || "-"}</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>Masa Kontrak</td>
-                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>:</td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      Masa Kontrak
+                    </td>
+                    <td style={{ padding: "2px 0", verticalAlign: "top" }}>
+                      :
+                    </td>
                     <td style={{ padding: "2px 0" }}>{masaKontrak || "-"}</td>
                   </tr>
                 </>
@@ -2999,77 +2934,116 @@ export default function GenerateDocumentsClient({
           <p style={{ marginBottom: "4px", fontWeight: "normal" }}>
             {olType === "employee"
               ? "Kepada calon karyawan tersebut akan diberikan tanggung jawab dan memiliki Hak sebagai berikut:"
-              : "Kepada calon Magang tersebut akan diberikan hak serta tugas dan tanggung jawab sebagai berikut:"
-            }
+              : "Kepada calon Magang tersebut akan diberikan hak serta tugas dan tanggung jawab sebagai berikut:"}
           </p>
 
           <p style={{ fontWeight: "bold", margin: "6px 0 2px 0" }}>
-            {olType === "employee" ? "Tanggung Jawab:" : "Tugas dan Tanggung Jawab:"}
+            {olType === "employee"
+              ? "Tanggung Jawab:"
+              : "Tugas dan Tanggung Jawab:"}
           </p>
           <div style={{ paddingLeft: "16px", marginBottom: "6px" }}>
-            {tanggungJawab.filter((t) => t.trim() !== "").map((item, idx) => (
-              <p key={idx} style={{ margin: "1px 0" }}>
-                {idx + 1}. &nbsp;{item}
-              </p>
-            ))}
+            {tanggungJawab
+              .filter((t) => t.trim() !== "")
+              .map((item, idx) => (
+                <p key={idx} style={{ margin: "1px 0" }}>
+                  {idx + 1}. &nbsp;{item}
+                </p>
+              ))}
           </div>
 
           {/* Hak */}
           <p style={{ fontWeight: "bold", margin: "6px 0 2px 0" }}>Hak:</p>
           <div style={{ paddingLeft: "16px", marginBottom: "6px" }}>
-            {hak.filter((h) => h.trim() !== "").map((item, idx) => (
-              <p key={idx} style={{ margin: "1px 0" }}>
-                {idx + 1}. &nbsp;{item}
-              </p>
-            ))}
+            {hak
+              .filter((h) => h.trim() !== "")
+              .map((item, idx) => (
+                <p key={idx} style={{ margin: "1px 0" }}>
+                  {idx + 1}. &nbsp;{item}
+                </p>
+              ))}
           </div>
 
           {/* Benefit - for internship */}
-          {olType === "internship" && benefit.filter((b) => b.trim() !== "").length > 0 && (
-            <>
-              <p style={{ fontWeight: "bold", margin: "6px 0 2px 0" }}>Benefit:</p>
-              <div style={{ paddingLeft: "16px", marginBottom: "6px" }}>
-                {benefit.filter((b) => b.trim() !== "").map((item, idx) => (
-                  <p key={idx} style={{ margin: "1px 0" }}>
-                    {idx + 1}. &nbsp;{item}
-                  </p>
-                ))}
-              </div>
-            </>
-          )}
+          {olType === "internship" &&
+            benefit.filter((b) => b.trim() !== "").length > 0 && (
+              <>
+                <p style={{ fontWeight: "bold", margin: "6px 0 2px 0" }}>
+                  Benefit:
+                </p>
+                <div style={{ paddingLeft: "16px", marginBottom: "6px" }}>
+                  {benefit
+                    .filter((b) => b.trim() !== "")
+                    .map((item, idx) => (
+                      <p key={idx} style={{ margin: "1px 0" }}>
+                        {idx + 1}. &nbsp;{item}
+                      </p>
+                    ))}
+                </div>
+              </>
+            )}
 
           {/* BPJS Section - Employee only */}
           {olType === "employee" && (
             <div style={{ marginBottom: "6px" }}>
               {benefit.filter((b) => b.trim() !== "").length > 0 && (
                 <>
-                  <p style={{ fontWeight: "bold", margin: "6px 0 2px 0" }}>Benefit:</p>
+                  <p style={{ fontWeight: "bold", margin: "6px 0 2px 0" }}>
+                    Benefit:
+                  </p>
                   <div style={{ paddingLeft: "16px", marginBottom: "6px" }}>
-                    {benefit.filter((b) => b.trim() !== "").map((item, idx) => (
-                      <p key={idx} style={{ margin: "1px 0" }}>
-                        {idx + 1}. &nbsp;{item}
-                      </p>
-                    ))}
+                    {benefit
+                      .filter((b) => b.trim() !== "")
+                      .map((item, idx) => (
+                        <p key={idx} style={{ margin: "1px 0" }}>
+                          {idx + 1}. &nbsp;{item}
+                        </p>
+                      ))}
                   </div>
                 </>
               )}
 
-              <table style={{ width: "100%", marginTop: "4px", marginBottom: "4px" }}>
+              <table
+                style={{ width: "100%", marginTop: "4px", marginBottom: "4px" }}
+              >
                 <tbody>
                   <tr>
-                    <td style={{ width: "50%", verticalAlign: "top", padding: "2px 4px" }}>
-                      <p style={{ fontWeight: "bold", margin: "0 0 2px 0" }}>Ditanggung Perusahaan:</p>
+                    <td
+                      style={{
+                        width: "50%",
+                        verticalAlign: "top",
+                        padding: "2px 4px",
+                      }}
+                    >
+                      <p style={{ fontWeight: "bold", margin: "0 0 2px 0" }}>
+                        Ditanggung Perusahaan:
+                      </p>
                       {bpjsPerusahaan.map((item, idx) => (
-                        <p key={idx} style={{ margin: "1px 0", fontSize: "12px" }}>
+                        <p
+                          key={idx}
+                          style={{ margin: "1px 0", fontSize: "12px" }}
+                        >
                           {idx + 1}. {item.label} : {item.value}
                         </p>
                       ))}
                     </td>
-                    <td style={{ width: "50%", verticalAlign: "top", padding: "2px 4px" }}>
-                      <p style={{ fontWeight: "bold", margin: "0 0 2px 0" }}>Ditanggung Karyawan:</p>
+                    <td
+                      style={{
+                        width: "50%",
+                        verticalAlign: "top",
+                        padding: "2px 4px",
+                      }}
+                    >
+                      <p style={{ fontWeight: "bold", margin: "0 0 2px 0" }}>
+                        Ditanggung Karyawan:
+                      </p>
                       {bpjsKaryawan.map((item, idx) => (
-                        <p key={idx} style={{ margin: "1px 0", fontSize: "12px" }}>
-                          {idx + 1}. {item.label}{item.value ? ` : ${item.value}` : ""}
+                        <p
+                          key={idx}
+                          style={{ margin: "1px 0", fontSize: "12px" }}
+                        >
+                          {idx + 1}. {item.label}
+                          {item.value ? ` : ${item.value}` : ""}
                         </p>
                       ))}
                     </td>
@@ -3083,27 +3057,31 @@ export default function GenerateDocumentsClient({
           <p style={{ marginBottom: "6px", textAlign: "justify" }}>
             {olType === "employee"
               ? "Demikian Surat Penawaran Kerja ini kami sampaikan."
-              : `Demikian Offering Letter ini kami sampaikan. Apabila Anda setuju dengan penawaran yang diberikan, silahkan tanda tangani offering letter ini di tempat yang sudah disediakan. Apabila masih ada hal-hal yang ingin ditanyakan seputar penawaran kerja ini, silahkan menghubungi tim recruitment untuk pertanyaan lebih lanjut. Atas perhatian dan Kerjasama kami ucapkan terima kasih.`
-            }
+              : `Demikian Offering Letter ini kami sampaikan. Apabila Anda setuju dengan penawaran yang diberikan, silahkan tanda tangani offering letter ini di tempat yang sudah disediakan. Apabila masih ada hal-hal yang ingin ditanyakan seputar penawaran kerja ini, silahkan menghubungi tim recruitment untuk pertanyaan lebih lanjut. Atas perhatian dan Kerjasama kami ucapkan terima kasih.`}
           </p>
 
           {olType === "employee" && (
             <p style={{ marginBottom: "16px", textAlign: "justify" }}>
-              Atas perhatian dan kesediaan Saudara untuk bergabung bersama PT Dian Pandu Pratama, kami ucapkan terima kasih.
+              Atas perhatian dan kesediaan Saudara untuk bergabung bersama PT
+              Dian Pandu Pratama, kami ucapkan terima kasih.
             </p>
           )}
 
           {/* Signatures */}
-          <p style={{ marginBottom: "8px" }}>
-            Cikarang, {formattedDate}
-          </p>
+          <p style={{ marginBottom: "8px" }}>Cikarang, {formattedDate}</p>
           <table style={{ width: "100%", marginTop: "4px" }}>
             <tbody>
               <tr>
                 <td style={{ width: "50%", paddingBottom: "70px" }}>
                   Mengetahui,
                 </td>
-                <td style={{ width: "50%", textAlign: "right", paddingBottom: "70px" }}>
+                <td
+                  style={{
+                    width: "50%",
+                    textAlign: "right",
+                    paddingBottom: "70px",
+                  }}
+                >
                   Menyetujui,
                 </td>
               </tr>
@@ -3115,8 +3093,7 @@ export default function GenerateDocumentsClient({
                   <p style={{ fontSize: "11px", color: "#555" }}>
                     {olType === "employee"
                       ? "Recruitment & People Development Dept. Head"
-                      : "Koordinator Recruitment HO"
-                    }
+                      : "Koordinator Recruitment HO"}
                   </p>
                 </td>
                 <td style={{ textAlign: "right" }}>
@@ -3124,7 +3101,9 @@ export default function GenerateDocumentsClient({
                     {candidateFullName}
                   </p>
                   <p style={{ fontSize: "11px", color: "#555" }}>
-                    {olType === "employee" ? "Calon Karyawan" : "Calon Karyawan Magang"}
+                    {olType === "employee"
+                      ? "Calon Karyawan"
+                      : "Calon Karyawan Magang"}
                   </p>
                 </td>
               </tr>
@@ -3141,7 +3120,7 @@ export default function GenerateDocumentsClient({
           candidates={selectedMcuCandidatesList}
           tanggalSurat={formattedDate}
           logoSrc={logoBase64 || "/logo_company.png"}
-          showSignature={true}
+          showSignature={false}
         />
       </div>
 
@@ -3167,7 +3146,8 @@ export default function GenerateDocumentsClient({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-on-surface">
-                  Langkah {bastZipProgress.step} dari {bastZipProgress.totalSteps}
+                  Langkah {bastZipProgress.step} dari{" "}
+                  {bastZipProgress.totalSteps}
                 </span>
                 <span className="font-bold text-primary">
                   {bastZipProgress.percent}%
@@ -3191,7 +3171,13 @@ export default function GenerateDocumentsClient({
                 ) : (
                   <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
                 )}
-                <span className={bastZipProgress.step === 1 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                <span
+                  className={
+                    bastZipProgress.step === 1
+                      ? "font-bold text-on-surface"
+                      : "text-on-surface-variant"
+                  }
+                >
                   1. Format Spreadsheet Excel BAST
                 </span>
               </div>
@@ -3204,7 +3190,13 @@ export default function GenerateDocumentsClient({
                 ) : (
                   <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
                 )}
-                <span className={bastZipProgress.step === 2 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                <span
+                  className={
+                    bastZipProgress.step === 2
+                      ? "font-bold text-on-surface"
+                      : "text-on-surface-variant"
+                  }
+                >
                   2. Surat Pernyataan Serah Terima Manpower (PDF)
                 </span>
               </div>
@@ -3217,7 +3209,13 @@ export default function GenerateDocumentsClient({
                 ) : (
                   <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
                 )}
-                <span className={bastZipProgress.step === 3 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                <span
+                  className={
+                    bastZipProgress.step === 3
+                      ? "font-bold text-on-surface"
+                      : "text-on-surface-variant"
+                  }
+                >
                   3. Mengumpulkan Berkas Sertifikat Kandidat
                 </span>
               </div>
@@ -3230,297 +3228,45 @@ export default function GenerateDocumentsClient({
                 ) : (
                   <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
                 )}
-                <span className={bastZipProgress.step === 4 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                <span
+                  className={
+                    bastZipProgress.step === 4
+                      ? "font-bold text-on-surface"
+                      : "text-on-surface-variant"
+                  }
+                >
                   4. Mengumpulkan Berkas Bukti Validasi Recruiter
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                {bastZipProgress.step >= 5 && bastZipProgress.percent === 100 ? (
+                {bastZipProgress.step >= 5 &&
+                bastZipProgress.percent === 100 ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 ) : bastZipProgress.step === 5 ? (
                   <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
                 ) : (
                   <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
                 )}
-                <span className={bastZipProgress.step === 5 ? "font-bold text-on-surface" : "text-on-surface-variant"}>
+                <span
+                  className={
+                    bastZipProgress.step === 5
+                      ? "font-bold text-on-surface"
+                      : "text-on-surface-variant"
+                  }
+                >
                   5. Mengompresi dan Mengunduh Bundel ZIP
                 </span>
               </div>
             </div>
 
             <p className="text-[11px] text-center text-on-surface-variant italic">
-              {bastZipProgress.message || "Mohon menunggu hingga seluruh berkas terkumpul..."}
+              {bastZipProgress.message ||
+                "Mohon menunggu hingga seluruh berkas terkumpul..."}
             </p>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// =========================================================================
-// Offering Letter Preview Component
-// =========================================================================
-function OfferingLetterPreview({
-  olType,
-  nomorSurat,
-  perihal,
-  candidateFullName,
-  posisi,
-  pointOfHire,
-  area,
-  masaKontrak,
-  rosterJamKerja,
-  tanggungJawab,
-  hak,
-  benefit,
-  bpjsPerusahaan,
-  bpjsKaryawan,
-  formattedDate,
-  olDocTitle,
-  olDocSubtitle,
-  logoSrc,
-}: {
-  olType: "employee" | "internship";
-  nomorSurat: string;
-  perihal: string;
-  candidateFullName: string;
-  posisi: string;
-  pointOfHire: string;
-  area: string;
-  masaKontrak: string;
-  rosterJamKerja: string;
-  tanggungJawab: string[];
-  hak: string[];
-  benefit: string[];
-  bpjsPerusahaan: { label: string; value: string }[];
-  bpjsKaryawan: { label: string; value: string }[];
-  formattedDate: string;
-  olDocTitle: string;
-  olDocSubtitle: string;
-  logoSrc?: string;
-}) {
-  return (
-    <div className="w-[720px] bg-white px-10 py-6 text-black font-serif shadow-md border rounded-sm" style={{ fontSize: "13px", lineHeight: "1.5" }}>
-      {/* Header Logo (Top Right) */}
-      <table className="w-full mb-2">
-        <tbody>
-          <tr>
-            <td className="text-right p-0">
-              <div className="inline-block text-center">
-                <img
-                  src={logoSrc || "/logo_company.png"}
-                  alt="Logo PT Dian Pandu Pratama"
-                  className="w-14 h-11 object-contain mx-auto mb-0.5"
-                />
-                <p className="text-[11px] font-bold lowercase tracking-wide text-neutral-800">
-                  dian pandu pratama
-                </p>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* Title (Only for internship OL) */}
-      {olType === "internship" && (
-        <div className="text-center mb-3.5">
-          <h1 className="text-sm font-bold uppercase tracking-wide">SURAT PENAWARAN MAGANG</h1>
-          <p className="text-xs font-bold tracking-wide">(OFFERING LETTER)</p>
-        </div>
-      )}
-
-      {/* Nomor & Perihal */}
-      <div className="mb-3 text-sm">
-        <table className="w-full">
-          <tbody>
-            <tr>
-              <td className="w-[70px] py-0.5 align-top">No.</td>
-              <td className="w-4 py-0.5 align-top">:</td>
-              <td className="py-0.5 font-bold">{nomorSurat || "......"}</td>
-            </tr>
-            <tr>
-              <td className="py-0.5 align-top">Perihal</td>
-              <td className="py-0.5 align-top">:</td>
-              <td className="py-0.5 font-bold">{perihal}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* Body Text */}
-      <div className="mb-2.5 text-sm leading-relaxed text-justify">
-        <p>
-          Sebagai tindak lanjut proses rekrutmen di PT Dian Pandu Pratama, berikut kami informasikan perincian hak dan benefit serta tugas dan tanggung jawab calon karyawan sebagaimana yang tercantum dalam kontrak kerja sebagai berikut:
-        </p>
-      </div>
-
-      {/* Detail Fields */}
-      <div className="mb-2.5 text-sm">
-        <table className="w-full">
-          <tbody>
-            <tr>
-              <td className="w-[140px] py-0.5 align-top">Nama</td>
-              <td className="w-4 py-0.5 align-top">:</td>
-              <td className="py-0.5">{candidateFullName}</td>
-            </tr>
-            <tr>
-              <td className="py-0.5 align-top">Posisi</td>
-              <td className="py-0.5 align-top">:</td>
-              <td className="py-0.5">{posisi}</td>
-            </tr>
-            {olType === "employee" && (
-              <>
-                <tr>
-                  <td className="py-0.5 align-top">Masa Kontrak</td>
-                  <td className="py-0.5 align-top">:</td>
-                  <td className="py-0.5">{masaKontrak || "-"}</td>
-                </tr>
-                <tr>
-                  <td className="py-0.5 align-top">Point Of Hire</td>
-                  <td className="py-0.5 align-top">:</td>
-                  <td className="py-0.5">{pointOfHire || "-"}</td>
-                </tr>
-                <tr>
-                  <td className="py-0.5 align-top">Area</td>
-                  <td className="py-0.5 align-top">:</td>
-                  <td className="py-0.5">{area || "-"}</td>
-                </tr>
-                <tr>
-                  <td className="py-0.5 align-top">Roster & Jam Kerja</td>
-                  <td className="py-0.5 align-top">:</td>
-                  <td className="py-0.5 text-justify">{rosterJamKerja}</td>
-                </tr>
-              </>
-            )}
-            {olType === "internship" && (
-              <>
-                <tr>
-                  <td className="py-0.5 align-top">Area</td>
-                  <td className="py-0.5 align-top">:</td>
-                  <td className="py-0.5">{area || "-"}</td>
-                </tr>
-                <tr>
-                  <td className="py-0.5 align-top">Masa Kontrak</td>
-                  <td className="py-0.5 align-top">:</td>
-                  <td className="py-0.5">{masaKontrak || "-"}</td>
-                </tr>
-              </>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Transition text */}
-      <p className="mb-2 text-sm">
-        {olType === "employee"
-          ? "Kepada calon karyawan tersebut akan diberikan tanggung jawab dan memiliki Hak sebagai berikut:"
-          : "Kepada calon Magang tersebut akan diberikan hak serta tugas dan tanggung jawab sebagai berikut:"
-        }
-      </p>
-
-      {/* Tanggung Jawab */}
-      <div className="mb-2 text-sm">
-        <p className="font-bold mb-0.5">
-          {olType === "employee" ? "Tanggung Jawab:" : "Tugas dan Tanggung Jawab:"}
-        </p>
-        <div className="pl-4">
-          {tanggungJawab.map((item, idx) => (
-            <p key={idx} className="my-0.5">
-              {idx + 1}. &nbsp;{item}
-            </p>
-          ))}
-        </div>
-      </div>
-
-      {/* Hak */}
-      <div className="mb-2 text-sm">
-        <p className="font-bold mb-0.5">Hak:</p>
-        <div className="pl-4">
-          {hak.map((item, idx) => (
-            <p key={idx} className="my-0.5">
-              {idx + 1}. &nbsp;{item}
-            </p>
-          ))}
-        </div>
-      </div>
-
-      {/* Benefit - shown for both internship and employee if added */}
-      {benefit.length > 0 && (
-        <div className="mb-2 text-sm">
-          <p className="font-bold mb-0.5">Benefit:</p>
-          <div className="pl-4">
-            {benefit.map((item, idx) => (
-              <p key={idx} className="my-0.5">
-                {idx + 1}. &nbsp;{item}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* BPJS Section - Employee only */}
-      {olType === "employee" && (
-        <div className="mb-3 text-sm">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="font-bold mb-0.5">Ditanggung Perusahaan:</p>
-              {bpjsPerusahaan.map((item, idx) => (
-                <p key={idx} className="text-xs my-0.5">
-                  {idx + 1}. {item.label} : {item.value}
-                </p>
-              ))}
-            </div>
-            <div>
-              <p className="font-bold mb-0.5">Ditanggung Karyawan:</p>
-              {bpjsKaryawan.map((item, idx) => (
-                <p key={idx} className="text-xs my-0.5">
-                  {idx + 1}. {item.label}{item.value ? ` : ${item.value}` : ""}
-                </p>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Closing */}
-      <div className="mb-3 text-sm text-justify">
-        {olType === "employee" ? (
-          <>
-            <p className="mb-0.5">Demikian Surat Penawaran Kerja ini kami sampaikan.</p>
-            <p>Atas perhatian dan kesediaan Saudara untuk bergabung bersama PT Dian Pandu Pratama, kami ucapkan terima kasih.</p>
-          </>
-        ) : (
-          <p>
-            Demikian <em>Offering Letter</em> ini kami sampaikan. Apabila Anda setuju dengan penawaran yang diberikan, silahkan tanda tangani <em>offering letter</em> ini di tempat yang sudah disediakan. Apabila masih ada hal-hal yang ingin ditanyakan seputar penawaran kerja ini, silahkan menghubungi tim <em>recruitment</em> untuk pertanyaan lebih lanjut. Atas perhatian dan Kerjasama kami ucapkan terima kasih.
-          </p>
-        )}
-      </div>
-
-      {/* Signature */}
-      <p className="text-sm mb-1">Cikarang, {formattedDate}</p>
-      <div className="flex justify-between items-end text-sm pt-1">
-        <div>
-          <p className="mb-14">Mengetahui,</p>
-          <p className="font-bold">
-            {olType === "employee" ? "Mursidi" : "Felix Deo Gratias"}
-          </p>
-          <p className="text-xs text-neutral-600 font-sans">
-            {olType === "employee"
-              ? "Recruitment & People Development Dept. Head"
-              : "Koordinator Recruitment HO"
-            }
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="mb-14">Menyetujui,</p>
-          <p className="font-bold italic">{candidateFullName}</p>
-          <p className="text-xs text-neutral-600 font-sans">
-            {olType === "employee" ? "Calon Karyawan" : "Calon Karyawan Magang"}
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

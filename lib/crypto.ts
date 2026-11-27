@@ -151,12 +151,43 @@ export function hashField(value?: string | null): string | null {
  */
 export function maskNik(nik?: string | null): string {
   if (!nik) return "-";
-  const decrypted = decryptField(nik) || "";
-  const clean = decrypted.trim();
-  if (clean.length < 8) return clean;
-  const prefix = clean.slice(0, 4);
-  const suffix = clean.slice(-4);
-  const stars = "*".repeat(clean.length - 8);
-  return `${prefix}${stars}${suffix}`;
+  try {
+    const decrypted = decryptField(nik) || "";
+    const clean = decrypted.trim();
+    if (clean.length < 8) return clean;
+    const prefix = clean.slice(0, 4);
+    const suffix = clean.slice(-4);
+    const stars = "*".repeat(clean.length - 8);
+    return `${prefix}${stars}${suffix}`;
+  } catch {
+    return "-";
+  }
+}
+
+/**
+ * Normalisasi profil kandidat dengan mendekripsi field terproteksi (NIK dan KK).
+ * Memastikan string asli 16 digit ditampilkan di antarmuka recruiter dan generator berkas.
+ */
+export function normalizeCandidateProfile<T extends { nik?: string | null; kk?: string | null }>(
+  profile: T | null | undefined
+): T | null | undefined {
+  if (!profile) return profile;
+  let nik = profile.nik;
+  let kk = profile.kk;
+  try {
+    nik = profile.nik ? decryptField(profile.nik) : profile.nik;
+  } catch {
+    nik = profile.nik;
+  }
+  try {
+    kk = profile.kk ? decryptField(profile.kk) : profile.kk;
+  } catch {
+    kk = profile.kk;
+  }
+  return {
+    ...profile,
+    nik,
+    kk,
+  };
 }
 

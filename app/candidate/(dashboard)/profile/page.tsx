@@ -375,9 +375,11 @@ export default function CandidateProfilePage() {
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-on-surface uppercase tracking-wider">No NIK <span className="text-status-error">*</span></label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={16}
                     value={formData.nik}
-                    onChange={(e) => handleInputChange("nik", e.target.value)}
+                    onChange={(e) => handleInputChange("nik", e.target.value.replace(/\D/g, "").slice(0, 16))}
                     className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                     placeholder="16 Digit NIK"
                     required
@@ -386,9 +388,11 @@ export default function CandidateProfilePage() {
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-on-surface uppercase tracking-wider">No KK <span className="text-status-error">*</span></label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={16}
                     value={formData.kk}
-                    onChange={(e) => handleInputChange("kk", e.target.value)}
+                    onChange={(e) => handleInputChange("kk", e.target.value.replace(/\D/g, "").slice(0, 16))}
                     className="w-full px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm font-bold text-black focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                     placeholder="16 Digit No KK"
                     required

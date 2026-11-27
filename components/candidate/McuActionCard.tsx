@@ -43,11 +43,16 @@ export default function McuActionCard({
   const mcuDate = mcuData?.date;
   const candidateProof = mcuData?.candidateProof;
 
-  const downloadPengantarUrl = pengantarFile?.base64
-    ? pengantarFile.base64
-    : pengantarFile?.objectKey
-      ? `/api/file?key=${encodeURIComponent(pengantarFile.objectKey)}`
-      : null;
+  let downloadPengantarUrl: string | null = null;
+  if (typeof pengantarFile === "string" && pengantarFile) {
+    downloadPengantarUrl = pengantarFile;
+  } else if (pengantarFile?.base64) {
+    downloadPengantarUrl = pengantarFile.base64;
+  } else if (pengantarFile?.url) {
+    downloadPengantarUrl = pengantarFile.url;
+  } else if (pengantarFile?.objectKey) {
+    downloadPengantarUrl = `/api/file?key=${encodeURIComponent(pengantarFile.objectKey)}`;
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -179,7 +184,11 @@ export default function McuActionCard({
         {/* Download Surat Pengantar Button */}
         {downloadPengantarUrl && (
           <a
-            href={downloadPengantarUrl}
+            href={
+              downloadPengantarUrl.startsWith("/api/file?") && !downloadPengantarUrl.includes("download=")
+                ? `${downloadPengantarUrl}&download=1`
+                : downloadPengantarUrl
+            }
             target="_blank"
             rel="noopener noreferrer"
             download={pengantarFile?.name || "Surat_Pengantar_MCU.pdf"}

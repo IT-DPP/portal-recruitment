@@ -7,9 +7,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { requireStaffSession } from "@/lib/auth-guard";
 import { recordAuditLog } from "@/lib/audit-log";
-import { encryptField, decryptField, hashField } from "@/lib/crypto";
+import { encryptField, decryptField, hashField, normalizeCandidateProfile } from "@/lib/crypto";
+import { validateStageGateTransition } from "@/lib/stage-gate-validation";
 import bcrypt from "bcryptjs";
 import {
+  ApplicationStatus,
   AssessmentStage,
   AssessmentResult,
   McuFitnessStatus,
@@ -652,6 +654,9 @@ export async function publishJob(jobId: string, timelines: any[]) {
   }
 }
 
+/**
+ * Validasi ketat persyaratan form & berkas sebelum memindahkan kandidat ke tahap selanjutnya (Stage Gate Validation).
+ */
 export async function updateApplicationStage(appId: string, targetStageId: string, note?: string) {
   const auth = await requireStaffSession();
   if (!auth.authorized) {
@@ -668,28 +673,42 @@ export async function updateApplicationStage(appId: string, targetStageId: strin
       return { success: false, error: "Application not found" };
     }
 
-    // Backend Guard: Recruiter cannot advance candidate from Offering Letter stage before candidate accepts
-    const currentStageId = app.currentStageId || "";
-    const isCurrentOfferingStage = currentStageId === "stage_6";
+    // Backend Guard: Recruiter cannot advance or resurrect candidate whose application is already REJECTED (Archived)
+    if (app.status === "REJECTED") {
+      return {
+        success: false,
+        error: "Lamaran kandidat ini telah ditolak (Archived). Kandidat yang telah ditolak tidak dapat dipindahkan kembali ke pipeline rekrutmen aktif."
+      };
+    }
 
-    if (isCurrentOfferingStage && targetStageId !== "stage_6" && targetStageId !== "Rejected") {
-      let stageData: any = {};
-      if (app.stageData) {
-        try {
-          stageData = typeof app.stageData === "string" ? JSON.parse(app.stageData) : app.stageData;
-        } catch {
-          stageData = {};
-        }
-      }
-      const offering = stageData.offeringLetter || {};
-      const candidateStatus = offering.candidateResponse?.status;
+    // Stage Gate Validation: Enforce that all mandatory forms & proofs are completed before advancing
+    const masterStages = await prisma.masterPipelineStage.findMany({
+      orderBy: { orderIndex: "asc" }
+    });
+    const currentStageObj = masterStages.find((s) => s.id === app.currentStageId);
+    const targetStageObj = masterStages.find((s) => s.id === targetStageId);
 
-      if (candidateStatus !== "ACCEPTED") {
-        return {
-          success: false,
-          error: "Kandidat belum menyetujui dan menandatangani Offering Letter. Pemindahan ke tahap berikutnya tidak diizinkan sebelum ada persetujuan resmi dari kandidat."
-        };
-      }
+    const currentOrder = currentStageObj?.orderIndex ?? 1;
+    const targetOrder =
+      targetStageId === "Hired"
+        ? 999
+        : targetStageId === "Rejected"
+        ? -1
+        : (targetStageObj?.orderIndex ?? currentOrder + 1);
+
+    const gateValidation = validateStageGateTransition(
+      app.currentStageId || "stage_1",
+      targetStageId,
+      currentOrder,
+      targetOrder,
+      app.stageData
+    );
+
+    if (!gateValidation.valid) {
+      return {
+        success: false,
+        error: gateValidation.error || "Validasi tahap rekrutmen belum terpenuhi."
+      };
     }
 
     let targetStageName = targetStageId;
@@ -700,7 +719,7 @@ export async function updateApplicationStage(appId: string, targetStageId: strin
       targetStageName = stage?.name || targetStageId;
     }
 
-    let newStatus = app.status;
+    let newStatus: ApplicationStatus = app.status;
     let newCurrentStageId: string | null = targetStageId;
 
     if (targetStageId === "Rejected") {
@@ -1004,8 +1023,9 @@ export async function syncStageDataToRelational(appId: string, stageData: any) {
           status,
           issuedDate: issuedDate && !isNaN(issuedDate.getTime()) ? issuedDate : null,
           signedAt: signedAt && !isNaN(signedAt.getTime()) ? signedAt : null,
-          documentUrl: typeof ol.file === "string" ? ol.file : null,
-          signedDocumentUrl: ol.candidateResponse?.signedFile?.url || null,
+          documentUrl: typeof ol.file === "string" ? ol.file : (ol.file?.base64 || ol.file?.url || null),
+          documentKey: typeof ol.file === "object" ? (ol.file?.objectKey || null) : null,
+          signedDocumentUrl: ol.candidateResponse?.signedFile?.url || ol.candidateResponse?.signedFile?.base64 || null,
           signedDocumentKey: ol.candidateResponse?.signedFile?.objectKey || null,
           candidateNote: ol.candidateResponse?.note || null,
           baseSalaryEncrypted: ol.salary ? encryptField(String(ol.salary)) : null,
@@ -1015,8 +1035,9 @@ export async function syncStageDataToRelational(appId: string, stageData: any) {
           status,
           issuedDate: issuedDate && !isNaN(issuedDate.getTime()) ? issuedDate : undefined,
           signedAt: signedAt && !isNaN(signedAt.getTime()) ? signedAt : undefined,
-          documentUrl: typeof ol.file === "string" ? ol.file : undefined,
-          signedDocumentUrl: ol.candidateResponse?.signedFile?.url || undefined,
+          documentUrl: typeof ol.file === "string" ? ol.file : (ol.file?.base64 || ol.file?.url || undefined),
+          documentKey: typeof ol.file === "object" ? (ol.file?.objectKey || undefined) : undefined,
+          signedDocumentUrl: ol.candidateResponse?.signedFile?.url || ol.candidateResponse?.signedFile?.base64 || undefined,
           signedDocumentKey: ol.candidateResponse?.signedFile?.objectKey || undefined,
           candidateNote: ol.candidateResponse?.note || undefined,
         },
@@ -1523,7 +1544,8 @@ export async function getPaginatedTalentPool({
 
     if (search && search.trim()) {
       const q = search.trim();
-      const searchConditions = [
+      const blindHash = hashField(q);
+      const searchConditions: any[] = [
         { nik: { contains: q, mode: "insensitive" } },
         { whatsapp: { contains: q, mode: "insensitive" } },
         { user: { name: { contains: q, mode: "insensitive" } } },
@@ -1541,6 +1563,9 @@ export async function getPaginatedTalentPool({
           }
         }
       ];
+      if (blindHash) {
+        searchConditions.push({ nikHash: blindHash });
+      }
 
       if (where.OR) {
         where.AND = [
@@ -1605,8 +1630,20 @@ export async function getPaginatedTalentPool({
         }
       }
 
+      const isComplete = Boolean(
+        c.isProfileCompleted ||
+        (c.user?.name &&
+          (c.nik ? decryptField(c.nik) : "")?.replace(/\D/g, "").length === 16 &&
+          c.whatsapp &&
+          c.birthDate &&
+          (c.domicileAddress || c.currentAddress) &&
+          c.latestEducation)
+      );
+
       return {
         ...c,
+        nik: decryptField(c.nik) || c.nik,
+        kk: decryptField(c.kk) || c.kk,
         fullName: c.user?.name || "Unknown",
         email: c.user?.email || "-",
         whatsapp: c.whatsapp || "-",
@@ -1614,7 +1651,8 @@ export async function getPaginatedTalentPool({
         lastJobApplied: lastJobApplied || "Belum Ada Lamaran",
         lastStage: lastStage || "Belum Melamar",
         hasApplied: !!lastApp,
-        filePhoto: photoUrl ? { base64: photoUrl } : null
+        filePhoto: photoUrl ? { base64: photoUrl } : null,
+        isProfileCompleted: isComplete,
       };
     });
 
@@ -1689,14 +1727,19 @@ export async function getPaginatedArchivedCandidates({
 
     if (search && search.trim()) {
       const q = search.trim();
+      const blindHash = hashField(q);
+      const searchConditions: any[] = [
+        { nik: { contains: q, mode: "insensitive" } },
+        { whatsapp: { contains: q, mode: "insensitive" } },
+        { user: { name: { contains: q, mode: "insensitive" } } },
+        { user: { email: { contains: q, mode: "insensitive" } } },
+      ];
+      if (blindHash) {
+        searchConditions.push({ nikHash: blindHash });
+      }
       where.candidateProfile = {
         ...where.candidateProfile,
-        OR: [
-          { nik: { contains: q, mode: "insensitive" } },
-          { whatsapp: { contains: q, mode: "insensitive" } },
-          { user: { name: { contains: q, mode: "insensitive" } } },
-          { user: { email: { contains: q, mode: "insensitive" } } },
-        ]
+        OR: searchConditions,
       };
     }
 
@@ -1743,7 +1786,10 @@ export async function getPaginatedArchivedCandidates({
 
     return {
       success: true,
-      data: applications,
+      data: applications.map((app) => ({
+        ...app,
+        candidateProfile: normalizeCandidateProfile(app.candidateProfile),
+      })),
       allPositions,
       pagination: {
         totalItems,
@@ -1776,12 +1822,17 @@ export async function getPaginatedBlacklistedCandidates({
     const where: any = { isBlacklisted: true };
     if (search && search.trim()) {
       const q = search.trim();
-      where.OR = [
+      const blindHash = hashField(q);
+      const searchConditions: any[] = [
         { nik: { contains: q, mode: "insensitive" } },
         { whatsapp: { contains: q, mode: "insensitive" } },
         { user: { name: { contains: q, mode: "insensitive" } } },
         { user: { email: { contains: q, mode: "insensitive" } } },
       ];
+      if (blindHash) {
+        searchConditions.push({ nikHash: blindHash });
+      }
+      where.OR = searchConditions;
     }
 
     const [totalItems, profiles] = await Promise.all([
@@ -1908,11 +1959,16 @@ export async function getPaginatedInterviewsDashboardData({
 
     if (search && search.trim()) {
       const q = search.trim();
+      const blindHash = hashField(q);
+      const searchConditions: any[] = [
+        { nik: { contains: q, mode: "insensitive" } },
+        { user: { name: { contains: q, mode: "insensitive" } } },
+      ];
+      if (blindHash) {
+        searchConditions.push({ nikHash: blindHash });
+      }
       where.candidateProfile = {
-        OR: [
-          { nik: { contains: q, mode: "insensitive" } },
-          { user: { name: { contains: q, mode: "insensitive" } } },
-        ]
+        OR: searchConditions,
       };
     }
 
@@ -2197,11 +2253,16 @@ export async function getFilteredPipelineData({
 
     if (search && search.trim()) {
       const q = search.trim();
+      const blindHash = hashField(q);
+      const searchConditions: any[] = [
+        { nik: { contains: q, mode: "insensitive" } },
+        { user: { name: { contains: q, mode: "insensitive" } } }
+      ];
+      if (blindHash) {
+        searchConditions.push({ nikHash: blindHash });
+      }
       appWhere.candidateProfile = {
-        OR: [
-          { nik: { contains: q, mode: "insensitive" } },
-          { user: { name: { contains: q, mode: "insensitive" } } }
-        ]
+        OR: searchConditions
       };
     }
 
@@ -2239,7 +2300,10 @@ export async function getFilteredPipelineData({
       success: true,
       data: {
         jobs,
-        applications,
+        applications: applications.map((app) => ({
+          ...app,
+          candidateProfile: normalizeCandidateProfile(app.candidateProfile),
+        })),
         customers,
         stages: allStages
       }
@@ -2255,21 +2319,6 @@ export async function getFilteredPipelineData({
  * FASE 3: BULK ACTIONS & RECRUITER EFFICIENCY
  * ==============================================================================
  */
-
-export interface BulkCandidateInput {
-  nik: string;
-  fullName: string;
-  kk?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  birthPlace?: string | null;
-  birthDate?: string | null;
-  gender?: string | null;
-  latestEducation?: string | null;
-  educationInstitution?: string | null;
-  domicileAddress?: string | null;
-  notes?: string | null;
-}
 
 /**
  * Memindahkan banyak aplikasi kandidat sekaligus ke stage tertentu (Bulk Advance Stage).
@@ -2312,6 +2361,13 @@ export async function bulkAdvanceApplicationStage(
 
     for (const app of apps) {
       affectedJobIds.add(app.jobId);
+
+      // Guard: Kandidat yang sudah ditolak (REJECTED/Archived) tidak boleh dipindahkan ke pipeline aktif
+      if (app.status === "REJECTED") {
+        skippedErrors.push(`Kandidat ID ${app.id.slice(0, 8)}: Lamaran telah ditolak (Archived) dan tidak dapat dimajukan.`);
+        continue;
+      }
+
       const currentStageId = app.currentStageId || "";
       const isCurrentOfferingStage = currentStageId === "stage_6";
 
@@ -2332,7 +2388,7 @@ export async function bulkAdvanceApplicationStage(
         }
       }
 
-      let newStatus = app.status;
+      let newStatus: ApplicationStatus = app.status;
       let newCurrentStageId: string | null = targetStageId;
 
       if (targetStageId === "Rejected") {
@@ -2600,6 +2656,34 @@ export async function bulkAssignCandidatesToJob(
       return { success: false, error: "Lowongan tujuan tidak ditemukan." };
     }
 
+    // Guard: Kandidat yang datanya belum lengkap TIDAK BOLEH ditugaskan/diapply ke lowongan
+    const candidateProfiles = await prisma.candidateProfile.findMany({
+      where: { id: { in: candidateProfileIds } },
+      include: { user: true },
+    });
+
+    const incompleteCandidates = candidateProfiles.filter((p) => {
+      if (p.isProfileCompleted) return false;
+      const cleanNik = (p.nik ? decryptField(p.nik) : "")?.replace(/\D/g, "") || "";
+      const isComplete = Boolean(
+        p.user?.name &&
+        cleanNik.length === 16 &&
+        p.whatsapp &&
+        p.birthDate &&
+        (p.domicileAddress || p.currentAddress) &&
+        p.latestEducation
+      );
+      return !isComplete;
+    });
+
+    if (incompleteCandidates.length > 0) {
+      const names = incompleteCandidates.map((p) => p.user?.name || "Kandidat").join(", ");
+      return {
+        success: false,
+        error: `Kandidat "${names}" belum dapat ditugaskan ke lowongan karena data profil belum lengkap. Silakan lengkapi data profil kandidat (NIK 16 digit, Kontak WA, Tanggal Lahir, Domisili, dan Pendidikan) di menu Talent Pool terlebih dahulu.`,
+      };
+    }
+
     let assignedCount = 0;
     let skippedCount = 0;
 
@@ -2674,241 +2758,4 @@ export async function bulkAssignCandidatesToJob(
     console.error("bulkAssignCandidatesToJob Error:", error);
     return { success: false, error: "Gagal menugaskan kandidat ke lowongan." };
   }
-}
-
-/**
- * Import kandidat massal (Excel / CSV) dengan validasi NIK 16-digit, deduplikasi blind index (nikHash),
- * dan proteksi field-level encryption AES-256-GCM sesuai UU PDP.
- */
-export async function bulkImportCandidates(
-  jobId: string | null,
-  candidates: BulkCandidateInput[]
-) {
-  const auth = await requireStaffSession();
-  if (!auth.authorized) {
-    return { success: false, error: auth.error };
-  }
-
-  if (!Array.isArray(candidates) || candidates.length === 0) {
-    return { success: false, error: "Tidak ada data kandidat yang diberikan." };
-  }
-
-  if (candidates.length > 500) {
-    return { success: false, error: "Maksimal import per batch adalah 500 kandidat." };
-  }
-
-  let job: any = null;
-  if (jobId) {
-    job = await prisma.jobOpening.findUnique({
-      where: { id: jobId },
-      select: { id: true, positionName: true, status: true },
-    });
-    if (!job) {
-      return { success: false, error: "Lowongan tujuan tidak valid." };
-    }
-  }
-
-  let createdCount = 0;
-  let updatedCount = 0;
-  let existingAppsCount = 0;
-  const errors: string[] = [];
-
-  for (let i = 0; i < candidates.length; i++) {
-    const row = candidates[i];
-    const rowNum = i + 1;
-
-    const rawNik = (row.nik || "").toString().trim().replace(/\D/g, "");
-    const rawFullName = (row.fullName || "").toString().trim();
-
-    if (!rawNik || rawNik.length !== 16) {
-      errors.push(`Baris ${rowNum}: NIK "${row.nik || ""}" tidak valid (harus tepat 16 digit angka).`);
-      continue;
-    }
-
-    if (!rawFullName || rawFullName.length < 2) {
-      errors.push(`Baris ${rowNum}: Nama lengkap wajib diisi minimal 2 karakter.`);
-      continue;
-    }
-
-    try {
-      const nikHash = hashField(rawNik);
-      const encryptedNik = encryptField(rawNik);
-      const rawKk = (row.kk || "").toString().trim().replace(/\D/g, "");
-      const encryptedKk = rawKk && rawKk.length === 16 ? encryptField(rawKk) : null;
-
-      // Parse birth date
-      let parsedBirthDate: Date | null = null;
-      if (row.birthDate) {
-        const d = new Date(row.birthDate);
-        if (!isNaN(d.getTime())) {
-          parsedBirthDate = d;
-        }
-      }
-
-      // Format email
-      const userEmail =
-        (row.email || "").toString().trim() || `kandidat.${rawNik}@recruitment.dpp.co.id`;
-
-      // Cek apakah profil kandidat sudah ada berdasarkan nikHash atau enkripsi
-      let profile = await prisma.candidateProfile.findFirst({
-        where: {
-          OR: [
-            ...(nikHash ? [{ nikHash }] : []),
-            ...(encryptedNik ? [{ nik: encryptedNik }] : []),
-            { nik: rawNik },
-          ],
-        },
-        include: { user: true },
-      });
-
-      if (profile) {
-        await prisma.candidateProfile.update({
-          where: { id: profile.id },
-          data: {
-            nikHash: profile.nikHash || nikHash,
-            nik: encryptedNik,
-            kk: encryptedKk || profile.kk,
-            birthPlace: row.birthPlace?.toString().trim() || profile.birthPlace,
-            birthDate: parsedBirthDate || profile.birthDate,
-            gender: row.gender?.toString().trim() || profile.gender,
-            whatsapp: row.phone?.toString().trim() || profile.whatsapp,
-            latestEducation: row.latestEducation?.toString().trim() || profile.latestEducation,
-            educationInstitution: row.educationInstitution?.toString().trim() || profile.educationInstitution,
-            domicileAddress: row.domicileAddress?.toString().trim() || profile.domicileAddress,
-            isTalentPool: true,
-            isProfileCompleted: true,
-          },
-        });
-
-        if (profile.user && rawFullName) {
-          await prisma.user.update({
-            where: { id: profile.userId },
-            data: { name: rawFullName },
-          });
-        }
-
-        updatedCount++;
-      } else {
-        let user = await prisma.user.findUnique({
-          where: { email: userEmail },
-        });
-
-        if (!user) {
-          const defaultPasswordHash = await bcrypt.hash(rawNik, 10);
-          user = await prisma.user.create({
-            data: {
-              name: rawFullName,
-              email: userEmail,
-              password: defaultPasswordHash,
-              role: "CANDIDATE",
-            },
-          });
-        }
-
-        profile = await prisma.candidateProfile.create({
-          data: {
-            userId: user.id,
-            nik: encryptedNik,
-            nikHash,
-            kk: encryptedKk,
-            birthPlace: row.birthPlace?.toString().trim() || null,
-            birthDate: parsedBirthDate,
-            gender: row.gender?.toString().trim() || null,
-            whatsapp: row.phone?.toString().trim() || null,
-            latestEducation: row.latestEducation?.toString().trim() || null,
-            educationInstitution: row.educationInstitution?.toString().trim() || null,
-            domicileAddress: row.domicileAddress?.toString().trim() || null,
-            isProfileCompleted: true,
-            isTalentPool: true,
-          },
-          include: { user: true },
-        });
-
-        createdCount++;
-      }
-
-      // Jika jobId diberikan, daftarkan kandidat ke lowongan kerja pada Stage 1 (CV Screening)
-      if (jobId && profile) {
-        const existingApp = await prisma.application.findFirst({
-          where: {
-            jobId,
-            candidateProfileId: profile.id,
-            deletedAt: null,
-          },
-        });
-
-        if (existingApp) {
-          existingAppsCount++;
-        } else {
-          await prisma.application.create({
-            data: {
-              jobId,
-              candidateProfileId: profile.id,
-              currentStageId: "stage_1",
-              status: "ACTIVE",
-              stageData: {
-                bnspValidation: {
-                  isApproved: true,
-                  verifiedAt: new Date().toISOString(),
-                  notes: row.notes?.toString().trim() || "Import massal recruiter",
-                },
-              },
-              history: {
-                create: {
-                  stageId: "stage_1",
-                  stageName: "CV Screening",
-                  note: `Diinput massal oleh recruiter (${auth.user.name || auth.user.email})`,
-                },
-              },
-              assessments: {
-                create: {
-                  stageType: AssessmentStage.CV_SCREENING,
-                  result: AssessmentResult.PASSED,
-                  score: 100,
-                  feedback: "Disetujui otomatis melalui impor massal berkas staf.",
-                },
-              },
-            },
-          });
-        }
-      }
-    } catch (err: any) {
-      console.error(`Import error row ${rowNum}:`, err);
-      errors.push(`Baris ${rowNum} (${rawFullName}): ${err.message || "Gagal memproses data"}`);
-    }
-  }
-
-  if (jobId) {
-    revalidatePath(`/dashboard/job-openings/${jobId}`);
-  }
-  revalidatePath("/dashboard/pipeline");
-  revalidatePath("/dashboard/talent-pool");
-
-  await recordAuditLog({
-    actorId: auth.user.id,
-    actorEmail: auth.user.email,
-    actorRole: auth.user.role,
-    action: "BULK_CANDIDATE_IMPORTED",
-    entityType: jobId ? "JobOpening" : "CandidateProfile",
-    entityId: jobId || undefined,
-    metadata: {
-      totalRows: candidates.length,
-      createdCount,
-      updatedCount,
-      existingAppsCount,
-      errorsCount: errors.length,
-      jobId,
-    },
-  });
-
-  return {
-    success: true,
-    data: {
-      total: candidates.length,
-      created: createdCount,
-      updated: updatedCount,
-      existingApps: existingAppsCount,
-      errors,
-    },
-  };
 }

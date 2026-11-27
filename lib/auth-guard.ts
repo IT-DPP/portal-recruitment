@@ -86,6 +86,27 @@ export function isObjectKeyOwnedByUser(objectKey: string, userId: string): boole
   return normalized.startsWith(`candidates/${userId}/`);
 }
 
+/**
+ * Validate whether an application document key (such as Offering Letter, MCU Pengantar, etc.)
+ * belongs to a candidate's profile or their job application.
+ */
+export function isApplicationKeyOwnedByCandidate(
+  objectKey: string,
+  candidateProfileId: string,
+  applicationIds: string[] = []
+): boolean {
+  if (!objectKey || !candidateProfileId) return false;
+  const normalized = objectKey.replace(/^\/+/, "");
+  if (normalized.includes("..")) return false;
+  if (!normalized.startsWith("applications/")) return false;
+
+  const segments = normalized.split("/");
+  const targetId = segments[2];
+  if (!targetId) return false;
+
+  return targetId === candidateProfileId || applicationIds.includes(targetId);
+}
+
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   "application/pdf",
   "image/jpeg",

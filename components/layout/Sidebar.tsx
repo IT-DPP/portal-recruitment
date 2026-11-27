@@ -21,6 +21,7 @@ import {
   UserX,
   FileText,
   ShieldAlert,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -28,9 +29,16 @@ import { useSession, signOut } from "next-auth/react";
 interface SidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (val: boolean) => void;
+  isMobileOpen?: boolean;
+  setIsMobileOpen?: (val: boolean) => void;
 }
 
-export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
+export default function Sidebar({
+  isCollapsed,
+  setIsCollapsed,
+  isMobileOpen,
+  setIsMobileOpen,
+}: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
@@ -57,43 +65,108 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   const isMasterDataActive = pathname.includes("/settings/master-data");
 
   return (
-    <aside
-      className={`h-screen fixed left-0 top-0 bg-surface-container-lowest border-r border-table-border flex flex-col py-6 z-50 transition-all duration-300 ${isCollapsed ? "w-[80px]" : "w-[260px]"}`}
-    >
-      {/* Brand Header */}
-      <div
-        className={`mb-6 flex items-center ${isCollapsed ? "justify-center px-0" : "px-5"}`}
+    <>
+      {/* Mobile Drawer Backdrop */}
+      {isMobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-40 transition-opacity"
+          onClick={() => setIsMobileOpen?.(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`h-screen h-[100dvh] fixed left-0 top-0 bg-surface-container-lowest border-r border-table-border flex flex-col pt-4 pb-3 z-50 transition-all duration-300 ease-in-out ${
+          isCollapsed ? "w-[80px]" : "w-[260px]"
+        } ${
+          isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"
+        }`}
       >
-        <Link
-          href="/dashboard"
-          className={`flex items-center ${isCollapsed ? "justify-center" : ""}`}
-          aria-label="Dashboard PT Dian Pandu Pratama"
+        {/* Floating Collapse / Expand Toggle Button for Desktop (Top Edge) */}
+        <button
+          type="button"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="hidden md:flex absolute -right-3.5 top-5 w-7 h-7 bg-white border border-slate-300 text-slate-700 hover:text-primary hover:border-primary rounded-full items-center justify-center shadow-md hover:shadow-lg transition-all duration-200 z-50 cursor-pointer group"
+          title={isCollapsed ? "Perluas Sidebar" : "Perkecil Sidebar"}
+          aria-label={isCollapsed ? "Perluas Sidebar" : "Perkecil Sidebar"}
         >
           {isCollapsed ? (
-            <div className="w-10 h-10 bg-white rounded-xl border border-slate-200/80 p-1 flex items-center justify-center shrink-0 shadow-2xs hover:border-[#D9232A]/40 transition-colors">
-              <Image
-                src="/images/branding/dpp-icon.png"
-                alt="Logo DPP"
-                width={36}
-                height={36}
-                className="w-7 h-7 object-contain"
-                priority
-                unoptimized
-              />
-            </div>
+            <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
           ) : (
-            <Image
-              src="/images/branding/dpp-logo-new.png"
-              alt="Logo PT Dian Pandu Pratama"
-              width={180}
-              height={78}
-              className="h-10 w-auto object-contain"
-              priority
-              unoptimized
-            />
+            <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
           )}
-        </Link>
-      </div>
+        </button>
+
+        {/* Brand Header with Logo + E Recruitment PT Dian Pandu Pratama */}
+        <div
+          className={`mb-5 flex items-center shrink-0 ${
+            isCollapsed ? "justify-center px-0" : "px-4 justify-between"
+          }`}
+        >
+          {isCollapsed ? (
+            <Link
+              href="/dashboard"
+              className="flex items-center justify-center group"
+              title="E-Recruitment PT Dian Pandu Pratama"
+              aria-label="E-Recruitment PT Dian Pandu Pratama"
+              onClick={() => setIsMobileOpen?.(false)}
+            >
+              <div className="w-10 h-10 bg-white rounded-md border border-slate-200/90 p-1 flex items-center justify-center shrink-0 shadow-2xs group-hover:border-[#D9232A]/50 transition-colors">
+                <Image
+                  src="/images/branding/dpp-icon.png"
+                  alt="Logo PT Dian Pandu Pratama"
+                  width={36}
+                  height={36}
+                  className="w-7 h-7 object-contain"
+                  priority
+                  unoptimized
+                />
+              </div>
+            </Link>
+          ) : (
+            <div className="flex items-center justify-between w-full">
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-3 min-w-0 group"
+                aria-label="E-Recruitment PT Dian Pandu Pratama"
+                onClick={() => setIsMobileOpen?.(false)}
+              >
+                <div className="w-10 h-10 bg-white rounded-md border border-slate-200/90 p-1 flex items-center justify-center shrink-0 shadow-2xs group-hover:border-[#D9232A]/50 transition-colors">
+                  <Image
+                    src="/images/branding/dpp-icon.png"
+                    alt="Logo PT Dian Pandu Pratama"
+                    width={36}
+                    height={36}
+                    className="w-7 h-7 object-contain"
+                    priority
+                    unoptimized
+                  />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-[13px] tracking-tight text-slate-900 leading-tight">
+                      E-Recruitment
+                    </span>
+                    <span className="px-1 py-0.2 text-[8px] font-bold bg-red-100 text-[#D9232A] rounded">
+                      DPP
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-500 truncate leading-tight mt-0.5">
+                    PT Dian Pandu Pratama
+                  </span>
+                </div>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setIsMobileOpen?.(false)}
+                className="md:hidden p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+                aria-label="Tutup navigasi"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+        </div>
 
       {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto min-h-0 py-2 space-y-1">
@@ -373,30 +446,23 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         </div>
       </nav>
 
-      {/* Footer Settings & Support */}
-      <div className="border-t border-table-border pt-4 px-3 space-y-2">
+      {/* Footer Sign Out */}
+      <div className="shrink-0 border-t border-table-border p-3 pb-6 md:pb-3 mt-auto bg-surface-container-lowest">
         <button
+          type="button"
           onClick={handleLogout}
-          className={`w-full flex items-center px-3 py-2.5 rounded-lg text-status-error hover:bg-red-50/50 transition-colors duration-200 focus:outline-none cursor-pointer ${isCollapsed ? "justify-center" : ""}`}
+          className={`w-full flex items-center px-3 py-2.5 rounded-md text-status-error hover:bg-red-50/70 border border-transparent hover:border-red-200 transition-colors duration-200 focus:outline-none cursor-pointer ${
+            isCollapsed ? "justify-center" : ""
+          }`}
           title={isCollapsed ? "Sign Out" : undefined}
         >
-          <LogOut className={`w-5 h-5 shrink-0 ${isCollapsed ? "" : "mr-3"}`} />
+          <LogOut className={`w-5 h-5 shrink-0 text-primary ${isCollapsed ? "" : "mr-3"}`} />
           {!isCollapsed && (
-            <span className="font-sans text-xs font-semibold">Sign Out</span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex w-full items-center justify-center py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
-        >
-          {isCollapsed ? (
-            <ChevronRight className="w-5 h-5" />
-          ) : (
-            <ChevronLeft className="w-5 h-5" />
+            <span className="font-sans text-xs font-bold text-primary">Sign Out</span>
           )}
         </button>
       </div>
     </aside>
-  );
+  </>
+);
 }

@@ -383,29 +383,27 @@ async function runEndToEndCheck() {
   }
 
   // ----------------------------------------------------------------------------
-  // 7. CEK FITUR FASE 3 (BULK ACTIONS & EXCEL TEMPLATE)
+  // 7. CEK FITUR FASE 3 (PIPELINE ACTIONS)
   // ----------------------------------------------------------------------------
-  console.log("\n--- [7] Memeriksa Fitur Fase 3 (Bulk Actions & Excel Template) ---");
+  console.log("\n--- [7] Memeriksa Fitur Pipeline Server Actions ---");
   try {
     const {
       bulkAdvanceApplicationStage,
       bulkRejectApplications,
       bulkAddToTalentPool,
       bulkAssignCandidatesToJob,
-      bulkImportCandidates,
     } = await import("../app/actions/job");
 
     if (
       typeof bulkAdvanceApplicationStage === "function" &&
       typeof bulkRejectApplications === "function" &&
       typeof bulkAddToTalentPool === "function" &&
-      typeof bulkAssignCandidatesToJob === "function" &&
-      typeof bulkImportCandidates === "function"
+      typeof bulkAssignCandidatesToJob === "function"
     ) {
       report(
         "Fase 3 Server Actions Export",
         true,
-        "5 Server Actions (bulkAdvance, bulkReject, bulkTalentPool, bulkAssign, bulkImport) terdaftar & valid"
+        "4 Server Actions (bulkAdvance, bulkReject, bulkTalentPool, bulkAssign) terdaftar & valid"
       );
     } else {
       report("Fase 3 Server Actions Export", false, "Salah satu Server Action Fase 3 belum terdefinisi");

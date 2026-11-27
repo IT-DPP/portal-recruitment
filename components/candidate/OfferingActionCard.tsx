@@ -59,11 +59,55 @@ export default function OfferingActionCard({
   const offeringFile = offeringData?.file;
   const offeringDate = offeringData?.date;
 
-  const downloadUrl = offeringFile?.base64
-    ? offeringFile.base64
-    : offeringFile?.objectKey
-    ? `/api/file?key=${encodeURIComponent(offeringFile.objectKey)}`
-    : null;
+  // Resolve download URL across all storage representations (raw URL, base64 data URI, objectKey, relational documentKey)
+  let downloadUrl: string | null = null;
+  if (typeof offeringFile === "string" && offeringFile) {
+    downloadUrl = offeringFile;
+  } else if (offeringFile?.base64) {
+    downloadUrl = offeringFile.base64;
+  } else if (offeringFile?.url) {
+    downloadUrl = offeringFile.url;
+  } else if (offeringFile?.objectKey) {
+    downloadUrl = `/api/file?key=${encodeURIComponent(offeringFile.objectKey)}`;
+  } else if (offeringData?.documentUrl) {
+    downloadUrl = offeringData.documentUrl;
+  } else if (offeringData?.documentKey) {
+    downloadUrl = `/api/file?key=${encodeURIComponent(offeringData.documentKey)}`;
+  }
+
+  const offeringFileName =
+    (typeof offeringFile === "object" ? offeringFile?.name : null) ||
+    "Offering_Letter.pdf";
+
+  const handleDownloadOffering = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!downloadUrl) return;
+
+    // Handle base64 data URI directly by converting to Blob to prevent browser navigation block
+    if (downloadUrl.startsWith("data:")) {
+      e.preventDefault();
+      try {
+        const parts = downloadUrl.split(";base64,");
+        const contentType = parts[0].split(":")[1] || "application/pdf";
+        const byteCharacters = atob(parts[1]);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: contentType });
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = offeringFileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      } catch (err) {
+        console.error("Failed to download data URI:", err);
+      }
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -248,7 +292,7 @@ export default function OfferingActionCard({
     <div className="bg-gradient-to-br from-blue-50/50 via-white to-indigo-50/40 rounded-2xl border-2 border-blue-200 p-6 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-blue-100">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-sm shrink-0">
             <FileText className="w-5 h-5" />
           </div>
           <div>
@@ -281,14 +325,21 @@ export default function OfferingActionCard({
         {/* Download Button for Candidate */}
         {downloadUrl && (
           <a
-            href={downloadUrl}
+            href={
+              downloadUrl.startsWith("/api/file?") && !downloadUrl.includes("download=")
+                ? `${downloadUrl}&download=1`
+                : downloadUrl
+            }
+            onClick={handleDownloadOffering}
             target="_blank"
             rel="noopener noreferrer"
-            download={offeringFile?.name || "Offering_Letter.pdf"}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 shadow-sm transition-all hover:border-blue-300 shrink-0"
+            download={offeringFileName}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 shadow-sm transition-all hover:border-blue-300 shrink-0 cursor-pointer"
           >
             <Download className="w-4 h-4 text-blue-600" />
-            <span>Unduh Surat Penawaran Resmi ({offeringFile?.name || "PDF"})</span>
+            <span>
+              Unduh Surat Penawaran Resmi ({offeringFileName.toLowerCase().endsWith(".pdf") ? "PDF" : offeringFileName})
+            </span>
           </a>
         )}
       </div>

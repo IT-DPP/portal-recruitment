@@ -1,6 +1,7 @@
 import React from "react";
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { normalizeCandidateProfile } from "@/lib/crypto";
 import JobDetailClient from "./JobDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -53,9 +54,17 @@ export default async function JobDetailPage({
     prisma.siteSla.findMany({ where: { siteId: job.siteId } })
   ]);
 
+  const enrichedJob = {
+    ...job,
+    applications: (job.applications || []).map((app) => ({
+      ...app,
+      candidateProfile: normalizeCandidateProfile(app.candidateProfile),
+    })),
+  };
+
   return (
     <JobDetailClient
-      initialJob={job}
+      initialJob={enrichedJob}
       sites={sites}
       customers={customers}
       provinces={provinces}

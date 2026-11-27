@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getS3ObjectBuffer } from "@/lib/s3";
+import { decryptField } from "@/lib/crypto";
 import JSZip from "jszip";
 
 const TYPE_MAPPING: Record<string, { prefix: string; label: string }> = {
@@ -90,9 +91,10 @@ export async function GET(
 
     const candidateName = profile.user?.name || "Kandidat";
     const sanitizedName = candidateName.replace(/[^a-zA-Z0-9_\-]/g, "_");
-    const nik = profile.nik || "NoNIK";
+    const decryptedNik = (profile.nik ? decryptField(profile.nik) : null) || "NoNIK";
+    const cleanNik = decryptedNik.replace(/[^a-zA-Z0-9]/g, "");
     const dateStr = new Date().toISOString().split("T")[0];
-    const zipFileName = `Dokumen_${sanitizedName}_${nik}_${dateStr}.zip`;
+    const zipFileName = `Dokumen_${sanitizedName}_${cleanNik}_${dateStr}.zip`;
 
     const zip = new JSZip();
     const manifestLines: string[] = [
@@ -100,7 +102,7 @@ export async function GET(
       "ARSIP DOKUMEN POKOK KANDIDAT",
       "============================================================",
       `Nama Kandidat : ${candidateName}`,
-      `NIK           : ${nik}`,
+      `NIK           : ${decryptedNik}`,
       `Email         : ${profile.user?.email || "-"}`,
       `Waktu Ekspor  : ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })} WIB`,
       "============================================================",
